@@ -1,0 +1,22 @@
+version = 0.1
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.validate.parameters]
+lint = true
+
+# Defaults for a manual/local `sam deploy` of prod. CI overrides
+# --stack-name and --parameter-overrides explicitly per workflow (see
+# .github/workflows/deploy-prod.yml and deploy-branch.yml) rather than
+# relying on these -- they exist so a human can also run `sam deploy`
+# directly against prod without memorizing flags.
+[default.deploy.parameters]
+region = "ap-south-1"
+capabilities = "CAPABILITY_IAM"
+stack_name = "cyrokx-app-prod"
+s3_bucket = "cyrokx-sam-artifacts-REPLACE_WITH_ACCOUNT_ID"
+parameter_overrides = "Stage=prod"
+confirm_changeset = false
+fail_on_empty_changeset = false

@@ -1,0 +1,15 @@
+{
+  "name": "cyrokx-frontend",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:public-site": "npm run dev -w public-site",
+    "dev:organiser-portal": "npm run dev -w organiser-portal",
+    "dev:admin-panel": "npm run dev -w admin-panel",
+    "build": "npm run build -w public-site && npm run build -w organiser-portal && npm run build -w admin-panel",
+    "lint": "npm run lint -w public-site && npm run lint -w organiser-portal && npm run lint -w admin-panel"
+  }
+}

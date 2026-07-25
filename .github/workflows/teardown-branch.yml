@@ -1,0 +1,47 @@
+name: Teardown PR Branch Stack
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  teardown:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Derive stage and stack name from branch
+        id: stage
+        run: |
+          RAW="${{ github.head_ref }}"
+          TOKEN=$(echo "$RAW" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/_/g; s/^_+//; s/_+$//' | cut -c1-20)
+          echo "stage=pr_${TOKEN}" >> "$GITHUB_OUTPUT"
+          echo "stack_name=cyrokx-app-pr-$(echo "$TOKEN" | tr '_' '-')" >> "$GITHUB_OUTPUT"
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.CI_ROLE_ARN }}
+          aws-region: ap-south-1
+
+      # Drop the schema BEFORE deleting the stack -- once the stack (and its
+      # migration_runner function) is gone, there's no way left to reach the
+      # database to clean it up.
+      - name: Drop the branch's Postgres schema
+        run: |
+          aws lambda invoke \
+            --function-name "cyrokx-migration-runner-${{ steps.stage.outputs.stage }}" \
+            --payload "$(echo -n '{"mode":"drop_schema","schema":"${{ steps.stage.outputs.stage }}"}' | base64)" \
+            --cli-binary-format raw-in-base64-out \
+            response.json || echo "Function may already be gone -- continuing to stack delete"
+          cat response.json || true
+
+      - uses: aws-actions/setup-sam@v2
+
+      - name: Delete stack
+        run: |
+          sam delete \
+            --stack-name "${{ steps.stage.outputs.stack_name }}" \
+            --no-prompts

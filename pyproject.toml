@@ -1,0 +1,16 @@
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+# E501: line length isn't worth fighting over.
+# UP042: `class X(str, enum.Enum)` is deliberate (SQLAlchemy Enum columns +
+# clean JSON serialization via model_dump), not something to migrate to
+# enum.StrEnum.
+ignore = ["E501", "UP042"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src/layers/common", "src"]

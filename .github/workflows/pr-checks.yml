@@ -1,0 +1,38 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [main]
+
+# No AWS credentials needed at all -- lint, tests, and sam validate/build
+# are all local-only checks. This job is a pure gate; deploy-branch.yml
+# handles the actual AWS deploy separately.
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: pip install -r requirements/dev.txt
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Unit tests
+        run: pytest tests/unit
+
+      - uses: aws-actions/setup-sam@v2
+
+      - name: Validate network-data template
+        run: sam validate --lint --template infra/network-data/template.yaml
+
+      - name: Validate app template
+        run: sam validate --lint --template infra/app/template.yaml
+
+      - name: Build app stack
+        run: sam build --template infra/app/template.yaml

@@ -1,0 +1,214 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  CyRokx CI bootstrap -- GitHub OIDC provider + the single cyrokx-ci-role
+  GitHub Actions assumes to deploy infra/app, plus the S3 bucket SAM uploads
+  deployment artifacts to. Deployed once, manually, by a human with AWS
+  admin credentials (see apply.py). Never deployed by CI itself.
+
+Parameters:
+  TrustedSubjects:
+    Type: CommaDelimitedList
+    Description: >
+      GitHub OIDC "sub" claim patterns allowed to assume cyrokx-ci-role.
+      Supplied by apply.py, sourced from users.yaml.
+
+Resources:
+
+  # AWS's account-wide GitHub OIDC provider -- only one of these can exist
+  # per account. If a prior setup already created one, import it instead of
+  # deploying this resource a second time.
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      # GitHub's documented OIDC root CA thumbprint as of this writing --
+      # verify against https://docs.github.com/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect
+      # before deploying, since GitHub can rotate their CA.
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+
+  CiRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: cyrokx-ci-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Ref GitHubOidcProvider
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                token.actions.githubusercontent.com:sub: !Ref TrustedSubjects
+      Policies:
+        - PolicyName: cyrokx-app-stack-deploy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: CloudFormationOnAppStacksOnly
+                Effect: Allow
+                Action:
+                  - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
+                  - cloudformation:DeleteStack
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:DescribeStackResource
+                  - cloudformation:DescribeStackResources
+                  - cloudformation:GetTemplate
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:DeleteChangeSet
+                  - cloudformation:ListStackResources
+                Resource:
+                  - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/cyrokx-app-*/*
+              - Sid: ReadNetworkDataStackOutputs
+                Effect: Allow
+                Action:
+                  - cloudformation:DescribeStacks
+                  - cloudformation:ListExports
+                Resource: "*"
+              - Sid: DeployArtifactBucket
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt SamArtifactsBucket.Arn
+                  - !Sub ${SamArtifactsBucket.Arn}/*
+              - Sid: LambdaFunctionsAndLayers
+                Effect: Allow
+                Action:
+                  - lambda:CreateFunction
+                  - lambda:UpdateFunctionCode
+                  - lambda:UpdateFunctionConfiguration
+                  - lambda:DeleteFunction
+                  - lambda:GetFunction
+                  - lambda:GetFunctionConfiguration
+                  - lambda:AddPermission
+                  - lambda:RemovePermission
+                  - lambda:TagResource
+                  - lambda:UntagResource
+                  - lambda:PublishLayerVersion
+                  - lambda:DeleteLayerVersion
+                  - lambda:GetLayerVersion
+                  - lambda:ListVersionsByFunction
+                  - lambda:GetPolicy
+                Resource:
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:cyrokx-*
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:cyrokx-*
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:cyrokx-*:*
+              - Sid: ApiGateway
+                Effect: Allow
+                # API Gateway ARNs don't include the account ID, and a
+                # brand-new REST API has no id to scope to before it's
+                # created -- broader than ideal for exactly that reason.
+                Action:
+                  - apigateway:*
+                Resource:
+                  - !Sub arn:aws:apigateway:${AWS::Region}::/restapis
+                  - !Sub arn:aws:apigateway:${AWS::Region}::/restapis/*
+              - Sid: Sqs
+                Effect: Allow
+                Action:
+                  - sqs:CreateQueue
+                  - sqs:DeleteQueue
+                  - sqs:GetQueueAttributes
+                  - sqs:SetQueueAttributes
+                  - sqs:TagQueue
+                Resource:
+                  - !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:cyrokx-*
+              - Sid: StepFunctions
+                Effect: Allow
+                Action:
+                  - states:CreateStateMachine
+                  - states:UpdateStateMachine
+                  - states:DeleteStateMachine
+                  - states:DescribeStateMachine
+                  - states:TagResource
+                Resource:
+                  - !Sub arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:cyrokx-*
+              - Sid: S3AppBucket
+                Effect: Allow
+                Action:
+                  - s3:CreateBucket
+                  - s3:DeleteBucket
+                  - s3:PutBucketPolicy
+                  - s3:PutEncryptionConfiguration
+                  - s3:PutBucketPublicAccessBlock
+                  - s3:PutBucketCORS
+                Resource:
+                  - arn:aws:s3:::cyrokx-banners-*
+              - Sid: IamForLambdaExecutionRoles
+                Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:GetRole
+                  - iam:PutRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:TagRole
+                Resource:
+                  - !Sub arn:aws:iam::${AWS::AccountId}:role/cyrokx-*
+              # Restricted so the CI role can only ever hand a role it
+              # creates to Lambda or Step Functions -- never to itself or
+              # anything else, which is what would turn iam:PassRole into a
+              # privilege-escalation path.
+              - Sid: PassRoleToLambdaAndStatesOnly
+                Effect: Allow
+                Action: iam:PassRole
+                Resource:
+                  - !Sub arn:aws:iam::${AWS::AccountId}:role/cyrokx-*
+                Condition:
+                  StringEquals:
+                    iam:PassedToService:
+                      - lambda.amazonaws.com
+                      - states.amazonaws.com
+              - Sid: Logs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:DeleteLogGroup
+                  - logs:PutRetentionPolicy
+                  - logs:DescribeLogGroups
+                  - logs:TagResource
+                Resource:
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/cyrokx-*
+
+  # SAM uploads Lambda deployment packages here on every build. A dedicated
+  # bucket (rather than --resolve-s3's auto-created, unpredictably-named
+  # one) lets the CI role's S3 access be scoped to an exact ARN instead of
+  # a naming-convention guess.
+  SamArtifactsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub cyrokx-sam-artifacts-${AWS::AccountId}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireOldArtifacts
+            Status: Enabled
+            ExpirationInDays: 30
+
+Outputs:
+  CiRoleArn:
+    Value: !GetAtt CiRole.Arn
+  SamArtifactsBucketName:
+    Value: !Ref SamArtifactsBucket

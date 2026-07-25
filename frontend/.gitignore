@@ -1,0 +1,19 @@
+# Dependencies (npm workspaces hoists most packages to the root)
+node_modules/
+
+# Next.js build output (per-app)
+.next/
+out/
+next-env.d.ts
+
+# Local env — real API base URL per environment, never committed
+.env
+.env.local
+.env*.local
+
+# Design-kit source mirror (reference only, fetched via the design MCP)
+_design-source/
+
+# Misc
+*.tsbuildinfo
+.DS_Store

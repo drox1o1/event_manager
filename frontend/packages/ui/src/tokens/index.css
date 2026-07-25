@@ -1,0 +1,28 @@
+/* CyRokx design tokens — global stylesheet entry point.
+   Import list plus the minimal base reset every ui_kit index.html carried
+   inline (box-sizing, page background). Import this once from each app's
+   root layout. */
+@import './fonts.css';
+@import './colors.css';
+@import './typography.css';
+@import './spacing.css';
+@import './radius-shadow.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--surface-page);
+  font-family: var(--font-sans);
+  color: var(--text-body);
+}
+
+a {
+  color: inherit;
+}

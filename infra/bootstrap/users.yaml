@@ -1,0 +1,13 @@
+# Who's allowed to assume cyrokx-ci-role, as GitHub OIDC token "sub" claim
+# patterns. Manually edited and manually applied (via apply.py) -- never
+# something CI updates itself, since a workflow able to widen its own trust
+# policy could grant itself broader access.
+#
+# repo:<org>/<repo>:ref:refs/heads/main   -- workflows running off main (prod deploys)
+# repo:<org>/<repo>:pull_request           -- any PR workflow (branch stack deploy/teardown)
+#
+# Fill in your actual GitHub org/repo before running apply.py.
+
+trusted_subjects:
+  - repo:REPLACE_WITH_ORG/cyrokx:ref:refs/heads/main
+  - repo:REPLACE_WITH_ORG/cyrokx:pull_request

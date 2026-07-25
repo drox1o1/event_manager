@@ -1,0 +1,579 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  CyRokx app layer -- 7 Lambdas, API Gateway, SQS, the migration Step
+  Function, S3. Deployed by CI: as cyrokx-app-prod on merge to main, or as
+  cyrokx-app-pr-<branch> on PR open/update. Never manages network-data
+  (VPC/RDS) -- only imports its outputs.
+
+Parameters:
+  Stage:
+    Type: String
+    Default: prod
+    Description: prod, or a sanitized branch name for PR-branch preview stacks
+  DbSchema:
+    Type: String
+    Default: ""
+    Description: >
+      Empty for prod (uses Postgres's default "public" schema). Set to the
+      same sanitized branch name as Stage for PR-branch stacks, which share
+      one RDS instance but get their own Postgres schema each.
+
+Conditions:
+  HasDbSchema: !Not [!Equals [!Ref DbSchema, ""]]
+
+Globals:
+  Function:
+    Runtime: python3.13
+    Timeout: 15
+    MemorySize: 256
+    Tracing: Active
+    Environment:
+      Variables:
+        POWERTOOLS_SERVICE_NAME: cyrokx
+        LOG_LEVEL: INFO
+
+Resources:
+
+  # --- Shared layer ---
+
+  CommonLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: !Sub cyrokx-common-${Stage}
+      ContentUri: ../../src/layers/common/
+      CompatibleRuntimes:
+        - python3.13
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: python3.13
+
+  # --- API Gateway ---
+
+  CyrokxApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub cyrokx-${Stage}
+      StageName: !Ref Stage
+      # AllowOrigin '*' matches BannersBucket's own CORS policy below --
+      # tighten to real frontend origins before production launch.
+      Cors:
+        AllowMethods: "'GET,POST,PATCH,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: "'*'"
+      Auth:
+        DefaultAuthorizer: JwtAuthorizer
+        Authorizers:
+          JwtAuthorizer:
+            FunctionArn: !GetAtt AuthorizerFunction.Arn
+            Identity:
+              Header: Authorization
+            AuthorizerResultTtlInSeconds: 300
+
+  # --- Authorizer ---
+
+  AuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub cyrokx-authorizer-${Stage}
+      CodeUri: ../../src/authorizer/
+      Handler: handler.handler
+      Layers:
+        - !Ref CommonLayer
+      Environment:
+        Variables:
+          JWT_SECRET_ARN: !ImportValue cyrokx-network-data-JwtSigningSecretArn
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource: !ImportValue cyrokx-network-data-JwtSigningSecretArn
+
+  # --- public_api ---
+
+  PublicApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub cyrokx-public-api-${Stage}
+      CodeUri: ../../src/public_api/
+      Handler: handler.handler
+      Layers:
+        - !Ref CommonLayer
+      VpcConfig:
+        SubnetIds: !Split [',', !ImportValue cyrokx-network-data-PrivateSubnetIds]
+        SecurityGroupIds:
+          - !ImportValue cyrokx-network-data-LambdaSecurityGroupId
+      Environment:
+        Variables:
+          DB_SECRET_ARN: !ImportValue cyrokx-network-data-AppDbSecretArn
+          DB_PROXY_HOST: !ImportValue cyrokx-network-data-DbProxyEndpoint
+          DB_NAME: !ImportValue cyrokx-network-data-DbName
+          DB_SCHEMA: !If [HasDbSchema, !Ref DbSchema, !Ref AWS::NoValue]
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource: !ImportValue cyrokx-network-data-AppDbSecretArn
+      Events:
+        ListEvents:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /events
+            Method: get
+            Auth:
+              Authorizer: NONE
+        GetEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /events/{event_id}
+            Method: get
+            Auth:
+              Authorizer: NONE
+        ListCategories:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /categories
+            Method: get
+            Auth:
+              Authorizer: NONE
+        Checkout:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /events/{event_id}/checkout
+            Method: post
+            Auth:
+              Authorizer: NONE
+        GetOrder:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /orders/{order_id}
+            Method: get
+            Auth:
+              Authorizer: NONE
+        CreateRefundRequest:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /orders/{order_id}/refund-request
+            Method: post
+            Auth:
+              Authorizer: NONE
+
+  # --- authenticated_api ---
+
+  AuthenticatedApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub cyrokx-authenticated-api-${Stage}
+      CodeUri: ../../src/authenticated_api/
+      Handler: handler.handler
+      Layers:
+        - !Ref CommonLayer
+      VpcConfig:
+        SubnetIds: !Split [',', !ImportValue cyrokx-network-data-PrivateSubnetIds]
+        SecurityGroupIds:
+          - !ImportValue cyrokx-network-data-LambdaSecurityGroupId
+      Environment:
+        Variables:
+          DB_SECRET_ARN: !ImportValue cyrokx-network-data-AppDbSecretArn
+          DB_PROXY_HOST: !ImportValue cyrokx-network-data-DbProxyEndpoint
+          DB_NAME: !ImportValue cyrokx-network-data-DbName
+          DB_SCHEMA: !If [HasDbSchema, !Ref DbSchema, !Ref AWS::NoValue]
+          JWT_SECRET_ARN: !ImportValue cyrokx-network-data-JwtSigningSecretArn
+          EMAIL_QUEUE_URL: !Ref EmailQueue
+          BANNERS_BUCKET_NAME: !Ref BannersBucket
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource:
+                - !ImportValue cyrokx-network-data-AppDbSecretArn
+                - !ImportValue cyrokx-network-data-JwtSigningSecretArn
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt EmailQueue.QueueName
+        - S3CrudPolicy:
+            BucketName: !Ref BannersBucket
+      Events:
+        OrganiserSignup:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/auth/signup
+            Method: post
+            Auth:
+              Authorizer: NONE
+        OrganiserVerifyEmail:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/auth/verify-email
+            Method: post
+            Auth:
+              Authorizer: NONE
+        OrganiserLogin:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/auth/login
+            Method: post
+            Auth:
+              Authorizer: NONE
+        AdminLogin:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/auth/login
+            Method: post
+            Auth:
+              Authorizer: NONE
+        CreateEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/events
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        SubmitEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/events/{event_id}/submit
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        ListOrganiserEvents:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/events
+            Method: get
+            Auth:
+              Authorizer: JwtAuthorizer
+        GetOrganiserEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/events/{event_id}
+            Method: get
+            Auth:
+              Authorizer: JwtAuthorizer
+        UpdateOrganiserEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/events/{event_id}
+            Method: patch
+            Auth:
+              Authorizer: JwtAuthorizer
+        CreateTicketTiers:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/events/{event_id}/ticket-tiers
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        CreateBannerUploadUrl:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/events/{event_id}/banner-upload-url
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        ListAttendees:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/events/{event_id}/attendees
+            Method: get
+            Auth:
+              Authorizer: JwtAuthorizer
+        ModerationQueue:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/moderation-queue
+            Method: get
+            Auth:
+              Authorizer: JwtAuthorizer
+        ApproveEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/events/{event_id}/approve
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        RejectEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/events/{event_id}/reject
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        ListAllEvents:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/events
+            Method: get
+            Auth:
+              Authorizer: JwtAuthorizer
+        PublishEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/events/{event_id}/publish
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        ListOrganisers:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/organisers
+            Method: get
+            Auth:
+              Authorizer: JwtAuthorizer
+        SuspendOrganiser:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/organisers/{organiser_id}/suspend
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        ReactivateOrganiser:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/organisers/{organiser_id}/reactivate
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        ListTransactions:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/transactions
+            Method: get
+            Auth:
+              Authorizer: JwtAuthorizer
+        ListRefunds:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/refunds
+            Method: get
+            Auth:
+              Authorizer: JwtAuthorizer
+        ApproveRefund:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/refunds/{refund_id}/approve
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        RejectRefund:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/refunds/{refund_id}/reject
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        GetSettings:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/settings
+            Method: get
+            Auth:
+              Authorizer: JwtAuthorizer
+        UpdateSettings:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/settings
+            Method: patch
+            Auth:
+              Authorizer: JwtAuthorizer
+
+  # --- payment_webhook (stub) ---
+
+  PaymentWebhookFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub cyrokx-payment-webhook-${Stage}
+      CodeUri: ../../src/payment_webhook/
+      Handler: handler.handler
+      Layers:
+        - !Ref CommonLayer
+      Events:
+        Webhook:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /payments/webhook
+            Method: post
+            Auth:
+              Authorizer: NONE
+
+  # --- ticket_generator (stub) ---
+
+  TicketGeneratorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub cyrokx-ticket-generator-${Stage}
+      CodeUri: ../../src/ticket_generator/
+      Handler: handler.handler
+      Layers:
+        - !Ref CommonLayer
+      Events:
+        OrderCompleted:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt OrderCompletedQueue.Arn
+            BatchSize: 5
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+
+  # --- email_sender (stub) ---
+
+  EmailSenderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub cyrokx-email-sender-${Stage}
+      CodeUri: ../../src/email_sender/
+      Handler: handler.handler
+      Layers:
+        - !Ref CommonLayer
+      Events:
+        EmailQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt EmailQueue.Arn
+            BatchSize: 5
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+
+  # --- migration_runner ---
+  # DDL-capable: uses the RDS master secret (never the restricted app role),
+  # and additionally needs AppDbSecret read access since the initial
+  # migration creates/updates the cyrokx_app Postgres role from it.
+
+  MigrationRunnerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub cyrokx-migration-runner-${Stage}
+      CodeUri: ../../src/migration_runner/
+      Handler: handler.handler
+      Timeout: 60
+      Layers:
+        - !Ref CommonLayer
+      VpcConfig:
+        SubnetIds: !Split [',', !ImportValue cyrokx-network-data-PrivateSubnetIds]
+        SecurityGroupIds:
+          - !ImportValue cyrokx-network-data-LambdaSecurityGroupId
+      Environment:
+        Variables:
+          DB_SECRET_ARN: !ImportValue cyrokx-network-data-MasterDbSecretArn
+          APP_DB_SECRET_ARN: !ImportValue cyrokx-network-data-AppDbSecretArn
+          DB_PROXY_HOST: !ImportValue cyrokx-network-data-DbProxyEndpoint
+          DB_NAME: !ImportValue cyrokx-network-data-DbName
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource:
+                - !ImportValue cyrokx-network-data-MasterDbSecretArn
+                - !ImportValue cyrokx-network-data-AppDbSecretArn
+
+  # --- Migration Step Function (prod: manually started; PR stacks: see
+  #     deploy-branch.yml, which invokes MigrationRunnerFunction directly
+  #     in upgrade mode instead of going through this state machine) ---
+
+  MigrationRunnerStateMachine:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub cyrokx-migration-runner-${Stage}
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: !Ref MigrationRunnerFunction
+      Definition:
+        Comment: Manually-started prod schema migration
+        StartAt: RunMigration
+        States:
+          RunMigration:
+            Type: Task
+            Resource: arn:aws:states:::lambda:invoke
+            Parameters:
+              FunctionName: !GetAtt MigrationRunnerFunction.Arn
+              Payload:
+                mode: upgrade
+            Retry:
+              - ErrorEquals: ["States.ALL"]
+                IntervalSeconds: 5
+                MaxAttempts: 2
+                BackoffRate: 2.0
+            Catch:
+              - ErrorEquals: ["States.ALL"]
+                Next: MigrationFailed
+            Next: MigrationSucceeded
+          MigrationSucceeded:
+            Type: Succeed
+          MigrationFailed:
+            Type: Fail
+
+  # --- SQS ---
+
+  OrderCompletedQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub cyrokx-order-completed-${Stage}
+      VisibilityTimeout: 60
+
+  EmailQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub cyrokx-email-${Stage}
+      VisibilityTimeout: 60
+
+  # --- S3 ---
+
+  BannersBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub cyrokx-banners-${Stage}-${AWS::AccountId}
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods: [GET, PUT]
+            AllowedOrigins: ["*"]
+            AllowedHeaders: ["*"]
+
+Outputs:
+  ApiUrl:
+    Description: Base invoke URL for smoke-testing the deployed stack
+    Value: !Sub https://${CyrokxApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/
+  MigrationRunnerFunctionArn:
+    Value: !GetAtt MigrationRunnerFunction.Arn
+  MigrationRunnerStateMachineArn:
+    Value: !Ref MigrationRunnerStateMachine

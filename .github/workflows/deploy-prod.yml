@@ -1,0 +1,60 @@
+name: Deploy Prod
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.CI_ROLE_ARN }}
+          aws-region: ap-south-1
+
+      # Fails fast if prod's schema isn't already at the revision this code
+      # expects, instead of shipping code against a schema that doesn't
+      # exist -- run the MigrationRunner Step Function manually first.
+      #
+      # Note: on the very first-ever deploy, this function doesn't exist
+      # yet -- that first deploy has to be done manually to bootstrap the
+      # stack. Every deploy after that goes through this workflow.
+      - name: Check prod schema is at head
+        run: |
+          aws lambda invoke \
+            --function-name cyrokx-migration-runner-prod \
+            --payload "$(echo -n '{"mode":"check"}' | base64)" \
+            --cli-binary-format raw-in-base64-out \
+            response.json
+          cat response.json
+          UP_TO_DATE=$(python3 -c "import json; print(json.load(open('response.json')).get('up_to_date'))")
+          if [ "$UP_TO_DATE" != "True" ]; then
+            echo "::error::Prod schema is not at head. Run the MigrationRunner Step Function before merging."
+            exit 1
+          fi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - uses: aws-actions/setup-sam@v2
+
+      - name: Build
+        run: sam build --template infra/app/template.yaml
+
+      - name: Deploy
+        run: |
+          sam deploy \
+            --stack-name cyrokx-app-prod \
+            --s3-bucket "${{ vars.SAM_ARTIFACTS_BUCKET }}" \
+            --capabilities CAPABILITY_IAM \
+            --parameter-overrides "Stage=prod" \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset

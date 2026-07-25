@@ -1,0 +1,351 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  CyRokx network + data layer -- VPC, RDS Postgres, RDS Proxy, Secrets Manager.
+  Deployed manually and rarely, by a human with AWS admin credentials. Never
+  touched by the CI role (see infra/bootstrap) -- infra/app only ever reads
+  this stack's outputs via Fn::ImportValue.
+
+Parameters:
+  DbInstanceClass:
+    Type: String
+    Default: db.t4g.micro
+  DbAllocatedStorageGb:
+    Type: Number
+    Default: 20
+  DbName:
+    Type: String
+    Default: cyrokx
+  DbEngineVersion:
+    Type: String
+    Default: "16.4"
+    Description: >
+      Check currently-available minor versions in your target region before
+      deploying (aws rds describe-db-engine-versions --engine postgres) --
+      AWS periodically deprecates old minors.
+
+Resources:
+
+  # --- Networking ---
+
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: cyrokx-vpc
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  VpcGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.0.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: cyrokx-public-a
+
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: cyrokx-public-b
+
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.10.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: cyrokx-private-a
+
+  PrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.0.11.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: cyrokx-private-b
+
+  NatEip:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  # Single NAT gateway (not one per AZ) to keep cost down at this stage -- a
+  # single point of failure for private-subnet internet egress (Secrets
+  # Manager, SQS, SES, Razorpay API calls), acceptable for now. Upgrade to
+  # one NAT gateway per AZ later if that becomes a real availability concern.
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatEip.AllocationId
+      SubnetId: !Ref PublicSubnetA
+      Tags:
+        - Key: Name
+          Value: cyrokx-nat
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VpcGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetA
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetB
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  PrivateSubnetARouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetA
+      RouteTableId: !Ref PrivateRouteTable
+
+  PrivateSubnetBRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetB
+      RouteTableId: !Ref PrivateRouteTable
+
+  # --- Security groups ---
+
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Attached to every VPC-connected Lambda in the app stack
+      VpcId: !Ref Vpc
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  RdsProxySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: RDS Proxy -- accepts 5432 from Lambdas, forwards to RDS
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  RdsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: RDS Postgres -- accepts 5432 from RDS Proxy only
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref RdsProxySecurityGroup
+
+  # --- Secrets ---
+
+  JwtSigningSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: cyrokx/jwt-signing-secret
+      GenerateSecretString:
+        PasswordLength: 64
+        ExcludePunctuation: true
+
+  # Restricted DML-only Postgres role for the app-facing Lambdas (public_api,
+  # authenticated_api). Deliberately separate from the RDS master user, which
+  # only migration_runner ever uses -- so a bug or compromise in application
+  # code can never run DDL. The role itself is created by the initial Alembic
+  # migration (it reads this secret's generated username/password and issues
+  # CREATE ROLE + GRANT), scoped to whichever schema that migration run
+  # targets -- "public" for prod, the branch's own schema for PR stacks.
+  AppDbSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: cyrokx/app-db-credentials
+      GenerateSecretString:
+        SecretStringTemplate: '{"username": "cyrokx_app"}'
+        GenerateStringKey: password
+        PasswordLength: 32
+        ExcludePunctuation: true
+
+  RazorpaySecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: cyrokx/razorpay
+      Description: >-
+        Placeholder -- fill in real key_id/key_secret/webhook_secret before
+        the payment follow-up pass. Not used by anything in this pass.
+      SecretString: '{"key_id": "REPLACE_ME", "key_secret": "REPLACE_ME", "webhook_secret": "REPLACE_ME"}'
+
+  # --- RDS ---
+
+  DbSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Private subnets for RDS + RDS Proxy
+      SubnetIds:
+        - !Ref PrivateSubnetA
+        - !Ref PrivateSubnetB
+
+  DbInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      Engine: postgres
+      EngineVersion: !Ref DbEngineVersion
+      DBInstanceClass: !Ref DbInstanceClass
+      AllocatedStorage: !Ref DbAllocatedStorageGb
+      StorageType: gp3
+      StorageEncrypted: true
+      DBName: !Ref DbName
+      MasterUsername: cyrokx_admin
+      ManageMasterUserPassword: true
+      DBSubnetGroupName: !Ref DbSubnetGroup
+      VPCSecurityGroups:
+        - !Ref RdsSecurityGroup
+      PubliclyAccessible: false
+      BackupRetentionPeriod: 7
+      MultiAZ: false
+      DeletionProtection: true
+
+  RdsProxyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: rds.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: rds-proxy-secret-access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource:
+                  - !GetAtt DbInstance.MasterUserSecret.SecretArn
+                  - !Ref AppDbSecret
+
+  # Two Auth entries: the master secret (migration_runner's DDL access) and
+  # AppDbSecret (public_api / authenticated_api's restricted DML access).
+  # Both usernames must exist as real Postgres roles -- the master user
+  # exists by default; cyrokx_app is created by the initial migration.
+  DbProxy:
+    Type: AWS::RDS::DBProxy
+    Properties:
+      DBProxyName: cyrokx-db-proxy
+      EngineFamily: POSTGRESQL
+      RoleArn: !GetAtt RdsProxyRole.Arn
+      VpcSubnetIds:
+        - !Ref PrivateSubnetA
+        - !Ref PrivateSubnetB
+      VpcSecurityGroupIds:
+        - !Ref RdsProxySecurityGroup
+      RequireTLS: true
+      Auth:
+        - AuthScheme: SECRETS
+          SecretArn: !GetAtt DbInstance.MasterUserSecret.SecretArn
+          IAMAuth: DISABLED
+        - AuthScheme: SECRETS
+          SecretArn: !Ref AppDbSecret
+          IAMAuth: DISABLED
+
+  DbProxyTargetGroup:
+    Type: AWS::RDS::DBProxyTargetGroup
+    Properties:
+      DBProxyName: !Ref DbProxy
+      DBInstanceIdentifiers:
+        - !Ref DbInstance
+      TargetGroupName: default
+
+Outputs:
+  VpcId:
+    Value: !Ref Vpc
+    Export:
+      Name: cyrokx-network-data-VpcId
+  PrivateSubnetIds:
+    Value: !Join [',', [!Ref PrivateSubnetA, !Ref PrivateSubnetB]]
+    Export:
+      Name: cyrokx-network-data-PrivateSubnetIds
+  LambdaSecurityGroupId:
+    Value: !Ref LambdaSecurityGroup
+    Export:
+      Name: cyrokx-network-data-LambdaSecurityGroupId
+  DbProxyEndpoint:
+    Value: !GetAtt DbProxy.Endpoint
+    Export:
+      Name: cyrokx-network-data-DbProxyEndpoint
+  DbName:
+    Value: !Ref DbName
+    Export:
+      Name: cyrokx-network-data-DbName
+  MasterDbSecretArn:
+    Value: !GetAtt DbInstance.MasterUserSecret.SecretArn
+    Export:
+      Name: cyrokx-network-data-MasterDbSecretArn
+  AppDbSecretArn:
+    Value: !Ref AppDbSecret
+    Export:
+      Name: cyrokx-network-data-AppDbSecretArn
+  JwtSigningSecretArn:
+    Value: !Ref JwtSigningSecret
+    Export:
+      Name: cyrokx-network-data-JwtSigningSecretArn
+  RazorpaySecretArn:
+    Value: !Ref RazorpaySecret
+    Export:
+      Name: cyrokx-network-data-RazorpaySecretArn
