@@ -1,0 +1,36 @@
+<!-- @dsCard group="Components" viewport="700x480" name="Cards" subtitle="EventCard, TicketTierRow" -->
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{margin:0;font-family:var(--font-sans);background:var(--surface-page);}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+  const { EventCard, TicketTierRow } = window.CyRokxDesignSystem_ef2ebf;
+  function Demo() {
+    const [q, setQ] = React.useState(2);
+    return (
+      <div style={{ padding: 24 }}>
+        <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+          <div style={{ width: 220 }}><EventCard category="Music" title="Jazz Night at The Terrace" date="Sat, 12 Jul" city="Mumbai" priceFrom="₹799" /></div>
+          <div style={{ width: 220 }}><EventCard category="Comedy" title="Stand-up Sunday" date="Sun, 13 Jul" city="Delhi" priceFrom="₹499" soldOut /></div>
+        </div>
+        <div style={{ maxWidth: 460 }}>
+          <TicketTierRow name="Early Bird" price="₹599" description="First 100 tickets" remaining={12} quantity={q} onQuantityChange={setQ} />
+          <TicketTierRow name="Standard" price="₹899" quantity={0} onQuantityChange={() => {}} />
+          <TicketTierRow name="VIP" price="₹2,499" available={false} />
+        </div>
+      </div>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script>
+</body>
+</html>

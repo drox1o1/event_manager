@@ -1,0 +1,23 @@
+<!-- @dsCard group="Colors" viewport="700x170" name="Semantic Status" subtitle="Success, warning, error — with soft tint backgrounds" -->
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;font-family:var(--font-sans);background:var(--surface-card);}
+  .row{display:flex;gap:12px;padding:16px;}
+  .pill{flex:1;height:100px;border-radius:var(--radius-card);display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px;}
+  .dot{width:14px;height:14px;border-radius:50%;}
+  .label{font-size:13px;font-weight:600;}
+  .hex{font-size:11px;font-family:monospace;opacity:0.75;}
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="pill" style="background:var(--status-success-bg);color:var(--status-success-text);"><div class="dot" style="background:var(--color-success);"></div><div class="label">Success</div><div class="hex">#1A7A4A</div></div>
+    <div class="pill" style="background:var(--status-warning-bg);color:var(--status-warning-text);"><div class="dot" style="background:var(--color-warning);"></div><div class="label">Warning</div><div class="hex">#B45309</div></div>
+    <div class="pill" style="background:var(--status-error-bg);color:var(--status-error-text);"><div class="dot" style="background:var(--color-error);"></div><div class="label">Error</div><div class="hex">#C0392B</div></div>
+    <div class="pill" style="background:var(--status-muted-bg);color:var(--status-muted-text);"><div class="dot" style="background:var(--color-subtle);"></div><div class="label">Muted</div><div class="hex">#999999</div></div>
+  </div>
+</body>
+</html>

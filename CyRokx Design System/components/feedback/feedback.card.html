@@ -1,0 +1,34 @@
+<!-- @dsCard group="Components" viewport="700x420" name="Feedback" subtitle="Badge (status pill), Toast, EmptyState" -->
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{margin:0;font-family:var(--font-sans);background:var(--surface-page);}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+  const { Badge, Toast, EmptyState, Button } = window.CyRokxDesignSystem_ef2ebf;
+  function Demo() {
+    return (
+      <div style={{ padding: 24 }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 24 }}>
+          <Badge status="draft" /><Badge status="review" /><Badge status="approved" /><Badge status="rejected" /><Badge status="live" /><Badge status="soldout" />
+        </div>
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 24 }}>
+          <Toast variant="success" title="Event submitted" description="We'll review it within 24 hours." onClose={() => {}} />
+          <Toast variant="error" title="Payment failed" description="Check your card details and retry." onClose={() => {}} />
+        </div>
+        <EmptyState icon="calendar" title="No events yet" description="Create your first event to see it here." action={<Button>Create event</Button>} />
+      </div>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!-- @dsCard group="Components" viewport="700x760" name="Forms" subtitle="Button, Input, Textarea, Select, Checkbox, Radio, Switch, SearchBar, FilterControl" -->
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{margin:0;font-family:var(--font-sans);background:var(--surface-page);}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+  const { Button, Input, Textarea, Select, Checkbox, Radio, Switch, SearchBar, FilterControl } = window.CyRokxDesignSystem_ef2ebf;
+
+  function Section({ title, children }) {
+    return (
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-subtle)', fontWeight: 600, marginBottom: 12 }}>{title}</div>
+        {children}
+      </div>
+    );
+  }
+
+  function Demo() {
+    const [check, setCheck] = React.useState(true);
+    const [radio, setRadio] = React.useState('vip');
+    const [sw, setSw] = React.useState(true);
+    return (
+      <div style={{ padding: 24 }}>
+        <Section title="Buttons">
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Button variant="primary">Buy tickets</Button>
+            <Button variant="secondary">Edit event</Button>
+            <Button variant="ghost">Cancel</Button>
+            <Button variant="destructive">Delete</Button>
+            <Button loading>Processing</Button>
+            <Button disabled>Disabled</Button>
+            <Button size="sm">Small</Button>
+            <Button size="lg">Large</Button>
+          </div>
+        </Section>
+        <Section title="Inputs">
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            <div style={{ width: 220 }}><Input label="Email" type="email" placeholder="you@email.com" /></div>
+            <div style={{ width: 220 }}><Input icon="search" placeholder="Search events" /></div>
+            <div style={{ width: 220 }}><Input label="Phone" error="Enter a valid number" /></div>
+            <div style={{ width: 220 }}><Select label="City" placeholder="All cities" options={['Mumbai','Delhi','Bengaluru']} /></div>
+          </div>
+          <div style={{ width: 460, marginTop: 14 }}><Textarea label="Description" rows={3} placeholder="Tell people what to expect…" /></div>
+        </Section>
+        <Section title="Choice controls">
+          <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Checkbox label="Music" checked={check} onChange={() => setCheck(!check)} />
+            <Radio name="tier" label="VIP" checked={radio === 'vip'} onChange={() => setRadio('vip')} />
+            <Radio name="tier" label="Standard" checked={radio === 'std'} onChange={() => setRadio('std')} />
+            <Switch checked={sw} onChange={() => setSw(!sw)} label="Checked in" />
+          </div>
+        </Section>
+        <Section title="Search bar">
+          <SearchBar keyword="Jazz" location="Mumbai" />
+        </Section>
+        <Section title="Filter control">
+          <div style={{ width: 260 }}>
+            <FilterControl title="Category" icon="filter">
+              <Checkbox label="Music" checked />
+              <Checkbox label="Comedy" />
+              <Checkbox label="Workshops" />
+            </FilterControl>
+          </div>
+        </Section>
+      </div>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script>
+</body>
+</html>

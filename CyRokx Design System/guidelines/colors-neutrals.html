@@ -1,0 +1,25 @@
+<!-- @dsCard group="Colors" viewport="700x210" name="Neutrals & Surfaces" subtitle="Ink, body, muted, subtle, off-white, surface, rule" -->
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;font-family:var(--font-sans);background:var(--surface-card);}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:16px;}
+  .swatch{height:82px;border-radius:var(--radius-control);display:flex;flex-direction:column;justify-content:flex-end;padding:10px;box-sizing:border-box;}
+  .label{font-size:12px;font-weight:600;}
+  .hex{font-size:11px;opacity:0.8;font-family:monospace;}
+</style>
+</head>
+<body>
+  <div class="grid">
+    <div class="swatch" style="background:var(--color-ink);color:#fff;"><div class="label">Ink</div><div class="hex">#0D0D0D</div></div>
+    <div class="swatch" style="background:var(--color-body);color:#fff;"><div class="label">Body</div><div class="hex">#333333</div></div>
+    <div class="swatch" style="background:var(--color-muted);color:#fff;"><div class="label">Muted</div><div class="hex">#666666</div></div>
+    <div class="swatch" style="background:var(--color-subtle);color:#fff;"><div class="label">Subtle</div><div class="hex">#999999</div></div>
+    <div class="swatch" style="background:var(--color-off-white);color:var(--color-ink);border:1px solid var(--border-default);"><div class="label">Off White</div><div class="hex">#F5F5F5</div></div>
+    <div class="swatch" style="background:var(--color-surface);color:var(--color-ink);border:1px solid var(--border-default);"><div class="label">Surface</div><div class="hex">#FFFFFF</div></div>
+    <div class="swatch" style="background:var(--color-rule);color:var(--color-ink);"><div class="label">Rule</div><div class="hex">#E4E4E4</div></div>
+  </div>
+</body>
+</html>

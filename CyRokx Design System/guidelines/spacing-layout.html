@@ -1,0 +1,25 @@
+<!-- @dsCard group="Spacing" viewport="700x230" name="Grid & Content Width" subtitle="12-column, 1200px max content, 24px gutters" -->
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;font-family:var(--font-sans);background:var(--surface-page);padding:16px;box-sizing:border-box;}
+  .wrap{max-width:100%;transform:scale(0.56);transform-origin:top left;width:1200px;}
+  .frame{max-width:var(--content-max-width);margin:0 auto;background:var(--surface-card);border:1px dashed var(--border-default);padding:16px;border-radius:8px;}
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:var(--grid-gutter);}
+  .col{background:var(--color-accent-tint);border:1px solid var(--color-accent);height:60px;border-radius:4px;}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="frame">
+      <div class="grid">
+        <div class="col"></div><div class="col"></div><div class="col"></div><div class="col"></div>
+        <div class="col"></div><div class="col"></div><div class="col"></div><div class="col"></div>
+        <div class="col"></div><div class="col"></div><div class="col"></div><div class="col"></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
