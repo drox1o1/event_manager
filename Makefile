@@ -87,7 +87,7 @@ api-url:
 migrate-check:
 	@aws lambda invoke \
 		--function-name cyrokx-migration-runner-$(if $(STAGE),$(STAGE),prod) \
-		--payload '{"mode":"check"}' \
+		--payload '{"mode":"check","schema":"$(STAGE)"}' \
 		--cli-binary-format raw-in-base64-out \
 		response.json
 	@cat response.json
@@ -118,7 +118,7 @@ seed-admin:
 	@test -n "$(ADMIN_PASSWORD)" || (echo "ADMIN_PASSWORD is required, e.g. make seed-admin ADMIN_EMAIL=admin@cyrokx.com ADMIN_PASSWORD=..." && exit 1)
 	@aws lambda invoke \
 		--function-name cyrokx-migration-runner-$(if $(STAGE),$(STAGE),prod) \
-		--payload '{"mode":"seed_admin","email":"$(ADMIN_EMAIL)","password":"$(ADMIN_PASSWORD)"}' \
+		--payload '{"mode":"seed_admin","email":"$(ADMIN_EMAIL)","password":"$(ADMIN_PASSWORD)","schema":"$(STAGE)"}' \
 		--cli-binary-format raw-in-base64-out \
 		response.json
 	@cat response.json

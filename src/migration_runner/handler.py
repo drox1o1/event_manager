@@ -49,7 +49,7 @@ from aws_lambda_powertools import Logger
 from common.auth import hash_password
 from common.db import load_db_credentials
 from common.models import AdminUser
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import Session
 
 logger = Logger()
@@ -128,13 +128,24 @@ def _drop_schema(database_url: str, schema: str | None) -> dict:
     return {"dropped_schema": schema}
 
 
-def _seed_admin(database_url: str, email: str | None, password: str | None) -> dict:
+def _seed_admin(database_url: str, email: str | None, password: str | None, schema: str | None) -> dict:
     if not email or not password:
         raise ValueError("seed_admin requires 'email' and 'password' in the payload")
     if len(password) < 12:
         raise ValueError("password must be at least 12 characters")
+    if schema and not SCHEMA_NAME_RE.fullmatch(schema):
+        raise ValueError(f"schema {schema!r} is not a safe identifier")
 
     engine = create_engine(database_url)
+    if schema:
+        # Not connect_args={"options": ...} -- RDS Proxy rejects the startup
+        # packet's "options" parameter outright (see common/db.py for the
+        # same fix applied to public_api/authenticated_api).
+        @event.listens_for(engine, "connect")
+        def _set_search_path(dbapi_connection, _connection_record):
+            with dbapi_connection.cursor() as cursor:
+                cursor.execute(f'SET search_path TO "{schema}"')
+
     try:
         with Session(engine) as session:
             existing = session.query(AdminUser).filter_by(email=email).one_or_none()
@@ -161,7 +172,7 @@ def handler(event: dict, _context: Any) -> dict:
     if mode == "drop_schema":
         return _drop_schema(database_url, schema)
     if mode == "seed_admin":
-        return _seed_admin(database_url, event.get("email"), event.get("password"))
+        return _seed_admin(database_url, event.get("email"), event.get("password"), schema)
     raise ValueError(
         f"Unknown mode: {mode!r} (expected 'check', 'upgrade', 'drop_schema', or 'seed_admin')"
     )

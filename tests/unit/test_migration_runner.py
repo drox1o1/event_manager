@@ -29,4 +29,10 @@ def test_drop_schema_refuses_unsafe_or_public_targets(bad_schema):
 )
 def test_seed_admin_refuses_missing_or_weak_credentials(email, password):
     with pytest.raises(ValueError):
-        _seed_admin("postgresql://unused", email, password)
+        _seed_admin("postgresql://unused", email, password, None)
+
+
+@pytest.mark.parametrize("bad_schema", ["not a safe id!", "a" * 64, "has-a-hyphen"])
+def test_seed_admin_refuses_unsafe_schema(bad_schema):
+    with pytest.raises(ValueError):
+        _seed_admin("postgresql://unused", "admin@cyrokx.com", "a-long-enough-password", bad_schema)
