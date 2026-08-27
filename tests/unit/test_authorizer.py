@@ -36,6 +36,24 @@ def test_handler_allows_matching_role(mock_jwt_secret):
     assert result["context"]["role"] == "organiser"
 
 
+def test_handler_widens_resource_to_role_prefix(mock_jwt_secret):
+    """The returned policy's Resource must cover every method under the
+    role's path prefix, not just the one route that was invoked --
+    AuthorizerResultTtlInSeconds caches the policy keyed by token and reuses
+    it verbatim for later calls with the same token, so a Resource scoped to
+    a single method+path would 403 every *other* route within the cache
+    window."""
+    organiser_id = uuid.uuid4()
+    token = issue_access_token(organiser_id, "organiser")
+    event = {
+        "authorizationToken": f"Bearer {token}",
+        "methodArn": "arn:aws:execute-api:ap-south-1:123456789012:abc123/prod/POST/organiser/events",
+    }
+    result = handler(event, None)
+    resource = result["policyDocument"]["Statement"][0]["Resource"]
+    assert resource == "arn:aws:execute-api:ap-south-1:123456789012:abc123/prod/*/organiser/*"
+
+
 def test_handler_denies_mismatched_role(mock_jwt_secret):
     admin_id = uuid.uuid4()
     token = issue_access_token(admin_id, "admin")

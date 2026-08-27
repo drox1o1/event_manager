@@ -23,6 +23,7 @@ from common.auth import InvalidTokenError, decode_token
 logger = Logger()
 
 _METHOD_ARN_RE = re.compile(r"^arn:aws:execute-api:[^:]+:[^:]+:[^/]+/[^/]+/[A-Z]+/(?P<path>.*)$")
+_ARN_PREFIX_RE = re.compile(r"^(?P<prefix>arn:aws:execute-api:[^:]+:[^:]+:[^/]+/[^/]+)/[A-Z]+/.*$")
 
 
 def _required_role(method_arn: str) -> str | None:
@@ -35,10 +36,23 @@ def _required_role(method_arn: str) -> str | None:
     return None
 
 
-def _policy(principal_id: str, effect: str, method_arn: str, context: dict | None = None) -> dict:
+def _wildcard_resource(method_arn: str, role_prefix: str | None) -> str:
+    """Widens the policy's Resource to every method under the role's path
+    prefix (e.g. .../organiser/*) instead of just the single route that
+    triggered this invocation. Required because AuthorizerResultTtlInSeconds
+    caches the returned policy keyed by token and reuses it verbatim for any
+    later call with that token -- a Resource scoped to one method+path would
+    make every *other* route 403 until the cache entry expires."""
+    match = _ARN_PREFIX_RE.match(method_arn)
+    if not match or not role_prefix:
+        return method_arn
+    return f"{match.group('prefix')}/*/{role_prefix}/*"
+
+
+def _policy(principal_id: str, effect: str, resource: str, context: dict | None = None) -> dict:
     document = {
         "Version": "2012-10-17",
-        "Statement": [{"Action": "execute-api:Invoke", "Effect": effect, "Resource": method_arn}],
+        "Statement": [{"Action": "execute-api:Invoke", "Effect": effect, "Resource": resource}],
     }
     response: dict[str, Any] = {"principalId": principal_id, "policyDocument": document}
     if context:
@@ -63,12 +77,14 @@ def handler(event: dict, _context: Any) -> dict:
     subject_id = payload["sub"]
 
     required_role = _required_role(method_arn)
+    resource = _wildcard_resource(method_arn, required_role)
+
     if required_role is not None and role != required_role:
         logger.warning(
             "role mismatch",
             extra={"required": required_role, "actual": role, "subject": subject_id},
         )
-        return _policy(subject_id, "Deny", method_arn)
+        return _policy(subject_id, "Deny", resource)
 
     context = {"role": role}
     if role == "organiser":
@@ -76,4 +92,4 @@ def handler(event: dict, _context: Any) -> dict:
     else:
         context["admin_id"] = subject_id
 
-    return _policy(subject_id, "Allow", method_arn, context)
+    return _policy(subject_id, "Allow", resource, context)
