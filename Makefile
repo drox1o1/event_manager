@@ -17,10 +17,11 @@ endif
 .PHONY: help venv install lint format test check \
 	sam-validate sam-build deploy-prod deploy-branch teardown-branch api-url \
 	migrate-check migrate-upgrade migrate-drop-schema bootstrap-ci seed-admin \
-	frontend-install frontend-dev-public frontend-dev-organiser frontend-dev-admin frontend-build frontend-lint
+	frontend-install frontend-dev-public frontend-dev-organiser frontend-dev-admin frontend-build frontend-lint \
+	frontend-package frontend-sam-build frontend-deploy
 
 help:
-	@echo "venv install lint format test check sam-validate sam-build deploy-prod deploy-branch teardown-branch api-url migrate-check migrate-upgrade migrate-drop-schema bootstrap-ci seed-admin frontend-install frontend-dev-public frontend-dev-organiser frontend-dev-admin frontend-build frontend-lint" | tr ' ' '\n'
+	@echo "venv install lint format test check sam-validate sam-build deploy-prod deploy-branch teardown-branch api-url migrate-check migrate-upgrade migrate-drop-schema bootstrap-ci seed-admin frontend-install frontend-dev-public frontend-dev-organiser frontend-dev-admin frontend-build frontend-lint frontend-package frontend-sam-build frontend-deploy" | tr ' ' '\n'
 
 $(VENV_BIN)/activate:
 	$(PYTHON) -m venv $(VENV)
@@ -139,3 +140,24 @@ frontend-build:
 
 frontend-lint:
 	cd frontend && npm run lint
+
+# Assembles .build/frontend/<app>/ (standalone server + static/public +
+# run.sh) from each app's `next build` output -- see
+# scripts/package_frontend.sh and infra/frontend/template.yaml.
+frontend-package: frontend-build
+	./scripts/package_frontend.sh public-site
+	./scripts/package_frontend.sh organiser-portal
+	./scripts/package_frontend.sh admin-panel
+
+frontend-sam-build: install frontend-package
+	$(VENV_BIN)/sam build --template infra/frontend/template.yaml
+
+frontend-deploy: frontend-sam-build
+	$(VENV_BIN)/sam deploy \
+		--stack-name cyrokx-frontend-$(if $(STAGE),$(STAGE),dev) \
+		--s3-bucket "$(SAM_ARTIFACTS_BUCKET)" \
+		--region "$(REGION)" \
+		--capabilities CAPABILITY_IAM \
+		--parameter-overrides "Stage=$(if $(STAGE),$(STAGE),dev)" \
+		--no-confirm-changeset \
+		--no-fail-on-empty-changeset
