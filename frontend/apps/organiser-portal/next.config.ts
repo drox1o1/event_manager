@@ -7,6 +7,14 @@ import type { NextConfig } from "next";
 const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/+$/, "");
 
 const nextConfig: NextConfig = {
+  // Produces .next/standalone -- a minimal, self-contained server bundle
+  // (traced node_modules + server.js) used to package this app for its
+  // Lambda (see infra/frontend/template.yaml).
+  output: "standalone",
+  // No next/image usage in these apps yet; unoptimized avoids needing
+  // sharp's platform-specific native binary to be present in the Lambda
+  // runtime (this repo builds on macOS, Lambda runs on Linux x86_64).
+  images: { unoptimized: true },
   transpilePackages: ["@cyrokx/ui", "@cyrokx/api-client"],
   async rewrites() {
     if (!API_BASE) return [];
