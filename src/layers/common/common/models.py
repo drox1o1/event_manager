@@ -74,7 +74,7 @@ class Organiser(Base):
     email: Mapped[str] = mapped_column(String(320), nullable=False, unique=True)
     password_hash: Mapped[str] = mapped_column(String(200), nullable=False)
     status: Mapped[OrganiserStatus] = mapped_column(
-        Enum(OrganiserStatus, name="organiser_status"),
+        Enum(OrganiserStatus, name="organiser_status", values_callable=lambda cls: [e.value for e in cls]),
         nullable=False,
         default=OrganiserStatus.PENDING,
     )
@@ -119,7 +119,9 @@ class Event(Base):
     capacity: Mapped[int] = mapped_column(Integer, nullable=False)
     banner_image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     status: Mapped[EventStatus] = mapped_column(
-        Enum(EventStatus, name="event_status"), nullable=False, default=EventStatus.DRAFT
+        Enum(EventStatus, name="event_status", values_callable=lambda cls: [e.value for e in cls]),
+        nullable=False,
+        default=EventStatus.DRAFT,
     )
     rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     submitted_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -167,7 +169,7 @@ class Order(Base):
     booking_fee: Mapped[Numeric] = mapped_column(Numeric(10, 2), nullable=False, default=0)
     total_amount: Mapped[Numeric] = mapped_column(Numeric(10, 2), nullable=False)
     payment_status: Mapped[PaymentStatus] = mapped_column(
-        Enum(PaymentStatus, name="payment_status"),
+        Enum(PaymentStatus, name="payment_status", values_callable=lambda cls: [e.value for e in cls]),
         nullable=False,
         default=PaymentStatus.PENDING,
     )
@@ -216,7 +218,9 @@ class RefundRequest(Base):
     order_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("orders.id"), nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[RefundStatus] = mapped_column(
-        Enum(RefundStatus, name="refund_status"), nullable=False, default=RefundStatus.PENDING
+        Enum(RefundStatus, name="refund_status", values_callable=lambda cls: [e.value for e in cls]),
+        nullable=False,
+        default=RefundStatus.PENDING,
     )
     rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     requested_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

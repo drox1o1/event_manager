@@ -40,17 +40,25 @@ def _app_db_credentials() -> dict | None:
 def upgrade() -> None:
     bind = op.get_bind()
 
+    # create_type=False on each: the explicit .create(checkfirst=True) calls
+    # below are what actually create these types. Without it, op.create_table
+    # triggers SQLAlchemy's own (non-checkfirst) enum-creation DDL as a side
+    # effect of using these as column types, which collides with the type
+    # this function just created and fails with "already exists".
     organiser_status = postgresql.ENUM(
-        "pending", "verified", "suspended", name="organiser_status"
+        "pending", "verified", "suspended", name="organiser_status", create_type=False
     )
     event_status = postgresql.ENUM(
         "draft", "review", "approved", "rejected", "live", "soldout", "deactivated",
         name="event_status",
+        create_type=False,
     )
     payment_status = postgresql.ENUM(
-        "pending", "success", "failed", "refunded", name="payment_status"
+        "pending", "success", "failed", "refunded", name="payment_status", create_type=False
     )
-    refund_status = postgresql.ENUM("pending", "approved", "rejected", name="refund_status")
+    refund_status = postgresql.ENUM(
+        "pending", "approved", "rejected", name="refund_status", create_type=False
+    )
 
     organiser_status.create(bind, checkfirst=True)
     event_status.create(bind, checkfirst=True)
