@@ -1,6 +1,6 @@
 """migration-runner Lambda -- runs Alembic against the target schema.
 
-Three modes, selected via the invoke payload's "mode" key:
+Four modes, selected via the invoke payload's "mode" key:
 
   "check"       -- read-only. Compares the DB's current Alembic revision
                    against the head revision bundled in this deployment.
@@ -17,8 +17,16 @@ Three modes, selected via the invoke payload's "mode" key:
                    go through a Lambda like everything else DB-related.
                    Refuses to run without an explicit, non-"public" schema,
                    so this can never touch prod's data.
+  "seed_admin"  -- creates the first admin_users row. Same one-off logic as
+                   scripts/seed_admin.py, invoked through this Lambda for the
+                   same reason as "drop_schema": prod's RDS instance isn't
+                   publicly reachable, so anything DB-related that isn't
+                   already an HTTP route has to go through a Lambda already
+                   living in the VPC. Not exposed via API Gateway.
 
-Payload: {"mode": "check" | "upgrade" | "drop_schema", "schema": "<optional>"}
+Payload: {"mode": "check" | "upgrade" | "drop_schema" | "seed_admin",
+          "schema": "<optional>", "email": "<seed_admin only>",
+          "password": "<seed_admin only>"}
 
 This function bundles migrations/ (alembic.ini, env.py, versions/) alongside
 this handler in its own CodeUri -- see infra/app/template.yaml -- rather
@@ -38,8 +46,11 @@ from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
 from aws_lambda_powertools import Logger
+from common.auth import hash_password
 from common.db import load_db_credentials
+from common.models import AdminUser
 from sqlalchemy import create_engine, text
+from sqlalchemy.orm import Session
 
 logger = Logger()
 
@@ -117,6 +128,27 @@ def _drop_schema(database_url: str, schema: str | None) -> dict:
     return {"dropped_schema": schema}
 
 
+def _seed_admin(database_url: str, email: str | None, password: str | None) -> dict:
+    if not email or not password:
+        raise ValueError("seed_admin requires 'email' and 'password' in the payload")
+    if len(password) < 12:
+        raise ValueError("password must be at least 12 characters")
+
+    engine = create_engine(database_url)
+    try:
+        with Session(engine) as session:
+            existing = session.query(AdminUser).filter_by(email=email).one_or_none()
+            if existing is not None:
+                raise ValueError(f"admin_users row already exists for {email}")
+            session.add(AdminUser(email=email, password_hash=hash_password(password)))
+            session.commit()
+    finally:
+        engine.dispose()
+
+    logger.info("admin user seeded", extra={"email": email})
+    return {"seeded_admin_email": email}
+
+
 def handler(event: dict, _context: Any) -> dict:
     mode = event.get("mode", "check")
     schema = event.get("schema") or os.environ.get("DB_SCHEMA")
@@ -128,4 +160,8 @@ def handler(event: dict, _context: Any) -> dict:
         return _upgrade(database_url, schema)
     if mode == "drop_schema":
         return _drop_schema(database_url, schema)
-    raise ValueError(f"Unknown mode: {mode!r} (expected 'check', 'upgrade', or 'drop_schema')")
+    if mode == "seed_admin":
+        return _seed_admin(database_url, event.get("email"), event.get("password"))
+    raise ValueError(
+        f"Unknown mode: {mode!r} (expected 'check', 'upgrade', 'drop_schema', or 'seed_admin')"
+    )
