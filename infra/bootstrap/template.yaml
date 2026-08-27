@@ -188,10 +188,15 @@ Resources:
   # bucket (rather than --resolve-s3's auto-created, unpredictably-named
   # one) lets the CI role's S3 access be scoped to an exact ARN instead of
   # a naming-convention guess.
+  #
+  # Suffixed "-aps1" (not just cyrokx-sam-artifacts-<account-id>) because
+  # S3 bucket names are globally unique and, after a bucket is deleted, the
+  # name can take a while to become reusable -- happened here after a few
+  # rapid create/delete cycles while moving this stack between regions.
   SamArtifactsBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub cyrokx-sam-artifacts-${AWS::AccountId}
+      BucketName: !Sub cyrokx-sam-artifacts-aps1-${AWS::AccountId}
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true

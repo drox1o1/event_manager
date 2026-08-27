@@ -16,7 +16,7 @@ lint = true
 region = "ap-south-1"
 capabilities = "CAPABILITY_IAM"
 stack_name = "cyrokx-app-prod"
-s3_bucket = "cyrokx-sam-artifacts-REPLACE_WITH_ACCOUNT_ID"
+s3_bucket = "cyrokx-sam-artifacts-aps1-REPLACE_WITH_ACCOUNT_ID"
 parameter_overrides = "Stage=prod"
 confirm_changeset = false
 fail_on_empty_changeset = false
