@@ -1,0 +1,13 @@
+:root {
+  /* Radius */
+  --radius-control: 8px;   /* inputs, buttons */
+  --radius-card: 12px;     /* cards, tags, tiers */
+  --radius-modal: 16px;    /* modals, sheets */
+  --radius-pill: 999px;    /* status pills, chips, avatars */
+
+  /* Elevation — soft shadows, never hard borders where a shadow will do */
+  --shadow-card: 0 2px 8px rgba(13, 13, 13, 0.06);
+  --shadow-card-hover: 0 8px 20px rgba(13, 13, 13, 0.10);
+  --shadow-modal: 0 16px 40px rgba(13, 13, 13, 0.16);
+  --shadow-focus-ring: 0 0 0 3px var(--color-accent-tint);
+}

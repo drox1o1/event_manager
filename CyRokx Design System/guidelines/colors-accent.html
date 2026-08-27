@@ -1,0 +1,46 @@
+<!-- @dsCard group="Colors" viewport="700x290" name="Accent & Action" subtitle="Portland Orange drives every primary action; Purple Kissed Blue is the reserved secondary" -->
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;font-family:var(--font-sans);background:var(--surface-card);}
+  .row{display:flex;gap:12px;padding:16px;}
+  .swatch{flex:1;height:100px;border-radius:var(--radius-card);display:flex;flex-direction:column;justify-content:flex-end;padding:12px;box-sizing:border-box;}
+  .label{font-size:13px;font-weight:600;}
+  .hex{font-size:12px;opacity:0.85;font-family:monospace;}
+  .note{padding:0 16px 16px;font-size:12.5px;color:var(--text-muted);max-width:640px;}
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="swatch" style="background:var(--color-accent);color:#fff;">
+      <div class="label">Accent / Primary — Portland Orange</div><div class="hex">#FC512A</div>
+    </div>
+    <div class="swatch" style="background:var(--color-accent-tint);color:var(--color-ink);border:1px solid var(--border-default);">
+      <div class="label">Accent Tint</div><div class="hex">#FFF1EC</div>
+    </div>
+    <div class="swatch" style="background:var(--color-accent-hover);color:#fff;">
+      <div class="label">Accent Hover</div><div class="hex">color-mix 85%</div>
+    </div>
+    <div class="swatch" style="background:var(--color-accent-active);color:#fff;">
+      <div class="label">Accent Active</div><div class="hex">color-mix 72%</div>
+    </div>
+  </div>
+  <div class="row" style="padding-top:0;">
+    <div class="swatch" style="background:var(--color-accent-secondary);color:#fff;">
+      <div class="label">Secondary Accent — Purple Kissed Blue</div><div class="hex">#2641C8</div>
+    </div>
+    <div class="swatch" style="background:var(--color-accent-secondary-tint);color:var(--color-ink);border:1px solid var(--border-default);">
+      <div class="label">Secondary Tint</div><div class="hex">color-mix 10%</div>
+    </div>
+    <div class="swatch" style="background:var(--color-accent-secondary-hover);color:#fff;">
+      <div class="label">Secondary Hover</div><div class="hex">color-mix 85%</div>
+    </div>
+    <div class="swatch" style="background:var(--color-off-white);color:var(--color-ink);border:1px solid var(--border-default);">
+      <div class="label">Off White</div><div class="hex">#F5F5F5</div>
+    </div>
+  </div>
+  <div class="note">Orange remains the one confident accent for buttons, links and price across the public site and organiser portal. Blue is reserved — currently used only to mark the Super Admin Panel's sidebar as a distinct surface — never mixed with orange on the same primary action.</div>
+</body>
+</html>

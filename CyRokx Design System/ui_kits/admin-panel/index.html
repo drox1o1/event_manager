@@ -1,0 +1,94 @@
+<!-- @dsCard group="Admin Panel" viewport="1360x860" name="Super Admin Panel" subtitle="Login → dashboard → moderation queue → all events → organisers → transactions" -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>CyRokx — Super Admin Panel</title>
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--surface-page);height:100%;}
+  #root{height:100%;}
+  .demo-bar{position:sticky;top:0;z-index:50;display:flex;gap:8px;padding:10px 16px;background:var(--color-ink);overflow-x:auto;}
+  .demo-bar button{flex:none;background:none;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);border-radius:999px;padding:6px 14px;font-size:12px;font-family:var(--font-sans);cursor:pointer;}
+  .demo-bar button.active{background:var(--color-accent);border-color:var(--color-accent);color:#fff;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="Login.jsx"></script>
+<script type="text/babel" src="AdminDashboard.jsx"></script>
+<script type="text/babel" src="ModerationQueue.jsx"></script>
+<script type="text/babel" src="AllEvents.jsx"></script>
+<script type="text/babel" src="OrganiserManagement.jsx"></script>
+<script type="text/babel" src="AllTransactions.jsx"></script>
+<script type="text/babel" src="RefundManagement.jsx"></script>
+<script type="text/babel" src="PlatformSettings.jsx"></script>
+<script type="text/babel">
+  const { SidebarShell, Avatar } = window.CyRokxDesignSystem_ef2ebf;
+
+  const NAV_ITEMS = [
+    { key: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard' },
+    { key: 'moderation', label: 'Moderation queue', icon: 'shield-check' },
+    { key: 'events', label: 'All events', icon: 'calendar' },
+    { key: 'organisers', label: 'Organisers', icon: 'building-2' },
+    { key: 'transactions', label: 'Transactions', icon: 'receipt' },
+    { key: 'refunds', label: 'Refunds', icon: 'rotate-ccw' },
+    { key: 'settings', label: 'Platform settings', icon: 'settings' },
+  ];
+
+  const SCREENS = ['login', 'dashboard', 'moderation', 'events', 'organisers', 'transactions', 'refunds', 'settings'];
+  const LABELS = { login: 'Login', dashboard: 'Dashboard', moderation: 'Moderation queue', events: 'All events', organisers: 'Organisers', transactions: 'Transactions', refunds: 'Refunds', settings: 'Platform settings' };
+
+  function App() {
+    const [screen, setScreen] = React.useState('dashboard');
+
+    return (
+      <div>
+        <div className="demo-bar">
+          {SCREENS.map((s) => (
+            <button key={s} className={s === screen ? 'active' : ''} onClick={() => setScreen(s)}>{LABELS[s]}</button>
+          ))}
+        </div>
+
+        {screen === 'login' && <AdminLogin onSubmit={() => setScreen('dashboard')} />}
+
+        {screen !== 'login' && (
+          <SidebarShell
+            brandLabel="CyRokx"
+            navItems={NAV_ITEMS}
+            activeKey={screen}
+            onNavigate={setScreen}
+            accentColor="var(--color-accent-secondary)"
+            footer={
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Avatar name="Meera Nair" size={32} />
+                <div>
+                  <div style={{ fontSize: 13, color: '#fff', fontWeight: 600 }}>Meera Nair</div>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>Super admin</div>
+                </div>
+              </div>
+            }
+          >
+            {screen === 'dashboard' && <AdminDashboard onOpenQueue={() => setScreen('moderation')} />}
+            {screen === 'moderation' && <ModerationQueue />}
+            {screen === 'events' && <AllEvents />}
+            {screen === 'organisers' && <OrganiserManagement />}
+            {screen === 'transactions' && <AllTransactions />}
+            {screen === 'refunds' && <RefundManagement />}
+            {screen === 'settings' && <PlatformSettings />}
+          </SidebarShell>
+        )}
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>CyRokx — Design Progress Update</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #DADADA; font-family: var(--font-sans); }
+
+  @page { size: letter landscape; margin: 0; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  .page {
+    width: 11in;
+    height: 8.5in;
+    margin: 0 auto;
+    padding: 0.55in 0.7in;
+    background: var(--surface-page);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+  @media screen {
+    .page { margin: 0.4in auto; box-shadow: var(--shadow-card-hover); }
+  }
+  @media print {
+    .page { break-after: page; margin: 0; box-shadow: none; }
+    .page:last-child { break-after: auto; }
+  }
+
+  .eyebrow {
+    font-size: var(--text-caption-size);
+    font-weight: var(--text-label-weight);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+  .eyebrow .x { color: var(--color-accent); }
+  h1.page-title {
+    font-size: var(--text-h1-size);
+    line-height: var(--text-h1-line);
+    font-weight: var(--text-h1-weight);
+    color: var(--text-heading);
+    margin: 6px 0 0;
+  }
+  .page-sub {
+    font-size: var(--text-body-size);
+    color: var(--text-muted);
+    margin: 6px 0 0;
+    max-width: 640px;
+  }
+
+  .screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin-top: 24px;
+    min-height: 0;
+  }
+  .screen img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card-hover);
+    background: var(--surface-card);
+  }
+
+  /* Cover page */
+  .cover { justify-content: center; align-items: flex-start; }
+  .cover .word {
+    font-size: 64px;
+    font-weight: 700;
+    color: var(--color-ink);
+    margin: 0;
+  }
+  .cover .word .x { color: var(--color-accent); }
+  .cover .cover-title {
+    font-size: 30px;
+    font-weight: 400;
+    color: var(--color-body);
+    margin: 18px 0 0;
+    max-width: 680px;
+    line-height: 1.35;
+  }
+  .cover .meta {
+    margin-top: auto;
+    display: flex;
+    gap: 40px;
+    font-size: var(--text-small-size);
+    color: var(--color-muted);
+  }
+  .cover .meta strong { display: block; color: var(--color-ink); font-size: var(--text-body-size); font-weight: 600; }
+  .swatch-row { display: flex; gap: 8px; margin-top: 28px; }
+  .swatch { width: 28px; height: 28px; border-radius: 6px; }
+
+  /* Foundations page */
+  .foundations-frame {
+    flex: 1;
+    margin-top: 24px;
+    background: var(--surface-card);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card-hover);
+    overflow: hidden;
+    display: flex;
+  }
+  .foundations-frame img { width: 100%; height: 100%; object-fit: contain; object-position: top; background: #fff; }
+</style>
+</head>
+<body>
+
+<div class="page cover">
+  <div class="eyebrow">Cy<span class="x">Rok</span>x design system</div>
+  <p class="word">CyRokx<span class="x">.</span></p>
+  <p class="cover-title">Design progress update — event discovery &amp; ticketing platform</p>
+  <div class="swatch-row">
+    <div class="swatch" style="background:#FC512A"></div>
+    <div class="swatch" style="background:#2641C8"></div>
+    <div class="swatch" style="background:#0D0D0D"></div>
+    <div class="swatch" style="background:#F5F5F5;border:1px solid #E4E4E4"></div>
+  </div>
+  <div class="meta">
+    <div><strong>Public site</strong>8 screens</div>
+    <div><strong>Organiser portal</strong>6 screens</div>
+    <div><strong>Super admin panel</strong>8 screens</div>
+    <div><strong>Prepared</strong>July 2026</div>
+  </div>
+</div>
+
+<div class="page">
+  <div class="eyebrow">Foundations</div>
+  <h1 class="page-title">Colors, type &amp; spacing</h1>
+  <p class="page-sub">Portland Orange and Purple Kissed Blue on a neutral gray/white system, Inter throughout.</p>
+  <div class="foundations-frame">
+    <img src="screenshots/progress2/foundations.png" alt="Style tile — colors and type">
+  </div>
+</div>
+
+<div class="page">
+  <div class="eyebrow">Public site</div>
+  <h1 class="page-title">Homepage</h1>
+  <p class="page-sub">Discovery starts here — no login wall.</p>
+  <div class="screen"><img src="screenshots/progress2/01-public.png" alt="Homepage"></div>
+</div>
+
+<div class="page">
+  <div class="eyebrow">Public site</div>
+  <h1 class="page-title">Event detail</h1>
+  <p class="page-sub">Ticket tiers, live total, and a persistent buy bar.</p>
+  <div class="screen"><img src="screenshots/progress2/02-public.png" alt="Event detail"></div>
+</div>
+
+<div class="page">
+  <div class="eyebrow">Organiser portal</div>
+  <h1 class="page-title">Dashboard</h1>
+  <p class="page-sub">Registrations, revenue, and recent activity at a glance.</p>
+  <div class="screen"><img src="screenshots/progress2/01-organiser.png" alt="Organiser dashboard"></div>
+</div>
+
+<div class="page">
+  <div class="eyebrow">Organiser portal</div>
+  <h1 class="page-title">My events</h1>
+  <p class="page-sub">Every event and its status, in one table.</p>
+  <div class="screen"><img src="screenshots/progress2/02-organiser.png" alt="My events"></div>
+</div>
+
+<div class="page">
+  <div class="eyebrow">Super admin panel</div>
+  <h1 class="page-title">Dashboard</h1>
+  <p class="page-sub">Platform-wide totals across all organisers and cities.</p>
+  <div class="screen"><img src="screenshots/progress2/01-admin.png" alt="Admin dashboard"></div>
+</div>
+
+<div class="page">
+  <div class="eyebrow">Super admin panel</div>
+  <h1 class="page-title">Moderation queue</h1>
+  <p class="page-sub">Review and approve or reject submitted events.</p>
+  <div class="screen"><img src="screenshots/progress2/02-admin.png" alt="Moderation queue"></div>
+</div>
+
+<script>
+addEventListener('load', () => {
+  (async () => {
+    try { await document.fonts.ready; } catch (e) {}
+    const imgs = Array.from(document.images).filter((i) => !i.complete);
+    await Promise.race([
+      Promise.allSettled(imgs.map((i) => i.decode())),
+      new Promise((r) => setTimeout(r, 8000)),
+    ]);
+  })();
+});
+</script>
+</body>
+</html>
