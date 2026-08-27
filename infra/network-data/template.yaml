@@ -17,7 +17,7 @@ Parameters:
     Default: cyrokx
   DbEngineVersion:
     Type: String
-    Default: "16.4"
+    Default: "16.14"
     Description: >
       Check currently-available minor versions in your target region before
       deploying (aws rds describe-db-engine-versions --engine postgres) --
