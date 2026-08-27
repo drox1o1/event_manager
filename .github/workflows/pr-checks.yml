@@ -18,21 +18,16 @@ jobs:
           python-version: "3.13"
 
       - name: Install dependencies
-        run: pip install -r requirements/dev.txt
+        run: make install
 
       - name: Lint
-        run: ruff check .
+        run: make lint
 
       - name: Unit tests
-        run: pytest tests/unit
+        run: make test
 
-      - uses: aws-actions/setup-sam@v2
-
-      - name: Validate network-data template
-        run: sam validate --lint --template infra/network-data/template.yaml
-
-      - name: Validate app template
-        run: sam validate --lint --template infra/app/template.yaml
+      - name: Validate templates
+        run: make sam-validate
 
       - name: Build app stack
-        run: sam build --template infra/app/template.yaml
+        run: make sam-build

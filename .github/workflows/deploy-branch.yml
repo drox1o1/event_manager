@@ -23,13 +23,12 @@ jobs:
       # without needing to special-case hyphens in SQL. The stack name
       # (which CloudFormation requires to be hyphen-based, no underscores)
       # is derived from the same token separately.
-      - name: Derive stage and stack name from branch
+      - name: Derive stage from branch
         id: stage
         run: |
           RAW="${{ github.head_ref }}"
           TOKEN=$(echo "$RAW" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/_/g; s/^_+//; s/_+$//' | cut -c1-20)
           echo "stage=pr_${TOKEN}" >> "$GITHUB_OUTPUT"
-          echo "stack_name=cyrokx-app-pr-$(echo "$TOKEN" | tr '_' '-')" >> "$GITHUB_OUTPUT"
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -40,40 +39,20 @@ jobs:
         with:
           python-version: "3.13"
 
-      - uses: aws-actions/setup-sam@v2
-
       - name: Build
-        run: sam build --template infra/app/template.yaml
+        run: make sam-build
 
       - name: Deploy
-        run: |
-          sam deploy \
-            --stack-name "${{ steps.stage.outputs.stack_name }}" \
-            --s3-bucket "${{ vars.SAM_ARTIFACTS_BUCKET }}" \
-            --capabilities CAPABILITY_IAM \
-            --parameter-overrides "Stage=${{ steps.stage.outputs.stage }} DbSchema=${{ steps.stage.outputs.stage }}" \
-            --no-confirm-changeset \
-            --no-fail-on-empty-changeset
+        run: make deploy-branch STAGE=${{ steps.stage.outputs.stage }} SAM_ARTIFACTS_BUCKET=${{ vars.SAM_ARTIFACTS_BUCKET }}
 
       # Throwaway PR schema -- migrations run automatically here, no manual
       # gate, unlike deploy-prod.yml's check-then-fail-fast pattern.
       - name: Run migrations against this branch's schema
-        run: |
-          aws lambda invoke \
-            --function-name "cyrokx-migration-runner-${{ steps.stage.outputs.stage }}" \
-            --payload "$(echo -n '{"mode":"upgrade","schema":"${{ steps.stage.outputs.stage }}"}' | base64)" \
-            --cli-binary-format raw-in-base64-out \
-            response.json
-          cat response.json
+        run: make migrate-upgrade STAGE=${{ steps.stage.outputs.stage }}
 
       - name: Get API URL
         id: api
-        run: |
-          API_URL=$(aws cloudformation describe-stacks \
-            --stack-name "${{ steps.stage.outputs.stack_name }}" \
-            --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
-            --output text)
-          echo "url=$API_URL" >> "$GITHUB_OUTPUT"
+        run: echo "url=$(make api-url STAGE=${{ steps.stage.outputs.stage }})" >> "$GITHUB_OUTPUT"
 
       - uses: actions/github-script@v7
         with:

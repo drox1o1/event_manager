@@ -28,12 +28,7 @@ jobs:
       # stack. Every deploy after that goes through this workflow.
       - name: Check prod schema is at head
         run: |
-          aws lambda invoke \
-            --function-name cyrokx-migration-runner-prod \
-            --payload "$(echo -n '{"mode":"check"}' | base64)" \
-            --cli-binary-format raw-in-base64-out \
-            response.json
-          cat response.json
+          make migrate-check
           UP_TO_DATE=$(python3 -c "import json; print(json.load(open('response.json')).get('up_to_date'))")
           if [ "$UP_TO_DATE" != "True" ]; then
             echo "::error::Prod schema is not at head. Run the MigrationRunner Step Function before merging."
@@ -44,17 +39,8 @@ jobs:
         with:
           python-version: "3.13"
 
-      - uses: aws-actions/setup-sam@v2
-
       - name: Build
-        run: sam build --template infra/app/template.yaml
+        run: make sam-build
 
       - name: Deploy
-        run: |
-          sam deploy \
-            --stack-name cyrokx-app-prod \
-            --s3-bucket "${{ vars.SAM_ARTIFACTS_BUCKET }}" \
-            --capabilities CAPABILITY_IAM \
-            --parameter-overrides "Stage=prod" \
-            --no-confirm-changeset \
-            --no-fail-on-empty-changeset
+        run: make deploy-prod SAM_ARTIFACTS_BUCKET=${{ vars.SAM_ARTIFACTS_BUCKET }}
