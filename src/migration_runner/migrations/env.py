@@ -65,6 +65,16 @@ def run_migrations_online() -> None:
         if DB_SCHEMA:
             connection.execute(text(f"CREATE SCHEMA IF NOT EXISTS {DB_SCHEMA}"))
             connection.execute(text(f"SET search_path TO {DB_SCHEMA}"))
+            # SQLAlchemy 2.x autobegins a transaction on that first execute();
+            # left open, it becomes the *outer* transaction that Alembic's own
+            # context.begin_transaction() below nests inside via a SAVEPOINT
+            # (since the connection is already mid-transaction). A SAVEPOINT
+            # release isn't a real commit -- the outer transaction still needs
+            # one of its own, and Connection.close() rolls back anything
+            # uncommitted. Without this, the whole migration silently
+            # vanishes when the `with` block below exits: it visibly runs
+            # (alembic logs "Running upgrade"), but leaves no trace.
+            connection.commit()
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
