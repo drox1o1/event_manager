@@ -44,7 +44,7 @@ function DashboardInner() {
 
       {error && <div style={{ color: 'var(--color-error)', marginBottom: 20 }}>{error}</div>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 32 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginBottom: 32 }}>
         <StatCard label="Active events" value={activeCount} icon="calendar" />
         <StatCard label="Total registrations" value={totalRegistrations.toLocaleString('en-IN')} icon="users" />
         <StatCard label="Events created" value={events?.length ?? '—'} icon="layout-dashboard" />

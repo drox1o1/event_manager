@@ -67,7 +67,7 @@ export function EventDashboardPanel({ event }: { event?: OrganiserEventDetail | 
 
   return (
     <div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginBottom: 28 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 20, marginBottom: 28 }}>
         <div style={{ background: 'linear-gradient(135deg, var(--color-accent-secondary), color-mix(in srgb, var(--color-accent-secondary) 78%, black))', borderRadius: 'var(--radius-card)', padding: 22, color: '#fff', boxShadow: 'var(--shadow-card)' }}>
           <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em', opacity: 0.85 }}>Status</div>
           <div style={{ fontSize: 30, fontWeight: 700, marginTop: 6 }}>{statusLabel}</div>

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Icon, EventCard, FilterControl, Checkbox, EmptyState } from '@cyrokx/ui';
+import { Icon, EventCard, FilterControl, Checkbox, EmptyState, useIsMobile } from '@cyrokx/ui';
 import { formatEventDate, formatINR } from '@cyrokx/api-client';
 import type { CategorySummary, EventSummary } from '@cyrokx/api-client';
 
@@ -18,6 +18,7 @@ export interface EventListingViewProps {
 /** EventListing — filter sidebar, result grid, pagination. Filters navigate (server refetch). */
 export function EventListingView({ events, categories, activeCategory, activeCity, keyword, page }: EventListingViewProps) {
   const router = useRouter();
+  const isMobile = useIsMobile();
 
   const cities = React.useMemo(() => {
     const set = new Set<string>();
@@ -43,12 +44,12 @@ export function EventListingView({ events, categories, activeCategory, activeCit
   const heading = activeCity ? `Events in ${activeCity}` : 'All events';
 
   return (
-    <div style={{ fontFamily: 'var(--font-sans)', maxWidth: 'var(--content-max-width)', margin: '0 auto', padding: '32px' }}>
+    <div style={{ fontFamily: 'var(--font-sans)', maxWidth: 'var(--content-max-width)', margin: '0 auto', padding: 'clamp(16px, 4vw, 32px)' }}>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-heading)', margin: '0 0 6px' }}>{heading}</h1>
         <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>{filtered.length} events found</div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 32 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '240px 1fr', gap: isMobile ? 20 : 32 }}>
         <aside>
           <FilterControl title="Category" icon="filter">
             {categories.map((c) => (
@@ -85,7 +86,7 @@ export function EventListingView({ events, categories, activeCategory, activeCit
           {filtered.length === 0 ? (
             <EmptyState icon="search" title="No events match your filters" description="Try widening your date range or clearing a filter." />
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 20 }}>
               {filtered.map((e) => (
                 <EventCard
                   key={e.id}

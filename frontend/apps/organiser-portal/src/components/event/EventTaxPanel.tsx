@@ -52,7 +52,7 @@ export function EventTaxPanel() {
 
       <NotWiredNote>Tax settings save locally for now — the tax API is backend follow-up work. The invoice preview updates live as you edit.</NotWiredNote>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, alignItems: 'start' }}>
         <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)', padding: 24 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 22, paddingBottom: 18, borderBottom: '1px solid var(--border-default)' }}>
             <Switch label="Collect tax for this event" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
@@ -61,7 +61,7 @@ export function EventTaxPanel() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18, opacity: enabled ? 1 : 0.5, pointerEvents: enabled ? 'auto' : 'none' }}>
             <Input label="Tax registration number (GSTIN)" placeholder="29ABCDE1234F1Z5" value={gstin} onChange={(e) => setGstin(e.target.value)} />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 18 }}>
               <Input label="Tax label" placeholder="GST" value={label} onChange={(e) => setLabel(e.target.value)} />
               <Input label="Default rate (%)" type="number" value={rate} onChange={(e) => setRate(e.target.value)} />
             </div>

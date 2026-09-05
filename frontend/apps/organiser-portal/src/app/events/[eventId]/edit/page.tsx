@@ -153,13 +153,13 @@ function EditEventInner() {
           <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={onPickImages} style={{ display: 'none' }} />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 18 }}>
           <Input label="Date" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
           <Input label="Time" type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} />
         </div>
         <Input label="Venue name" value={form.venueName} onChange={(e) => setForm({ ...form, venueName: e.target.value })} />
         <Textarea label="Address" rows={3} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 18 }}>
           <Input label="City" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
           <Input label="Capacity" type="number" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
         </div>

@@ -35,7 +35,7 @@ export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
   };
 
   return (
-    <div style={{ fontFamily: 'var(--font-sans)', maxWidth: 560, margin: '0 auto', padding: '64px 32px', textAlign: 'center' }}>
+    <div style={{ fontFamily: 'var(--font-sans)', maxWidth: 560, margin: '0 auto', padding: 'clamp(32px, 8vw, 64px) clamp(16px, 4vw, 32px)', textAlign: 'center' }}>
       <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--status-success-bg)', color: 'var(--color-success)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
         <Icon name="check-circle" size={30} />
       </div>

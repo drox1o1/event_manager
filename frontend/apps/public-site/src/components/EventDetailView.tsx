@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Icon, Avatar, TicketTierRow, Button } from '@cyrokx/ui';
+import { Icon, Avatar, TicketTierRow, Button, useIsMobile } from '@cyrokx/ui';
 import { formatDateTime, formatINR } from '@cyrokx/api-client';
 import type { EventDetail } from '@cyrokx/api-client';
 import { persistCheckoutSelection } from '@/lib/checkoutStore';
@@ -14,6 +14,7 @@ export interface EventDetailViewProps {
 /** EventDetail — hero, description, ticket tiers panel with quantity steppers, sticky buy CTA. */
 export function EventDetailView({ event }: EventDetailViewProps) {
   const router = useRouter();
+  const isMobile = useIsMobile();
   const [quantities, setQuantities] = React.useState<Record<string, number>>({});
 
   const total = event.ticket_tiers.reduce((sum, tier) => {
@@ -35,7 +36,7 @@ export function EventDetailView({ event }: EventDetailViewProps) {
   const remainingFor = (tier: EventDetail['ticket_tiers'][number]) => tier.quantity_total - tier.quantity_sold;
 
   return (
-    <div style={{ fontFamily: 'var(--font-sans)', maxWidth: 'var(--content-max-width)', margin: '0 auto', padding: '32px', paddingBottom: 120 }}>
+    <div style={{ fontFamily: 'var(--font-sans)', maxWidth: 'var(--content-max-width)', margin: '0 auto', padding: 'clamp(16px, 4vw, 32px)', paddingBottom: 120 }}>
       <div
         style={{
           aspectRatio: '16/6',
@@ -53,7 +54,7 @@ export function EventDetailView({ event }: EventDetailViewProps) {
         {!event.banner_image_url && <Icon name="image" size={36} />}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 48 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: isMobile ? 28 : 48 }}>
         <div>
           {event.category && (
             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-accent)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
@@ -93,7 +94,7 @@ export function EventDetailView({ event }: EventDetailViewProps) {
         </div>
 
         <div>
-          <div style={{ position: 'sticky', top: 24, background: 'var(--surface-card)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)', padding: 20 }}>
+          <div style={{ position: isMobile ? 'static' : 'sticky', top: 24, background: 'var(--surface-card)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)', padding: 20 }}>
             <h3 style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-heading)', margin: '0 0 8px' }}>Tickets</h3>
             {event.ticket_tiers.length === 0 && (
               <div style={{ fontSize: 14, color: 'var(--text-muted)', padding: '12px 0' }}>No tickets on sale yet.</div>

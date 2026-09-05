@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Icon, Input, Button, EmptyState, Radio, Checkbox } from '@cyrokx/ui';
+import { Icon, Input, Button, EmptyState, Radio, Checkbox, useIsMobile } from '@cyrokx/ui';
 import { publicApi, formatINR, ApiError } from '@cyrokx/api-client';
 import type { FormField } from '@cyrokx/api-client';
 import { readCheckoutSelection, clearCheckoutSelection, type CheckoutSelection } from '@/lib/checkoutStore';
@@ -15,6 +15,7 @@ export interface CheckoutViewProps {
  *  Payment is TEST-MODE: the backend records a real order + tickets with no gateway call. */
 export function CheckoutView({ eventId }: CheckoutViewProps) {
   const router = useRouter();
+  const isMobile = useIsMobile();
   const [selection, setSelection] = React.useState<CheckoutSelection | null | undefined>(undefined);
   const [buyer, setBuyer] = React.useState({ name: '', email: '', phone: '' });
   const [errors, setErrors] = React.useState<{ name?: string; email?: string; phone?: string }>({});
@@ -106,9 +107,9 @@ export function CheckoutView({ eventId }: CheckoutViewProps) {
   }
 
   return (
-    <div style={{ fontFamily: 'var(--font-sans)', maxWidth: 900, margin: '0 auto', padding: '32px' }}>
+    <div style={{ fontFamily: 'var(--font-sans)', maxWidth: 900, margin: '0 auto', padding: 'clamp(16px, 4vw, 32px)' }}>
       <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 24 }}>Checkout</h1>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 40 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.4fr 1fr', gap: isMobile ? 24 : 40 }}>
         <div>
           <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 14 }}>Buyer details</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 28 }}>

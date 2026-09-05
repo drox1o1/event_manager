@@ -47,7 +47,7 @@ export function HomepageView({ content }: HomepageViewProps) {
       <div
         style={{
           position: 'relative',
-          padding: '96px 32px 120px',
+          padding: 'clamp(56px, 10vw, 96px) clamp(20px, 5vw, 32px) clamp(64px, 12vw, 120px)',
           background: 'linear-gradient(135deg, #241f1c, #3a2e28)',
           color: '#fff',
           textAlign: 'center',
@@ -56,7 +56,7 @@ export function HomepageView({ content }: HomepageViewProps) {
         <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)', marginBottom: 12 }}>
           {hero.eyebrow}
         </div>
-        <h1 style={{ fontSize: 48, fontWeight: 700, lineHeight: 1.2, margin: `0 0 ${hero.subheadline ? 16 : 32}px` }}>{hero.headline}</h1>
+        <h1 style={{ fontSize: 'clamp(30px, 6vw, 48px)', fontWeight: 700, lineHeight: 1.2, margin: `0 0 ${hero.subheadline ? 16 : 32}px` }}>{hero.headline}</h1>
         {hero.subheadline && (
           <p style={{ fontSize: 17, color: 'rgba(255,255,255,0.75)', maxWidth: 620, margin: '0 auto 32px', lineHeight: 1.5 }}>{hero.subheadline}</p>
         )}
@@ -73,7 +73,7 @@ export function HomepageView({ content }: HomepageViewProps) {
         )}
       </div>
 
-      <div style={{ maxWidth: 'var(--content-max-width)', margin: '0 auto', padding: '48px 32px' }}>
+      <div style={{ maxWidth: 'var(--content-max-width)', margin: '0 auto', padding: 'clamp(32px, 6vw, 48px) clamp(16px, 4vw, 32px)' }}>
         {sections.length === 0 && <EmptyEvents />}
         {sections.map((section, i) => (
           <SectionBlock
@@ -103,7 +103,7 @@ function SectionBlock({
     return (
       <div style={{ marginBottom: 56 }}>
         <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 20 }}>{section.title}</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
           {categories.map((c: CategorySummary) => (
             <div
               key={c.id}
@@ -133,7 +133,7 @@ function SectionBlock({
           See all &rarr;
         </a>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 20 }}>
         {events.map((e: EventSummary) => (
           <EventCard
             key={e.id}
