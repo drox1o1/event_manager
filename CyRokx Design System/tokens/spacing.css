@@ -1,0 +1,25 @@
+:root {
+  /* 8pt grid steps */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Layout */
+  --content-max-width: 1200px;
+  --grid-columns: 12; /* @kind other */
+  --grid-gutter: 24px;
+
+  /* Section vertical rhythm */
+  --section-gap-desktop: 64px;
+  --section-gap-mobile: 40px;
+
+  /* Breakpoints (reference only — used in media queries as literals) */
+  --bp-mobile: 375px;
+  --bp-tablet: 768px;
+  --bp-desktop: 1200px;
+}

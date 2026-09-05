@@ -7,6 +7,8 @@ import type {
   CheckoutResponse,
   EventDetail,
   EventListResponse,
+  FormFieldsResponse,
+  HomepageContent,
   OrderDetail,
   RefundRequestCreatedResponse,
   RefundRequestInput,
@@ -29,8 +31,18 @@ export function getEvent(eventId: string): Promise<EventDetail> {
   return apiFetch<EventDetail>(`/events/${eventId}`);
 }
 
+/** The organiser's registration form for a LIVE event -- rendered on checkout. */
+export function getEventFormFields(eventId: string): Promise<FormFieldsResponse> {
+  return apiFetch<FormFieldsResponse>(`/events/${eventId}/form-fields`);
+}
+
 export function listCategories(): Promise<{ categories: CategorySummary[] }> {
   return apiFetch('/categories');
+}
+
+/** The resolved homepage layout controlled by the super-admin CMS. */
+export function getHomepage(): Promise<HomepageContent> {
+  return apiFetch<HomepageContent>('/homepage');
 }
 
 export function checkout(eventId: string, body: CheckoutRequest): Promise<CheckoutResponse> {

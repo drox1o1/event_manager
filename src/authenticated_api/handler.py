@@ -38,7 +38,15 @@ from common.models import (
     ActivityLog,
     AdminUser,
     Event,
+    EventFormField,
+    EventImage,
     EventStatus,
+    FormFieldType,
+    HomepageSection,
+    HomepageSectionEvent,
+    HomepageSectionMode,
+    HomepageSectionType,
+    HomepageSettings,
     Order,
     OrderItem,
     Organiser,
@@ -51,7 +59,11 @@ from common.models import (
 )
 from common.schemas import (
     EventCreateRequest,
+    EventImagesReplaceRequest,
     EventUpdateRequest,
+    FormFieldResponse,
+    FormFieldsReplaceRequest,
+    HomepageReplaceRequest,
     LoginRequest,
     ModerationRejectRequest,
     OrganiserSignupRequest,
@@ -154,9 +166,27 @@ def _organiser_event_detail(e: Event) -> dict:
                 }
                 for t in e.ticket_tiers
             ],
+            "gallery_images": [
+                img.image_url for img in sorted(e.images, key=lambda i: i.sort_order)
+            ],
+            "form_fields": [
+                _form_field_dict(f)
+                for f in sorted(e.form_fields, key=lambda f: f.sort_order)
+            ],
         }
     )
     return base
+
+
+def _form_field_dict(f: EventFormField) -> dict:
+    return FormFieldResponse(
+        id=f.id,
+        label=f.label,
+        field_type=f.field_type.value,
+        options=f.options,
+        required=f.required,
+        sort_order=f.sort_order,
+    ).model_dump(mode="json")
 
 
 def _authorizer_claims() -> dict:
@@ -336,7 +366,12 @@ def get_organiser_event(event_id: str):
         event = session.get(
             Event,
             event_uuid,
-            options=[selectinload(Event.ticket_tiers), selectinload(Event.category)],
+            options=[
+                selectinload(Event.ticket_tiers),
+                selectinload(Event.category),
+                selectinload(Event.images),
+                selectinload(Event.form_fields),
+            ],
         )
         if event is None or event.organiser_id != organiser_id:
             raise NotFoundError("Event not found")
@@ -416,6 +451,116 @@ def create_banner_upload_url(event_id: str):
     banner_image_url = f"https://{bucket}.s3.amazonaws.com/{key}"
 
     return {"upload_url": upload_url, "banner_image_url": banner_image_url}
+
+
+# --- Organiser: registration form builder ---
+
+
+def _load_owned_event(session, event_uuid: uuid.UUID, organiser_id: uuid.UUID) -> Event:
+    event = session.get(Event, event_uuid)
+    if event is None or event.organiser_id != organiser_id:
+        raise NotFoundError("Event not found")
+    return event
+
+
+@app.get("/organiser/events/<event_id>/form-fields")
+def list_form_fields(event_id: str):
+    organiser_id = _require_organiser_id()
+    event_uuid = _parse_uuid(event_id)
+
+    with get_session() as session:
+        _load_owned_event(session, event_uuid, organiser_id)
+        fields = (
+            session.execute(
+                select(EventFormField)
+                .where(EventFormField.event_id == event_uuid)
+                .order_by(EventFormField.sort_order.asc())
+            )
+            .scalars()
+            .all()
+        )
+        return {"fields": [_form_field_dict(f) for f in fields]}
+
+
+@app.put("/organiser/events/<event_id>/form-fields")
+def replace_form_fields(event_id: str):
+    """Replace the event's entire registration form with the posted field
+    list -- the builder UI always sends the full ordered set on save."""
+    organiser_id = _require_organiser_id()
+    event_uuid = _parse_uuid(event_id)
+    body = _parse_body(FormFieldsReplaceRequest)
+
+    with get_session() as session:
+        _load_owned_event(session, event_uuid, organiser_id)
+
+        session.execute(
+            EventFormField.__table__.delete().where(EventFormField.event_id == event_uuid)
+        )
+        created = []
+        for idx, field_in in enumerate(body.fields):
+            field = EventFormField(
+                event_id=event_uuid,
+                label=field_in.label,
+                field_type=FormFieldType(field_in.field_type),
+                options=field_in.options,
+                required=field_in.required,
+                sort_order=field_in.sort_order if field_in.sort_order else idx,
+            )
+            session.add(field)
+            created.append(field)
+        session.flush()
+        result = [_form_field_dict(f) for f in sorted(created, key=lambda f: f.sort_order)]
+
+    return {"fields": result}
+
+
+# --- Organiser: gallery images ---
+
+
+@app.post("/organiser/events/<event_id>/image-upload-url")
+def create_image_upload_url(event_id: str):
+    """Presigned PUT for a gallery image (same BannersBucket as the hero
+    banner). The frontend PUTs the file, then PUTs the resulting URL list to
+    /organiser/events/{id}/images to persist it."""
+    organiser_id = _require_organiser_id()
+    event_uuid = _parse_uuid(event_id)
+
+    with get_session() as session:
+        _load_owned_event(session, event_uuid, organiser_id)
+
+    bucket = os.environ["BANNERS_BUCKET_NAME"]
+    key = f"{event_uuid}/gallery/{uuid.uuid4()}.jpg"
+    upload_url = _s3().generate_presigned_url(
+        "put_object",
+        Params={"Bucket": bucket, "Key": key, "ContentType": "image/jpeg"},
+        ExpiresIn=900,
+    )
+    image_url = f"https://{bucket}.s3.amazonaws.com/{key}"
+
+    return {"upload_url": upload_url, "image_url": image_url}
+
+
+@app.put("/organiser/events/<event_id>/images")
+def replace_event_images(event_id: str):
+    """Replace the event's gallery images (max 3, enforced by the schema)."""
+    organiser_id = _require_organiser_id()
+    event_uuid = _parse_uuid(event_id)
+    body = _parse_body(EventImagesReplaceRequest)
+
+    with get_session() as session:
+        _load_owned_event(session, event_uuid, organiser_id)
+
+        session.execute(EventImage.__table__.delete().where(EventImage.event_id == event_uuid))
+        for idx, img_in in enumerate(body.images):
+            session.add(
+                EventImage(
+                    event_id=event_uuid,
+                    image_url=img_in.image_url,
+                    sort_order=img_in.sort_order if img_in.sort_order else idx,
+                )
+            )
+
+    return {"images": [img.image_url for img in body.images]}
 
 
 @app.get("/organiser/events/<event_id>/attendees")
@@ -824,6 +969,112 @@ def update_settings():
             setattr(settings, field, value)
         session.flush()
         return PlatformSettingsResponse.model_validate(settings).model_dump(mode="json")
+
+
+# --- Admin: homepage CMS (authenticated) ---
+
+
+def _get_or_create_homepage_settings(session) -> HomepageSettings:
+    settings = session.execute(select(HomepageSettings).limit(1)).scalar_one_or_none()
+    if settings is None:
+        settings = HomepageSettings()
+        session.add(settings)
+        session.flush()
+    return settings
+
+
+def _homepage_settings_dict(s: HomepageSettings) -> dict:
+    return {
+        "hero_eyebrow": s.hero_eyebrow,
+        "hero_headline": s.hero_headline,
+        "hero_subheadline": s.hero_subheadline,
+        "hero_search_enabled": s.hero_search_enabled,
+        "banner_enabled": s.banner_enabled,
+        "banner_text": s.banner_text,
+        "banner_link_url": s.banner_link_url,
+    }
+
+
+def _homepage_section_dict(sec: HomepageSection) -> dict:
+    return {
+        "id": str(sec.id),
+        "title": sec.title,
+        "section_type": sec.section_type.value,
+        "mode": sec.mode.value,
+        "enabled": sec.enabled,
+        "sort_order": sec.sort_order,
+        "event_ids": [str(e.event_id) for e in sorted(sec.events, key=lambda e: e.sort_order)],
+    }
+
+
+@app.get("/admin/homepage")
+def get_homepage():
+    _require_admin_id()
+
+    with get_session() as session:
+        settings = _get_or_create_homepage_settings(session)
+        sections = (
+            session.execute(
+                select(HomepageSection)
+                .options(selectinload(HomepageSection.events))
+                .order_by(HomepageSection.sort_order.asc())
+            )
+            .scalars()
+            .all()
+        )
+        return {
+            "settings": _homepage_settings_dict(settings),
+            "sections": [_homepage_section_dict(s) for s in sections],
+        }
+
+
+@app.put("/admin/homepage")
+def replace_homepage():
+    """Replace-all: persist hero/banner settings and the full ordered section
+    list (with curated event picks) in one atomic save."""
+    _require_admin_id()
+    body = _parse_body(HomepageReplaceRequest)
+
+    with get_session() as session:
+        settings = _get_or_create_homepage_settings(session)
+        for field, value in body.settings.model_dump().items():
+            setattr(settings, field, value)
+
+        # Rebuild sections wholesale. Deleting the parent rows cascades to
+        # homepage_section_events (ON DELETE CASCADE).
+        session.execute(HomepageSection.__table__.delete())
+
+        created = []
+        for idx, sec_in in enumerate(body.sections):
+            section = HomepageSection(
+                title=sec_in.title,
+                section_type=HomepageSectionType(sec_in.section_type),
+                mode=HomepageSectionMode(sec_in.mode),
+                enabled=sec_in.enabled,
+                sort_order=idx,
+            )
+            session.add(section)
+            session.flush()
+            for e_idx, event_id in enumerate(sec_in.event_ids):
+                session.add(
+                    HomepageSectionEvent(section_id=section.id, event_id=event_id, sort_order=e_idx)
+                )
+            created.append((section, sec_in.event_ids))
+
+        result = [
+            {
+                "id": str(section.id),
+                "title": section.title,
+                "section_type": section.section_type.value,
+                "mode": section.mode.value,
+                "enabled": section.enabled,
+                "sort_order": section.sort_order,
+                "event_ids": [str(eid) for eid in event_ids],
+            }
+            for section, event_ids in created
+        ]
+
+        return {"settings": _homepage_settings_dict(settings), "sections": result}
 
 
 @logger.inject_lambda_context

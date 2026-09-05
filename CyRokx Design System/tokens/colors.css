@@ -1,0 +1,74 @@
+:root {
+  /* ---- Base palette (client brand: Portland Orange / Purple Kissed Blue) ---- */
+  --color-accent: #FC512A; /* Portland Orange */
+  --color-accent-tint: #FFF1EC;
+  --color-ink: #0D0D0D;
+  --color-body: #333333;
+  --color-muted: #666666;
+  --color-subtle: #999999;
+  --color-off-white: #F5F5F5; /* neutral gray page background — kept hue-free on purpose */
+  --color-surface: #FFFFFF;
+  --color-rule: #E4E4E4;
+  --color-success: #1A7A4A;
+  --color-warning: #B45309;
+  --color-error: #C0392B;
+
+  /* Secondary brand accent (Purple Kissed Blue) — reserved for wayfinding/secondary
+     emphasis, e.g. distinguishing the Super Admin surface from the Organiser Portal.
+     The primary accent above still carries every primary action, per system rule. */
+  --color-accent-secondary: #2641C8;
+  --color-accent-secondary-hover: color-mix(in srgb, var(--color-accent-secondary) 85%, black);
+  --color-accent-secondary-active: color-mix(in srgb, var(--color-accent-secondary) 72%, black);
+  --color-accent-secondary-tint: color-mix(in srgb, var(--color-accent-secondary) 10%, white);
+
+  /* Derived states — computed from the base tokens, never hand-picked hex */
+  --color-accent-hover: color-mix(in srgb, var(--color-accent) 85%, black);
+  --color-accent-active: color-mix(in srgb, var(--color-accent) 72%, black);
+  --color-ink-hover: color-mix(in srgb, var(--color-ink) 85%, white);
+
+  --color-success-bg: color-mix(in srgb, var(--color-success) 12%, white);
+  --color-warning-bg: color-mix(in srgb, var(--color-warning) 12%, white);
+  --color-error-bg: color-mix(in srgb, var(--color-error) 10%, white);
+  --color-muted-bg: color-mix(in srgb, var(--color-subtle) 16%, white);
+
+  /* ---- Semantic aliases — use these in components, not the base tokens ---- */
+  --text-heading: var(--color-ink);
+  --text-body: var(--color-body);
+  --text-muted: var(--color-muted);
+  --text-subtle: var(--color-subtle);
+  --text-on-accent: #FFFFFF;
+  --text-link: var(--color-accent);
+
+  --surface-page: var(--color-off-white);
+  --surface-card: var(--color-surface);
+  --surface-accent-tint: var(--color-accent-tint);
+  --surface-accent-secondary-tint: var(--color-accent-secondary-tint);
+  --surface-overlay: rgba(13, 13, 13, 0.48);
+
+  --border-default: var(--color-rule);
+  --border-focus: var(--color-accent);
+
+  --action-primary-bg: var(--color-accent);
+  --action-primary-bg-hover: var(--color-accent-hover);
+  --action-primary-bg-active: var(--color-accent-active);
+  --action-primary-text: #FFFFFF;
+
+  --action-secondary-border: var(--color-ink);
+  --action-secondary-text: var(--color-ink);
+  --action-secondary-bg-hover: color-mix(in srgb, var(--color-ink) 6%, white);
+
+  --action-ghost-text: var(--color-ink);
+  --action-ghost-bg-hover: color-mix(in srgb, var(--color-ink) 5%, white);
+
+  --action-destructive-bg: var(--color-error);
+  --action-destructive-bg-hover: color-mix(in srgb, var(--color-error) 85%, black);
+
+  --status-success-text: var(--color-success);
+  --status-success-bg: var(--color-success-bg);
+  --status-warning-text: var(--color-warning);
+  --status-warning-bg: var(--color-warning-bg);
+  --status-error-text: var(--color-error);
+  --status-error-bg: var(--color-error-bg);
+  --status-muted-text: var(--color-muted);
+  --status-muted-bg: var(--color-muted-bg);
+}

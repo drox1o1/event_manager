@@ -4,6 +4,8 @@ import { apiFetch } from './http';
 import type {
   AdminEventListResponse,
   EventActionResponse,
+  HomepageConfig,
+  HomepageReplaceRequest,
   LoginRequest,
   ModerationQueueResponse,
   ModerationRejectRequest,
@@ -84,4 +86,15 @@ export function getSettings(token: string): Promise<PlatformSettings> {
 
 export function updateSettings(token: string, body: PlatformSettingsUpdateRequest): Promise<PlatformSettings> {
   return apiFetch<PlatformSettings>('/admin/settings', { method: 'PATCH', body, token });
+}
+
+// --- Homepage CMS ---
+
+export function getHomepageConfig(token: string): Promise<HomepageConfig> {
+  return apiFetch<HomepageConfig>('/admin/homepage', { token });
+}
+
+/** Replace-all save of the entire homepage (hero/banner + ordered sections). */
+export function replaceHomepage(token: string, body: HomepageReplaceRequest): Promise<HomepageConfig> {
+  return apiFetch<HomepageConfig>('/admin/homepage', { method: 'PUT', body, token });
 }

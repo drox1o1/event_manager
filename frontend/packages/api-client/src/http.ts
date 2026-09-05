@@ -13,6 +13,13 @@ export class ApiError extends Error {
 }
 
 function baseUrl(): string {
+  // In the browser, call the same-origin Next.js proxy (each app rewrites
+  // `/api/:path*` -> the real API Gateway URL in its next.config). This keeps
+  // requests same-origin so they never trigger a CORS preflight -- the API
+  // Gateway stage doesn't answer OPTIONS. Server-side (SSR / route handlers)
+  // there's no origin to be relative to, so we call the API directly.
+  if (typeof window !== 'undefined') return '/api';
+
   const url = process.env.NEXT_PUBLIC_API_BASE_URL;
   if (!url) {
     throw new Error(
@@ -24,7 +31,7 @@ function baseUrl(): string {
 }
 
 export interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   token?: string;
   query?: Record<string, string | number | undefined>;

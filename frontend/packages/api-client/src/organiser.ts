@@ -8,7 +8,11 @@ import type {
   BannerUploadUrlResponse,
   EventActionResponse,
   EventCreateRequest,
+  EventImageInput,
   EventUpdateRequest,
+  FormFieldInput,
+  FormFieldsResponse,
+  ImageUploadUrlResponse,
   LoginRequest,
   OrganiserEventDetail,
   OrganiserEventListResponse,
@@ -68,6 +72,47 @@ export function createBannerUploadUrl(token: string, eventId: string): Promise<B
 
 export function listAttendees(token: string, eventId: string): Promise<AttendeeListResponse> {
   return apiFetch<AttendeeListResponse>(`/organiser/events/${eventId}/attendees`, { token });
+}
+
+// --- Registration form builder ---
+
+export function getFormFields(token: string, eventId: string): Promise<FormFieldsResponse> {
+  return apiFetch<FormFieldsResponse>(`/organiser/events/${eventId}/form-fields`, { token });
+}
+
+/** Replaces the event's entire registration form with `fields` (replace-all). */
+export function replaceFormFields(token: string, eventId: string, fields: FormFieldInput[]): Promise<FormFieldsResponse> {
+  return apiFetch<FormFieldsResponse>(`/organiser/events/${eventId}/form-fields`, {
+    method: 'PUT',
+    body: { fields },
+    token,
+  });
+}
+
+// --- Gallery images (up to 3, shown under the event description) ---
+
+export function createImageUploadUrl(token: string, eventId: string): Promise<ImageUploadUrlResponse> {
+  return apiFetch<ImageUploadUrlResponse>(`/organiser/events/${eventId}/image-upload-url`, { method: 'POST', token });
+}
+
+export function replaceEventImages(token: string, eventId: string, images: EventImageInput[]): Promise<{ images: string[] }> {
+  return apiFetch<{ images: string[] }>(`/organiser/events/${eventId}/images`, {
+    method: 'PUT',
+    body: { images },
+    token,
+  });
+}
+
+/** Uploads a gallery image file directly to S3 via a presigned PUT URL. */
+export async function uploadImageFile(uploadUrl: string, file: File): Promise<void> {
+  const response = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type || 'image/jpeg' },
+    body: file,
+  });
+  if (!response.ok) {
+    throw new Error(`Image upload failed (${response.status})`);
+  }
 }
 
 /** Uploads a file directly to S3 using a presigned PUT URL from createBannerUploadUrl. */

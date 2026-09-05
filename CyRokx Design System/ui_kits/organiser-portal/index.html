@@ -1,0 +1,94 @@
+<!-- @dsCard group="Organiser Portal" viewport="1360x860" name="Organiser Portal" subtitle="Sign up/login → dashboard → create event → my events → attendees" -->
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>CyRokx — Organiser Portal</title>
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--surface-page);height:100%;}
+  #root{height:100%;}
+  .demo-bar{position:sticky;top:0;z-index:50;display:flex;gap:8px;padding:10px 16px;background:var(--color-ink);overflow-x:auto;}
+  .demo-bar button{flex:none;background:none;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);border-radius:999px;padding:6px 14px;font-size:12px;font-family:var(--font-sans);cursor:pointer;}
+  .demo-bar button.active{background:var(--color-accent);border-color:var(--color-accent);color:#fff;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="Auth.jsx"></script>
+<script type="text/babel" src="OrganiserDashboard.jsx"></script>
+<script type="text/babel" src="CreateEvent.jsx"></script>
+<script type="text/babel" src="MyEvents.jsx"></script>
+<script type="text/babel" src="OrganiserEventDetail.jsx"></script>
+<script type="text/babel" src="EventCategories.jsx"></script>
+<script type="text/babel" src="EventRegistrationForm.jsx"></script>
+<script type="text/babel" src="EventDiscounts.jsx"></script>
+<script type="text/babel" src="EventOrders.jsx"></script>
+<script type="text/babel" src="EventTax.jsx"></script>
+<script type="text/babel" src="AttendeeList.jsx"></script>
+<script type="text/babel">
+  const { SidebarShell, Avatar } = window.CyRokxDesignSystem_ef2ebf;
+
+  const NAV_ITEMS = [
+    { key: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard' },
+    { key: 'my-events', label: 'My events', icon: 'calendar' },
+    { key: 'attendees', label: 'Attendees', icon: 'users' },
+  ];
+
+  const SCREENS = ['login', 'signup', 'dashboard', 'create', 'my-events', 'event-detail', 'attendees'];
+  const LABELS = { login: 'Login', signup: 'Sign up', dashboard: 'Dashboard', create: 'Create event', 'my-events': 'My events', 'event-detail': 'Event detail', attendees: 'Attendees' };
+
+  function App() {
+    const [screen, setScreen] = React.useState('dashboard');
+    const [selectedEvent, setSelectedEvent] = React.useState(null);
+
+    const openEvent = (e) => { setSelectedEvent(e); setScreen('event-detail'); };
+    const editEvent = (e) => { setSelectedEvent(e); setScreen('create'); };
+
+    const activeKey = screen === 'event-detail' || screen === 'create' ? 'my-events' : screen;
+
+    return (
+      <div>
+        <div className="demo-bar">
+          {SCREENS.map((s) => (
+            <button key={s} className={s === screen ? 'active' : ''} onClick={() => setScreen(s)}>{LABELS[s]}</button>
+          ))}
+        </div>
+
+        {screen === 'login' && <OrganiserLogin onSubmit={() => setScreen('dashboard')} onGoToSignUp={() => setScreen('signup')} />}
+        {screen === 'signup' && <OrganiserSignUp onSubmit={() => setScreen('dashboard')} onGoToLogin={() => setScreen('login')} />}
+
+        {screen !== 'login' && screen !== 'signup' && (
+          <SidebarShell
+            brandLabel="CyRokx"
+            navItems={NAV_ITEMS}
+            activeKey={activeKey}
+            onNavigate={(key) => { setScreen(key); setSelectedEvent(null); }}
+            footer={
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Avatar name="Aditi Rao" size={32} />
+                <div style={{ fontSize: 13, color: '#fff', fontWeight: 600 }}>Aditi Rao</div>
+              </div>
+            }
+          >
+            {screen === 'dashboard' && <OrganiserDashboard onCreateEvent={() => setScreen('create')} onOpenEvent={openEvent} />}
+            {screen === 'create' && <CreateEvent onSubmit={() => setScreen('my-events')} onCancel={() => setScreen('my-events')} />}
+            {screen === 'my-events' && <MyEvents onOpenEvent={openEvent} onEditEvent={editEvent} onCreateEvent={() => setScreen('create')} />}
+            {screen === 'event-detail' && <OrganiserEventDetail event={selectedEvent} onEdit={() => setScreen('create')} onViewAttendees={() => setScreen('attendees')} onBack={() => setScreen('my-events')} />}
+            {screen === 'attendees' && <AttendeeList onBack={() => setScreen('my-events')} />}
+          </SidebarShell>
+        )}
+      </div>
+    );
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

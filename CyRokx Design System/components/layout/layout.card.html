@@ -1,0 +1,35 @@
+<!-- @dsCard group="Components" viewport="700x600" name="Layout" subtitle="Navbar, Footer, Modal, DataTable, SidebarShell" -->
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{margin:0;font-family:var(--font-sans);background:var(--surface-page);}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+  const { Navbar, Footer, DataTable, Badge } = window.CyRokxDesignSystem_ef2ebf;
+  function Demo() {
+    return (
+      <div>
+        <Navbar />
+        <div style={{ padding: 20 }}>
+          <DataTable
+            columns={[{ key: 'name', label: 'Attendee' }, { key: 'status', label: 'Status', render: (r) => <Badge status={r.status} /> }]}
+            rows={[{ id: 1, name: 'Priya Shah', status: 'approved' }, { id: 2, name: 'Rahul Mehta', status: 'review' }]}
+            actions={{ onClick: () => {} }}
+          />
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script>
+</body>
+</html>

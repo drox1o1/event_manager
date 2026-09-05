@@ -1,0 +1,38 @@
+<!-- @dsCard group="Components" viewport="700x260" name="Display" subtitle="Avatar, Tag, StatCard" -->
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{margin:0;font-family:var(--font-sans);background:var(--surface-page);}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+  const { Avatar, Tag, StatCard } = window.CyRokxDesignSystem_ef2ebf;
+  function Demo() {
+    return (
+      <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <Avatar name="Priya Shah" />
+          <Avatar name="DJ Nova" size={52} />
+          <Avatar name="A" size={28} />
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <Tag>Music</Tag><Tag active>Comedy</Tag><Tag>Workshops</Tag>
+        </div>
+        <div style={{ display: 'flex', gap: 14 }}>
+          <StatCard label="Revenue" value="₹4.2L" delta="+12% vs last week" icon="trending-up" />
+          <StatCard label="Registrations" value="1,204" delta="-3% vs last week" icon="users" />
+        </div>
+      </div>
+    );
+  }
+  ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script>
+</body>
+</html>
