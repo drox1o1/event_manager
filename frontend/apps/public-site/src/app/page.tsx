@@ -1,19 +1,18 @@
 import { publicApi } from '@cyrokx/api-client';
+import type { HomepageContent } from '@cyrokx/api-client';
 import { HomepageView } from '@/components/HomepageView';
 
 export const dynamic = 'force-dynamic';
 
-export default async function HomePage() {
-  const [{ events }, { categories }] = await Promise.all([
-    publicApi.listEvents({ pageSize: 8 }).catch(() => ({ events: [], page: 1, page_size: 8 })),
-    publicApi.listCategories().catch(() => ({ categories: [] })),
-  ]);
+// Fallback layout if the CMS endpoint is unavailable, so the homepage still
+// renders. Mirrors the seeded default (category grid + featured + trending).
+const FALLBACK: HomepageContent = {
+  hero: { eyebrow: 'Discover live events near you', headline: 'Find your next night out', subheadline: null, search_enabled: true },
+  banner: { enabled: false, text: null, link_url: null },
+  sections: [],
+};
 
-  return (
-    <HomepageView
-      featured={events.slice(0, 4)}
-      trending={events.slice(4, 8)}
-      categories={categories}
-    />
-  );
+export default async function HomePage() {
+  const content = await publicApi.getHomepage().catch(() => FALLBACK);
+  return <HomepageView content={content} />;
 }

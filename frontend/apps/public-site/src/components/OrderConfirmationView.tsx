@@ -56,6 +56,18 @@ export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
         </div>
       </div>
 
+      {order.form_responses && order.form_responses.length > 0 && (
+        <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)', padding: 24, textAlign: 'left', marginBottom: 24 }}>
+          <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-heading)', marginBottom: 14 }}>Registration details</div>
+          {order.form_responses.map((r, i) => (
+            <div key={r.field_label + i} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, fontSize: 14, marginBottom: 8 }}>
+              <span style={{ color: 'var(--text-muted)' }}>{r.field_label}</span>
+              <span style={{ fontWeight: 600, color: 'var(--text-heading)', textAlign: 'right' }}>{Array.isArray(r.answer) ? r.answer.join(', ') : r.answer}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: 'var(--color-accent-tint)', borderRadius: 'var(--radius-control)', padding: 14, marginBottom: 28, textAlign: 'left' }}>
         <Icon name="ticket" size={16} color="var(--color-accent)" style={{ marginTop: 2, flexShrink: 0 }} />
         <div style={{ fontSize: 13, color: 'var(--text-body)' }}>

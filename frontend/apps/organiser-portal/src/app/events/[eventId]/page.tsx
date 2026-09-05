@@ -176,7 +176,7 @@ function EventWorkspace() {
       {/* Panels */}
       {tab === 'dashboard' && <EventDashboardPanel event={event} />}
       {tab === 'categories' && <EventCategoriesPanel event={event} />}
-      {tab === 'regform' && <EventRegistrationFormPanel />}
+      {tab === 'regform' && <EventRegistrationFormPanel eventId={eventId} token={token} />}
       {tab === 'discounts' && <EventDiscountsPanel />}
       {tab === 'tax' && <EventTaxPanel />}
       {tab === 'orders' && <EventOrdersPanel />}

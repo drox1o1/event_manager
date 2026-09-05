@@ -131,11 +131,27 @@ Resources:
             Method: get
             Auth:
               Authorizer: NONE
+        GetEventFormFields:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /events/{event_id}/form-fields
+            Method: get
+            Auth:
+              Authorizer: NONE
         ListCategories:
           Type: Api
           Properties:
             RestApiId: !Ref CyrokxApi
             Path: /categories
+            Method: get
+            Auth:
+              Authorizer: NONE
+        GetHomepage:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /homepage
             Method: get
             Auth:
               Authorizer: NONE
@@ -287,6 +303,38 @@ Resources:
             Method: post
             Auth:
               Authorizer: JwtAuthorizer
+        ListFormFields:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/events/{event_id}/form-fields
+            Method: get
+            Auth:
+              Authorizer: JwtAuthorizer
+        ReplaceFormFields:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/events/{event_id}/form-fields
+            Method: put
+            Auth:
+              Authorizer: JwtAuthorizer
+        CreateImageUploadUrl:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/events/{event_id}/image-upload-url
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        ReplaceEventImages:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/events/{event_id}/images
+            Method: put
+            Auth:
+              Authorizer: JwtAuthorizer
         ListAttendees:
           Type: Api
           Properties:
@@ -405,6 +453,22 @@ Resources:
             RestApiId: !Ref CyrokxApi
             Path: /admin/settings
             Method: patch
+            Auth:
+              Authorizer: JwtAuthorizer
+        GetHomepageAdmin:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/homepage
+            Method: get
+            Auth:
+              Authorizer: JwtAuthorizer
+        ReplaceHomepageAdmin:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/homepage
+            Method: put
             Auth:
               Authorizer: JwtAuthorizer
 

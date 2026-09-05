@@ -73,6 +73,15 @@ export function EventDetailView({ event }: EventDetailViewProps) {
           <h3 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 10 }}>About this event</h3>
           <p style={{ fontSize: 16, lineHeight: 1.6, color: 'var(--text-body)', marginBottom: 28, whiteSpace: 'pre-wrap' }}>{event.description}</p>
 
+          {event.gallery_images && event.gallery_images.length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(event.gallery_images.length, 3)}, 1fr)`, gap: 12, marginBottom: 28 }}>
+              {event.gallery_images.map((src, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={src + i} src={src} alt={`${event.title} photo ${i + 1}`} style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 'var(--radius-card)', border: '1px solid var(--border-default)' }} />
+              ))}
+            </div>
+          )}
+
           <h3 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 12 }}>Venue</h3>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 28 }}>
             <Icon name="map-pin" size={18} color="var(--text-muted)" style={{ marginTop: 2 }} />

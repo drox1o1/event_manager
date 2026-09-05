@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { key: 'organisers', label: 'Organisers', icon: 'building-2', href: '/organisers' },
   { key: 'transactions', label: 'Transactions', icon: 'receipt', href: '/transactions' },
   { key: 'refunds', label: 'Refunds', icon: 'rotate-ccw', href: '/refunds' },
+  { key: 'homepage', label: 'Homepage', icon: 'layout-template', href: '/homepage' },
   { key: 'settings', label: 'Platform settings', icon: 'settings', href: '/settings' },
 ];
 
