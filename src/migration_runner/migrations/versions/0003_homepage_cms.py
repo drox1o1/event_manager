@@ -28,10 +28,17 @@ depends_on = None
 def upgrade() -> None:
     bind = op.get_bind()
 
+    # create_type=False on each: the explicit .create(checkfirst=True) calls
+    # below are what actually create these types. Without it, op.create_table
+    # triggers SQLAlchemy's own (non-checkfirst) enum-creation DDL as a side
+    # effect of using these as column types, which collides with the type
+    # this function just created and fails with "already exists" -- same fix
+    # as 0001_initial_schema.py and 0002_forms_and_gallery.py.
     section_type = postgresql.ENUM(
-        "category_grid", "featured_events", "trending_events", name="homepage_section_type"
+        "category_grid", "featured_events", "trending_events",
+        name="homepage_section_type", create_type=False,
     )
-    section_mode = postgresql.ENUM("auto", "curated", name="homepage_section_mode")
+    section_mode = postgresql.ENUM("auto", "curated", name="homepage_section_mode", create_type=False)
     section_type.create(bind, checkfirst=True)
     section_mode.create(bind, checkfirst=True)
 

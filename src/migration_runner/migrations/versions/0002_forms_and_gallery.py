@@ -26,8 +26,13 @@ depends_on = None
 def upgrade() -> None:
     bind = op.get_bind()
 
+    # create_type=False: the explicit .create(checkfirst=True) call below is
+    # what actually creates this type. Without it, op.create_table triggers
+    # SQLAlchemy's own (non-checkfirst) enum-creation DDL as a side effect of
+    # using this as a column type, which collides with the type just created
+    # and fails with "already exists" -- same fix as 0001_initial_schema.py.
     form_field_type = postgresql.ENUM(
-        "text", "single_choice", "multi_choice", name="form_field_type"
+        "text", "single_choice", "multi_choice", name="form_field_type", create_type=False
     )
     form_field_type.create(bind, checkfirst=True)
 

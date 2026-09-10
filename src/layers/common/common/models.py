@@ -205,7 +205,8 @@ class EventFormField(Base):
     event_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("events.id"), nullable=False)
     label: Mapped[str] = mapped_column(String(200), nullable=False)
     field_type: Mapped[FormFieldType] = mapped_column(
-        Enum(FormFieldType, name="form_field_type"), nullable=False
+        Enum(FormFieldType, name="form_field_type", values_callable=lambda cls: [e.value for e in cls]),
+        nullable=False,
     )
     options: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
     required: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -374,10 +375,11 @@ class HomepageSection(Base):
     id: Mapped[uuid.UUID] = _uuid_pk()
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     section_type: Mapped[HomepageSectionType] = mapped_column(
-        Enum(HomepageSectionType, name="homepage_section_type"), nullable=False
+        Enum(HomepageSectionType, name="homepage_section_type", values_callable=lambda cls: [e.value for e in cls]),
+        nullable=False,
     )
     mode: Mapped[HomepageSectionMode] = mapped_column(
-        Enum(HomepageSectionMode, name="homepage_section_mode"),
+        Enum(HomepageSectionMode, name="homepage_section_mode", values_callable=lambda cls: [e.value for e in cls]),
         nullable=False,
         default=HomepageSectionMode.AUTO,
     )
