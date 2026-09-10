@@ -117,16 +117,16 @@ export function EventCategoriesPanel({ event }: { event?: OrganiserEventDetail |
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             <Input label="Title" placeholder="Enter title" value={active.name} onChange={(e) => patch('name', e.target.value)} />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 18 }}>
               <Input label="Category start time" placeholder="YYYY-MM-DD HH:mm" value={active.start} onChange={(e) => patch('start', e.target.value)} />
               <Input label="Category end time" placeholder="YYYY-MM-DD HH:mm" value={active.end} onChange={(e) => patch('end', e.target.value)} />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 18 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 18 }}>
               <Input label="Distance (km)" type="number" placeholder="Enter distance" value={active.distance} onChange={(e) => patch('distance', e.target.value)} />
               <Input label="Maximum number of tickets" type="number" placeholder="1000" value={active.max} onChange={(e) => patch('max', e.target.value)} />
               <Input label="Minimum age" type="number" placeholder="Leave blank for none" value={active.minAge} onChange={(e) => patch('minAge', e.target.value)} />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 18 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 18 }}>
               <Input label="Price" type="number" placeholder="0.0" value={active.price} onChange={(e) => patch('price', e.target.value)} />
               <Select label="Currency" value={active.currency} onChange={(e) => patch('currency', e.target.value)} options={CURRENCIES} />
             </div>

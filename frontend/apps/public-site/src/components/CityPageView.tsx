@@ -40,7 +40,7 @@ export function CityPageView({ city, events }: CityPageViewProps) {
         </div>
       </div>
 
-      <div style={{ maxWidth: 'var(--content-max-width)', margin: '0 auto', padding: '32px' }}>
+      <div style={{ maxWidth: 'var(--content-max-width)', margin: '0 auto', padding: 'clamp(16px, 4vw, 32px)' }}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 24 }}>
           {categories.map((c) => (
             <Tag key={c} active={active === c} onClick={() => setActive(c)}>{c}</Tag>
@@ -50,7 +50,7 @@ export function CityPageView({ city, events }: CityPageViewProps) {
         {filtered.length === 0 ? (
           <EmptyState icon="map-pin" title={`No ${active.toLowerCase()} events in ${city} right now`} description="Try another category or check back soon." />
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 20 }}>
             {filtered.map((e) => (
               <EventCard
                 key={e.id}

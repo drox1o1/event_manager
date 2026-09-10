@@ -35,7 +35,7 @@ export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
   };
 
   return (
-    <div style={{ fontFamily: 'var(--font-sans)', maxWidth: 560, margin: '0 auto', padding: '64px 32px', textAlign: 'center' }}>
+    <div style={{ fontFamily: 'var(--font-sans)', maxWidth: 560, margin: '0 auto', padding: 'clamp(32px, 8vw, 64px) clamp(16px, 4vw, 32px)', textAlign: 'center' }}>
       <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--status-success-bg)', color: 'var(--color-success)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
         <Icon name="check-circle" size={30} />
       </div>
@@ -55,6 +55,18 @@ export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
           <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-accent)' }}>{formatINR(order.total_amount)}</span>
         </div>
       </div>
+
+      {order.form_responses && order.form_responses.length > 0 && (
+        <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)', padding: 24, textAlign: 'left', marginBottom: 24 }}>
+          <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-heading)', marginBottom: 14 }}>Registration details</div>
+          {order.form_responses.map((r, i) => (
+            <div key={r.field_label + i} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, fontSize: 14, marginBottom: 8 }}>
+              <span style={{ color: 'var(--text-muted)' }}>{r.field_label}</span>
+              <span style={{ fontWeight: 600, color: 'var(--text-heading)', textAlign: 'right' }}>{Array.isArray(r.answer) ? r.answer.join(', ') : r.answer}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: 'var(--color-accent-tint)', borderRadius: 'var(--radius-control)', padding: 14, marginBottom: 28, textAlign: 'left' }}>
         <Icon name="ticket" size={16} color="var(--color-accent)" style={{ marginTop: 2, flexShrink: 0 }} />

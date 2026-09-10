@@ -38,7 +38,7 @@ function DashboardInner() {
 
       {error && <div style={{ color: 'var(--color-error)', marginBottom: 20 }}>{error}</div>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 32 }}>
         <StatCard label="Total events" value={events ? totalEvents : '—'} icon="calendar" />
         <StatCard label="Live events" value={events ? liveEvents : '—'} icon="zap" />
         <StatCard label="Tickets sold" value={events ? ticketsSold.toLocaleString('en-IN') : '—'} icon="ticket" />

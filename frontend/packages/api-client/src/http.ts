@@ -31,7 +31,7 @@ function baseUrl(): string {
 }
 
 export interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   token?: string;
   query?: Record<string, string | number | undefined>;

@@ -17,7 +17,7 @@ export function CategoryPageView({ category, events }: CategoryPageViewProps) {
   const router = useRouter();
 
   return (
-    <div style={{ fontFamily: 'var(--font-sans)', maxWidth: 'var(--content-max-width)', margin: '0 auto', padding: '32px' }}>
+    <div style={{ fontFamily: 'var(--font-sans)', maxWidth: 'var(--content-max-width)', margin: '0 auto', padding: 'clamp(16px, 4vw, 32px)' }}>
       <div style={{ fontSize: 13, color: 'var(--text-subtle)', marginBottom: 20 }}>
         <a href="/" onClick={(e) => { e.preventDefault(); router.push('/'); }} style={{ color: 'var(--text-subtle)', textDecoration: 'none' }}>Home</a>
         {' / '}<span style={{ color: 'var(--text-muted)' }}>{category}</span>
@@ -36,7 +36,7 @@ export function CategoryPageView({ category, events }: CategoryPageViewProps) {
       {events.length === 0 ? (
         <EmptyState icon="calendar-x" title={`No upcoming ${category.toLowerCase()} events`} description="Check back soon, or explore another category." />
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: 20 }}>
           {events.map((e) => (
             <EventCard
               key={e.id}

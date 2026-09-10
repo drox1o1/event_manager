@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Footer } from "@cyrokx/ui";
 import { SiteNavbar } from "@/components/SiteNavbar";
 import "./globals.css";
@@ -6,6 +6,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "CyRokx — Discover live events near you",
   description: "Find and buy tickets to live events — music, comedy, workshops, sports, food. No account needed.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({

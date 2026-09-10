@@ -3,8 +3,11 @@
 import datetime as dt
 import uuid
 from decimal import Decimal
+from typing import Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
+
+FormFieldTypeStr = Literal["text", "single_choice", "multi_choice"]
 
 # --- Auth ---
 
@@ -58,7 +61,67 @@ class EventDetail(EventSummary):
     venue_name: str
     venue_address: str
     banner_image_url: str | None = None
+    gallery_images: list[str] = []
     ticket_tiers: list[TicketTierSummary] = []
+
+
+# --- Registration form builder ---
+
+
+class FormFieldInput(BaseModel):
+    """One field in an organiser's registration form (builder payload)."""
+
+    label: str = Field(min_length=1, max_length=200)
+    field_type: FormFieldTypeStr
+    options: list[str] | None = None
+    required: bool = False
+    sort_order: int = 0
+
+    @field_validator("options")
+    @classmethod
+    def _clean_options(cls, v: list[str] | None) -> list[str] | None:
+        if v is None:
+            return v
+        cleaned = [o.strip() for o in v if o and o.strip()]
+        return cleaned or None
+
+    @model_validator(mode="after")
+    def _check_options_match_type(self) -> "FormFieldInput":
+        if self.field_type in ("single_choice", "multi_choice"):
+            if not self.options or len(self.options) < 1:
+                raise ValueError(f"{self.field_type} fields need at least one option")
+        else:  # text -- options are meaningless, drop any that slipped through
+            self.options = None
+        return self
+
+
+class FormFieldsReplaceRequest(BaseModel):
+    """Replace-all payload: the full ordered list of fields for an event."""
+
+    fields: list[FormFieldInput] = Field(max_length=50)
+
+
+class FormFieldResponse(BaseModel):
+    id: uuid.UUID
+    label: str
+    field_type: str
+    options: list[str] | None = None
+    required: bool
+    sort_order: int
+
+    model_config = {"from_attributes": True}
+
+
+# --- Event gallery images ---
+
+
+class EventImageInput(BaseModel):
+    image_url: str = Field(min_length=1, max_length=500)
+    sort_order: int = 0
+
+
+class EventImagesReplaceRequest(BaseModel):
+    images: list[EventImageInput] = Field(max_length=3)
 
 
 # --- Events (organiser) ---
@@ -102,11 +165,17 @@ class CheckoutItem(BaseModel):
     quantity: int = Field(gt=0, le=20)
 
 
+class FormResponseInput(BaseModel):
+    field_id: uuid.UUID
+    answer: str | list[str]
+
+
 class CheckoutRequest(BaseModel):
     buyer_name: str = Field(min_length=1, max_length=200)
     buyer_email: EmailStr
     buyer_phone: str = Field(min_length=1, max_length=20)
     items: list[CheckoutItem] = Field(min_length=1)
+    form_responses: list[FormResponseInput] = []
 
 
 class RefundRequestCreate(BaseModel):
@@ -174,6 +243,47 @@ class PlatformSettingsResponse(BaseModel):
     email_footer_note: str | None = None
 
     model_config = {"from_attributes": True}
+
+
+HomepageSectionTypeStr = Literal["category_grid", "featured_events", "trending_events"]
+HomepageSectionModeStr = Literal["auto", "curated"]
+
+
+# --- Homepage CMS (admin) ---
+
+
+class HomepageSettingsInput(BaseModel):
+    hero_eyebrow: str = Field(min_length=1, max_length=200)
+    hero_headline: str = Field(min_length=1, max_length=200)
+    hero_subheadline: str | None = None
+    hero_search_enabled: bool = True
+    banner_enabled: bool = False
+    banner_text: str | None = None
+    banner_link_url: str | None = Field(default=None, max_length=500)
+
+
+class HomepageSectionInput(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    section_type: HomepageSectionTypeStr
+    mode: HomepageSectionModeStr = "auto"
+    enabled: bool = True
+    event_ids: list[uuid.UUID] = Field(default_factory=list, max_length=24)
+
+    @model_validator(mode="after")
+    def _only_event_sections_curate(self) -> "HomepageSectionInput":
+        if self.section_type == "category_grid":
+            # A category grid has no event list; force auto + drop any picks.
+            self.mode = "auto"
+            self.event_ids = []
+        return self
+
+
+class HomepageReplaceRequest(BaseModel):
+    """Replace-all payload for the whole homepage: hero/banner settings plus
+    the full ordered list of sections (with curated picks)."""
+
+    settings: HomepageSettingsInput
+    sections: list[HomepageSectionInput] = Field(max_length=30)
 
 
 class PlatformSettingsUpdateRequest(BaseModel):

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Icon, Badge, Button } from '@cyrokx/ui';
+import { Icon, Badge, Button, useIsMobile } from '@cyrokx/ui';
 import type { BadgeStatus } from '@cyrokx/ui';
 import { organiserApi, formatDateTime, ApiError } from '@cyrokx/api-client';
 import type { OrganiserEventDetail } from '@cyrokx/api-client';
@@ -56,6 +56,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
 function EventWorkspace() {
   const token = useRequireAuth();
   const router = useRouter();
+  const isMobile = useIsMobile();
   const params = useParams<{ eventId: string }>();
   const eventId = params.eventId;
 
@@ -121,10 +122,10 @@ function EventWorkspace() {
         <Icon name="arrow-left" size={15} /> My events
       </button>
 
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 22, gap: 16 }}>
+      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'flex-start', justifyContent: 'space-between', marginBottom: 22, gap: 16 }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-            <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-heading)' }}>{event.title}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6, flexWrap: 'wrap' }}>
+            <div style={{ fontSize: isMobile ? 22 : 26, fontWeight: 700, color: 'var(--text-heading)' }}>{event.title}</div>
             <Badge status={badgeStatus(event.status)} />
           </div>
           <div style={{ fontSize: 14, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -133,7 +134,7 @@ function EventWorkspace() {
             <Icon name="map-pin" size={14} /> {event.venue_name}, {event.city}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
           <Button variant="secondary" size="sm" onClick={copyLink}><Icon name="link" size={15} />{copied ? 'Link copied' : 'Copy registration link'}</Button>
           {canEdit && <Button size="sm" onClick={() => router.push(`/events/${eventId}/edit`)}><Icon name="pencil" size={15} />Edit event</Button>}
           {canSubmit && <Button size="sm" onClick={submitForReview} loading={busy}>Submit for review</Button>}
@@ -147,7 +148,7 @@ function EventWorkspace() {
       )}
 
       {/* Grouped tab bar with overflow */}
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'stretch', gap: 0, background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-card)', padding: '4px 6px', marginBottom: 28, boxShadow: 'var(--shadow-card)' }}>
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'stretch', gap: 0, background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-card)', padding: '4px 6px', marginBottom: 28, boxShadow: 'var(--shadow-card)', overflowX: 'auto' }}>
         {GROUPS.map((g, gi) => (
           <React.Fragment key={g.name}>
             {gi > 0 && <div style={{ width: 1, background: 'var(--border-default)', margin: '8px 6px' }} />}
@@ -176,7 +177,7 @@ function EventWorkspace() {
       {/* Panels */}
       {tab === 'dashboard' && <EventDashboardPanel event={event} />}
       {tab === 'categories' && <EventCategoriesPanel event={event} />}
-      {tab === 'regform' && <EventRegistrationFormPanel />}
+      {tab === 'regform' && <EventRegistrationFormPanel eventId={eventId} token={token} />}
       {tab === 'discounts' && <EventDiscountsPanel />}
       {tab === 'tax' && <EventTaxPanel />}
       {tab === 'orders' && <EventOrdersPanel />}

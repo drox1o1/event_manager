@@ -96,7 +96,7 @@ function SettingsInner() {
       </SettingsCard>
 
       <SettingsCard icon="mail" title="Buyer email notifications" description="Sender identity and footer for order-confirmation email.">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 32 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <Input label="Sender name" placeholder="CyRokx" value={settings.email_sender_name} onChange={(e) => update('email_sender_name', e.target.value)} />
             <Input label="Reply-to email" type="email" placeholder="support@cyrokx.com" value={settings.email_reply_to ?? ''} onChange={(e) => update('email_reply_to', e.target.value)} />

@@ -97,11 +97,11 @@ export function EventDiscountsPanel() {
             </div>
             <Textarea label="Description" placeholder="Discount description" rows={2} value={active.desc} onChange={(e) => patch('desc', e.target.value)} />
             <Select label="Event category (leave blank to apply to all categories)" value={active.cat} onChange={(e) => patch('cat', e.target.value)} options={DISC_CATS} />
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 18 }}>
               <Input label="Start time" placeholder="YYYY-MM-DD HH:mm" value={active.start} onChange={(e) => patch('start', e.target.value)} />
               <Input label="End time" placeholder="YYYY-MM-DD HH:mm" value={active.end} onChange={(e) => patch('end', e.target.value)} />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 18 }}>
               <Input label="Percentage discount (% off final price)" type="number" placeholder="0.0" value={active.pct} onChange={(e) => patch('pct', e.target.value)} />
               <Input label="Absolute discount (₹ off final price)" type="number" placeholder="0.0" value={active.abs} onChange={(e) => patch('abs', e.target.value)} />
             </div>
