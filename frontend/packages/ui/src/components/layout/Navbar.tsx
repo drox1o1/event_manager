@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { Icon } from '../icons/Icon';
+import { LogoFull } from '../brand/Logo';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 
 export interface NavbarProps {
@@ -28,9 +29,7 @@ export function Navbar({ categories = ['Music', 'Comedy', 'Workshops', 'Sports',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
-        <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-heading)', letterSpacing: '-0.01em' }}>
-          Showti<span style={{ color: 'var(--color-accent)' }}>k</span>
-        </span>
+        <LogoFull style={{ height: isMobile ? 24 : 30 }} />
         {!isMobile && (
           <nav style={{ display: 'flex', gap: 24 }}>
             {categories.map((c) => (

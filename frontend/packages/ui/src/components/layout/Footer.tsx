@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { LogoMark } from '../brand/Logo';
 
 export interface FooterProps {
   style?: React.CSSProperties;
@@ -16,7 +17,10 @@ export function Footer({ style }: FooterProps) {
     <footer style={{ background: 'var(--color-ink)', color: 'rgba(255,255,255,0.7)', fontFamily: 'var(--font-sans)', padding: '48px 32px 24px', ...style }}>
       <div style={{ display: 'flex', gap: 64, marginBottom: 32, flexWrap: 'wrap' }}>
         <div style={{ maxWidth: 240 }}>
-          <div style={{ fontSize: 20, fontWeight: 700, color: '#fff', marginBottom: 10 }}>Showti<span style={{ color: 'var(--color-accent)' }}>k</span></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <LogoMark style={{ height: 30 }} />
+            <span style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>showtik</span>
+          </div>
           <div style={{ fontSize: 13, lineHeight: 1.6 }}>Discover and book live events near you — no account needed to buy a ticket.</div>
         </div>
         {COLS.map((c) => (

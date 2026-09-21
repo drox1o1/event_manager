@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { Icon } from '../icons/Icon';
+import { LogoMark } from '../brand/Logo';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 
 export interface SidebarNavItem {
@@ -22,13 +23,11 @@ export interface SidebarShellProps {
 }
 
 function Wordmark({ brandLabel }: { brandLabel: string }) {
-  // Render the brand with its final letter in the accent colour (e.g. Showti + k).
-  const head = brandLabel.slice(0, -1);
-  const tail = brandLabel.slice(-1);
+  // Monogram mark (full-colour, shows on the navy sidebar) + white wordmark.
   return (
-    <span style={{ fontSize: 19, fontWeight: 700, color: '#fff' }}>
-      {head}
-      <span style={{ color: 'var(--color-accent)' }}>{tail}</span>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+      <LogoMark style={{ height: 26 }} title={brandLabel} />
+      <span style={{ fontSize: 19, fontWeight: 700, color: '#fff' }}>{brandLabel.toLowerCase()}</span>
     </span>
   );
 }

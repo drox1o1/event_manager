@@ -17,3 +17,6 @@ _design-source/
 # Misc
 *.tsbuildinfo
 .DS_Store
+
+# Local esbuild UI preview (throwaway)
+.uidemo/
