@@ -2,8 +2,8 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Icon, Input, Button } from '@cyrokx/ui';
-import { adminApi, ApiError } from '@cyrokx/api-client';
+import { Icon, Input, Button } from '@showtik/ui';
+import { adminApi, ApiError } from '@showtik/api-client';
 import { useAuth } from '@/lib/auth';
 
 /** Login — super admin sign-in. Single account, provisioned by the platform team. */
@@ -34,14 +34,14 @@ export default function AdminLoginPage() {
       <div style={{ width: 400, maxWidth: '100%', background: 'var(--surface-card)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-modal)', padding: 40 }}>
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-heading)' }}>
-            CyRok<span style={{ color: 'var(--color-accent)' }}>x</span>
+            Showti<span style={{ color: 'var(--color-accent)' }}>k</span>
           </div>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: 8 }}>
             <Icon name="shield" size={13} /> Super admin
           </div>
         </div>
         <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <Input label="Email" type="email" placeholder="admin@cyrokx.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Input label="Email" type="email" placeholder="admin@showtik.com" value={email} onChange={(e) => setEmail(e.target.value)} />
           <Input label="Password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
           {error && <div style={{ fontSize: 13, color: 'var(--color-error)' }}>{error}</div>}
           <Button type="submit" fullWidth size="lg" loading={submitting}>Log in</Button>

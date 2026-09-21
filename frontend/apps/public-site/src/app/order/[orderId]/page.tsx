@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { publicApi, ApiError } from '@cyrokx/api-client';
+import { publicApi, ApiError } from '@showtik/api-client';
 import { OrderConfirmationView } from '@/components/OrderConfirmationView';
 
 export const dynamic = 'force-dynamic';

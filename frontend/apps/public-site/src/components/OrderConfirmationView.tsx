@@ -2,9 +2,9 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Icon, Button } from '@cyrokx/ui';
-import { publicApi, formatINR, ApiError } from '@cyrokx/api-client';
-import type { OrderDetail } from '@cyrokx/api-client';
+import { Icon, Button } from '@showtik/ui';
+import { publicApi, formatINR, ApiError } from '@showtik/api-client';
+import type { OrderDetail } from '@showtik/api-client';
 
 export interface OrderConfirmationViewProps {
   order: OrderDetail;

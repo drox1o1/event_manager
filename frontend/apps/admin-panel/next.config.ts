@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
   // sharp's platform-specific native binary to be present in the Lambda
   // runtime (this repo builds on macOS, Lambda runs on Linux x86_64).
   images: { unoptimized: true },
-  transpilePackages: ["@cyrokx/ui", "@cyrokx/api-client"],
+  transpilePackages: ["@showtik/ui", "@showtik/api-client"],
   async rewrites() {
     if (!API_BASE) return [];
     return [{ source: "/api/:path*", destination: `${API_BASE}/:path*` }];

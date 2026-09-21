@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Icon, Badge, Button } from '@cyrokx/ui';
+import { Icon, Badge, Button } from '@showtik/ui';
 
 /** ComingSoonPanel — placeholder for the roadmap tabs that live in the event
  *  navigation so the full workspace structure is visible, but are not yet

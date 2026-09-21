@@ -1,9 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { Icon, Input, Textarea, Select, Switch, Button, Toast } from '@cyrokx/ui';
-import { adminApi, ApiError } from '@cyrokx/api-client';
-import type { HomepageConfig, HomepageSection, HomepageSectionType, HomepageSectionMode, AdminEventSummary } from '@cyrokx/api-client';
+import { Icon, Input, Textarea, Select, Switch, Button, Toast } from '@showtik/ui';
+import { adminApi, ApiError } from '@showtik/api-client';
+import type { HomepageConfig, HomepageSection, HomepageSectionType, HomepageSectionMode, AdminEventSummary } from '@showtik/api-client';
 import { AdminShell } from '@/components/AdminShell';
 import { useRequireAuth } from '@/lib/auth';
 

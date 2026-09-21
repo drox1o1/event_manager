@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Icon, Input, Select, Textarea, Switch, Button, Badge } from '@cyrokx/ui';
+import { Icon, Input, Select, Textarea, Switch, Button, Badge } from '@showtik/ui';
 import { PanelHead } from './PanelHead';
 import { useSavedFlash, NotWiredNote } from './panelState';
 

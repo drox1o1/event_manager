@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Navbar } from '@cyrokx/ui';
+import { Navbar } from '@showtik/ui';
 
 /**
  * Thin client wrapper around the shared Navbar -- a Server Component (the

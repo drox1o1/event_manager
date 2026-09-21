@@ -2,9 +2,9 @@
 
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Icon, Input, Button, EmptyState } from '@cyrokx/ui';
-import { organiserApi, ApiError } from '@cyrokx/api-client';
-import type { Attendee } from '@cyrokx/api-client';
+import { Icon, Input, Button, EmptyState } from '@showtik/ui';
+import { organiserApi, ApiError } from '@showtik/api-client';
+import type { Attendee } from '@showtik/api-client';
 import { PortalShell } from '@/components/PortalShell';
 import { useRequireAuth } from '@/lib/auth';
 

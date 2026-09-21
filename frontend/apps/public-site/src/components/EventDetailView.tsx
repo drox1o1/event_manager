@@ -2,9 +2,9 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Icon, Avatar, TicketTierRow, Button, useIsMobile } from '@cyrokx/ui';
-import { formatDateTime, formatINR } from '@cyrokx/api-client';
-import type { EventDetail } from '@cyrokx/api-client';
+import { Icon, Avatar, TicketTierRow, Button, useIsMobile } from '@showtik/ui';
+import { formatDateTime, formatINR } from '@showtik/api-client';
+import type { EventDetail } from '@showtik/api-client';
 import { persistCheckoutSelection } from '@/lib/checkoutStore';
 
 export interface EventDetailViewProps {

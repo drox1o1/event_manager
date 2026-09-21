@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { SidebarShell, Avatar, Button } from '@cyrokx/ui';
+import { SidebarShell, Avatar, Button } from '@showtik/ui';
 import { useRequireAuth, useAuth } from '@/lib/auth';
 
 const NAV_ITEMS = [
@@ -26,7 +26,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarShell
-      brandLabel="CyRokx"
+      brandLabel="Showtik"
       navItems={NAV_ITEMS.map(({ key, label, icon }) => ({ key, label, icon }))}
       activeKey={activeKey}
       onNavigate={(key) => {

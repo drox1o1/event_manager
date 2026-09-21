@@ -1,9 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { Icon, Badge, Button, Textarea, EmptyState } from '@cyrokx/ui';
-import { adminApi, formatTimestamp, ApiError } from '@cyrokx/api-client';
-import type { ModerationQueueItem } from '@cyrokx/api-client';
+import { Icon, Badge, Button, Textarea, EmptyState } from '@showtik/ui';
+import { adminApi, formatTimestamp, ApiError } from '@showtik/api-client';
+import type { ModerationQueueItem } from '@showtik/api-client';
 import { AdminShell } from '@/components/AdminShell';
 import { useRequireAuth } from '@/lib/auth';
 

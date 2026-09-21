@@ -2,9 +2,9 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Icon, EventCard, SearchBar } from '@cyrokx/ui';
-import { formatEventDate, formatINR } from '@cyrokx/api-client';
-import type { CategorySummary, EventSummary, HomepageContent, HomepageResolvedSection } from '@cyrokx/api-client';
+import { Icon, EventCard, SearchBar } from '@showtik/ui';
+import { formatEventDate, formatINR } from '@showtik/api-client';
+import type { CategorySummary, EventSummary, HomepageContent, HomepageResolvedSection } from '@showtik/api-client';
 import { iconForCategory } from '@/lib/categoryIcons';
 
 export interface HomepageViewProps {

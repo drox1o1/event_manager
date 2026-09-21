@@ -1,9 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { DataTable, EmptyState } from '@cyrokx/ui';
-import { adminApi, formatINR, formatTimestamp } from '@cyrokx/api-client';
-import type { TransactionSummary } from '@cyrokx/api-client';
+import { DataTable, EmptyState } from '@showtik/ui';
+import { adminApi, formatINR, formatTimestamp } from '@showtik/api-client';
+import type { TransactionSummary } from '@showtik/api-client';
 import { AdminShell } from '@/components/AdminShell';
 import { useRequireAuth } from '@/lib/auth';
 

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Icon, Button } from '@cyrokx/ui';
+import { Icon, Button } from '@showtik/ui';
 
 export default function NotFound() {
   return (

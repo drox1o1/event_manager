@@ -1,5 +1,5 @@
 {
-  "name": "cyrokx-frontend",
+  "name": "showtik-frontend",
   "private": true,
   "workspaces": [
     "apps/*",

@@ -1,5 +1,5 @@
-import { publicApi } from '@cyrokx/api-client';
-import type { HomepageContent } from '@cyrokx/api-client';
+import { publicApi } from '@showtik/api-client';
+import type { HomepageContent } from '@showtik/api-client';
 import { HomepageView } from '@/components/HomepageView';
 
 export const dynamic = 'force-dynamic';

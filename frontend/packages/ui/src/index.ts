@@ -1,6 +1,6 @@
-// CyRokx shared design system — ported from the Claude Design project
+// Showtik shared design system — ported from the Claude Design project
 // (ef2ebff5-3e26-409b-b9ea-adfb80e6d6b2) into typed React components.
-// Import tokens once per app from '@cyrokx/ui/tokens.css'.
+// Import tokens once per app from '@showtik/ui/tokens.css'.
 
 export { useMediaQuery, useIsMobile } from './hooks/useMediaQuery';
 

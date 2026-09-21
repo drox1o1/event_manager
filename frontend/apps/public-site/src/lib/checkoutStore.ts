@@ -15,7 +15,7 @@ export interface CheckoutSelection {
 }
 
 function key(eventId: string): string {
-  return `cyrokx.checkout.${eventId}`;
+  return `showtik.checkout.${eventId}`;
 }
 
 export function persistCheckoutSelection(eventId: string, selection: CheckoutSelection): void {

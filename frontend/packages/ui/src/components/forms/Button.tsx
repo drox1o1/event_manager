@@ -114,11 +114,11 @@ export function Button({
             border: '2px solid currentColor',
             borderTopColor: 'transparent',
             display: 'inline-block',
-            animation: 'cyrokx-spin 0.7s linear infinite',
+            animation: 'showtik-spin 0.7s linear infinite',
           }}
         />
       )}
-      <style>{'@keyframes cyrokx-spin{to{transform:rotate(360deg)}}'}</style>
+      <style>{'@keyframes showtik-spin{to{transform:rotate(360deg)}}'}</style>
       {children}
     </button>
   );

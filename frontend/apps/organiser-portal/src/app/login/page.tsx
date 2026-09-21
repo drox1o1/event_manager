@@ -3,8 +3,8 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Input, Button } from '@cyrokx/ui';
-import { organiserApi, ApiError } from '@cyrokx/api-client';
+import { Input, Button } from '@showtik/ui';
+import { organiserApi, ApiError } from '@showtik/api-client';
 import { AuthShell } from '@/components/AuthShell';
 import { useAuth } from '@/lib/auth';
 

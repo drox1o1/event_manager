@@ -1,10 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import { Icon } from '@cyrokx/ui';
+import { Icon } from '@showtik/ui';
 
 /** Gives a Save button transient "Saved" feedback. These event-management
- *  surfaces have no backend endpoints yet (see the CyRokx backend "foundation
+ *  surfaces have no backend endpoints yet (see the Showtik backend "foundation
  *  pass"), so a save currently only commits to local component state — this at
  *  least closes the interaction loop instead of leaving a dead button. */
 export function useSavedFlash(duration = 1600): [boolean, () => void] {

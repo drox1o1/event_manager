@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 // There's no refresh endpoint server-side yet, so a token simply expires
 // after ~1h and the guard bounces the user back to /login.
 
-const STORAGE_KEY = 'cyrokx.organiser.token';
+const STORAGE_KEY = 'showtik.organiser.token';
 
 interface AuthContextValue {
   token: string | null;

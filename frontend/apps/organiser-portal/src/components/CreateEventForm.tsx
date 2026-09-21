@@ -2,9 +2,9 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Icon, Stepper, Input, Textarea, Select, Button, Badge } from '@cyrokx/ui';
-import { organiserApi, publicApi, ApiError } from '@cyrokx/api-client';
-import type { CategorySummary } from '@cyrokx/api-client';
+import { Icon, Stepper, Input, Textarea, Select, Button, Badge } from '@showtik/ui';
+import { organiserApi, publicApi, ApiError } from '@showtik/api-client';
+import type { CategorySummary } from '@showtik/api-client';
 
 const STEPS = ['Details', 'Date & venue', 'Ticket tiers', 'Images', 'Review & submit'];
 

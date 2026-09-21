@@ -1,8 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { StatCard } from '@cyrokx/ui';
-import type { OrganiserEventDetail } from '@cyrokx/api-client';
+import { StatCard } from '@showtik/ui';
+import type { OrganiserEventDetail } from '@showtik/api-client';
 
 // Balance/payable figures are money totals, so a zero should read "₹0.00", not
 // the "Free" that formatINR returns (that mapping is for ticket prices).

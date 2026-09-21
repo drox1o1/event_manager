@@ -1,5 +1,5 @@
 {
-  "name": "@cyrokx/ui",
+  "name": "@showtik/ui",
   "version": "0.1.0",
   "private": true,
   "main": "./src/index.ts",

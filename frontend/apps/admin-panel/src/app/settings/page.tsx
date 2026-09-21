@@ -1,9 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { Icon, Input, Button, Switch, Textarea, Toast } from '@cyrokx/ui';
-import { adminApi, ApiError } from '@cyrokx/api-client';
-import type { PlatformSettings } from '@cyrokx/api-client';
+import { Icon, Input, Button, Switch, Textarea, Toast } from '@showtik/ui';
+import { adminApi, ApiError } from '@showtik/api-client';
+import type { PlatformSettings } from '@showtik/api-client';
 import { AdminShell } from '@/components/AdminShell';
 import { useRequireAuth } from '@/lib/auth';
 
@@ -86,7 +86,7 @@ function SettingsInner() {
             <Input label="Platform commission" value={settings.commission_pct} onChange={(e) => update('commission_pct', e.target.value.replace(/[^0-9.]/g, ''))} icon="percent" />
           </div>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', paddingBottom: 12 }}>
-            On a ₹1,000 ticket, CyRokx keeps <strong style={{ color: 'var(--text-heading)' }}>₹{Math.round(commissionNum * 10)}</strong>.
+            On a ₹1,000 ticket, Showtik keeps <strong style={{ color: 'var(--text-heading)' }}>₹{Math.round(commissionNum * 10)}</strong>.
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--border-default)' }}>
@@ -98,15 +98,15 @@ function SettingsInner() {
       <SettingsCard icon="mail" title="Buyer email notifications" description="Sender identity and footer for order-confirmation email.">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 32 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <Input label="Sender name" placeholder="CyRokx" value={settings.email_sender_name} onChange={(e) => update('email_sender_name', e.target.value)} />
-            <Input label="Reply-to email" type="email" placeholder="support@cyrokx.com" value={settings.email_reply_to ?? ''} onChange={(e) => update('email_reply_to', e.target.value)} />
+            <Input label="Sender name" placeholder="Showtik" value={settings.email_sender_name} onChange={(e) => update('email_sender_name', e.target.value)} />
+            <Input label="Reply-to email" type="email" placeholder="support@showtik.com" value={settings.email_reply_to ?? ''} onChange={(e) => update('email_reply_to', e.target.value)} />
             <Textarea label="Footer note" rows={2} placeholder="Questions about your order? Reply to this email." value={settings.email_footer_note ?? ''} onChange={(e) => update('email_footer_note', e.target.value)} />
           </div>
           <div>
             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-subtle)', marginBottom: 8 }}>PREVIEW</div>
             <div style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-control)', overflow: 'hidden' }}>
               <div style={{ background: 'var(--color-ink)', color: '#fff', padding: '16px 20px', fontWeight: 700, fontSize: 15 }}>
-                {settings.email_sender_name || 'CyRokx'}
+                {settings.email_sender_name || 'Showtik'}
               </div>
               <div style={{ padding: 20 }}>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>You&apos;re going! Your order is confirmed.</div>

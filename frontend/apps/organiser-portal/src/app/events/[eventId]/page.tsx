@@ -2,10 +2,10 @@
 
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Icon, Badge, Button, useIsMobile } from '@cyrokx/ui';
-import type { BadgeStatus } from '@cyrokx/ui';
-import { organiserApi, formatDateTime, ApiError } from '@cyrokx/api-client';
-import type { OrganiserEventDetail } from '@cyrokx/api-client';
+import { Icon, Badge, Button, useIsMobile } from '@showtik/ui';
+import type { BadgeStatus } from '@showtik/ui';
+import { organiserApi, formatDateTime, ApiError } from '@showtik/api-client';
+import type { OrganiserEventDetail } from '@showtik/api-client';
 import { PortalShell } from '@/components/PortalShell';
 import { useRequireAuth } from '@/lib/auth';
 import { EventDashboardPanel } from '@/components/event/EventDashboardPanel';
@@ -94,7 +94,7 @@ function EventWorkspace() {
   const copyLink = () => {
     // Registration link points at the public site's event page, not this
     // authed organiser route. Uses NEXT_PUBLIC_SITE_URL when configured.
-    const publicBase = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://cyrokx.in';
+    const publicBase = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://showtik.in';
     const url = `${publicBase.replace(/\/+$/, '')}/events/${eventId}`;
     if (typeof navigator !== 'undefined' && navigator.clipboard) navigator.clipboard.writeText(url).catch(() => {});
     setCopied(true);

@@ -2,9 +2,9 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Icon, EventCard, Tag, EmptyState } from '@cyrokx/ui';
-import { formatEventDate, formatINR } from '@cyrokx/api-client';
-import type { EventSummary } from '@cyrokx/api-client';
+import { Icon, EventCard, Tag, EmptyState } from '@showtik/ui';
+import { formatEventDate, formatINR } from '@showtik/api-client';
+import type { EventSummary } from '@showtik/api-client';
 
 export interface CityPageViewProps {
   city: string;

@@ -2,10 +2,10 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Icon, StatCard, Badge, Button } from '@cyrokx/ui';
-import type { BadgeStatus } from '@cyrokx/ui';
-import { organiserApi, formatEventDate } from '@cyrokx/api-client';
-import type { OrganiserEventSummary } from '@cyrokx/api-client';
+import { Icon, StatCard, Badge, Button } from '@showtik/ui';
+import type { BadgeStatus } from '@showtik/ui';
+import { organiserApi, formatEventDate } from '@showtik/api-client';
+import type { OrganiserEventSummary } from '@showtik/api-client';
 import { PortalShell } from '@/components/PortalShell';
 import { useRequireAuth } from '@/lib/auth';
 

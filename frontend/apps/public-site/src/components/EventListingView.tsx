@@ -2,9 +2,9 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Icon, EventCard, FilterControl, Checkbox, EmptyState, useIsMobile } from '@cyrokx/ui';
-import { formatEventDate, formatINR } from '@cyrokx/api-client';
-import type { CategorySummary, EventSummary } from '@cyrokx/api-client';
+import { Icon, EventCard, FilterControl, Checkbox, EmptyState, useIsMobile } from '@showtik/ui';
+import { formatEventDate, formatINR } from '@showtik/api-client';
+import type { CategorySummary, EventSummary } from '@showtik/api-client';
 
 export interface EventListingViewProps {
   events: EventSummary[];

@@ -1,4 +1,4 @@
-/* CyRokx design tokens — global stylesheet entry point.
+/* Showtik design tokens — global stylesheet entry point.
    Import list plus the minimal base reset every ui_kit index.html carried
    inline (box-sizing, page background). Import this once from each app's
    root layout. */

@@ -2,9 +2,9 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { StatCard, Badge } from '@cyrokx/ui';
-import { adminApi, formatTimestamp } from '@cyrokx/api-client';
-import type { AdminEventSummary, ModerationQueueItem } from '@cyrokx/api-client';
+import { StatCard, Badge } from '@showtik/ui';
+import { adminApi, formatTimestamp } from '@showtik/api-client';
+import type { AdminEventSummary, ModerationQueueItem } from '@showtik/api-client';
 import { AdminShell } from '@/components/AdminShell';
 import { useRequireAuth } from '@/lib/auth';
 

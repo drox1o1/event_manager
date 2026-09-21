@@ -1,6 +1,6 @@
 'use client';
 
-import { Icon, Button } from '@cyrokx/ui';
+import { Icon, Button } from '@showtik/ui';
 
 export default function Error({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (

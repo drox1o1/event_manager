@@ -1,9 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { Icon, Select, Switch, Button, Input } from '@cyrokx/ui';
-import { organiserApi, ApiError } from '@cyrokx/api-client';
-import type { FormField, FormFieldType, FormFieldInput } from '@cyrokx/api-client';
+import { Icon, Select, Switch, Button, Input } from '@showtik/ui';
+import { organiserApi, ApiError } from '@showtik/api-client';
+import type { FormField, FormFieldType, FormFieldInput } from '@showtik/api-client';
 import { PanelHead } from './PanelHead';
 
 /** A field being edited in the builder. Mirrors FormField but with a stable

@@ -1,4 +1,4 @@
-import { publicApi } from '@cyrokx/api-client';
+import { publicApi } from '@showtik/api-client';
 import { CityPageView } from '@/components/CityPageView';
 
 export const dynamic = 'force-dynamic';

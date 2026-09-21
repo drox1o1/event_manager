@@ -29,7 +29,7 @@ export function Navbar({ categories = ['Music', 'Comedy', 'Workshops', 'Sports',
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
         <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-heading)', letterSpacing: '-0.01em' }}>
-          CyRok<span style={{ color: 'var(--color-accent)' }}>x</span>
+          Showti<span style={{ color: 'var(--color-accent)' }}>k</span>
         </span>
         {!isMobile && (
           <nav style={{ display: 'flex', gap: 24 }}>

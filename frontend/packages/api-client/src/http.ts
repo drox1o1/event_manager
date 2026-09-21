@@ -1,4 +1,4 @@
-// Thin fetch wrapper for the CyRokx backend (API Gateway + Powertools
+// Thin fetch wrapper for the Showtik backend (API Gateway + Powertools
 // resolvers -- see src/public_api and src/authenticated_api). Error bodies
 // are Powertools' default shape: {"statusCode": n, "message": "..."}.
 

@@ -2,9 +2,9 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Icon, Input, Button, EmptyState, Radio, Checkbox, useIsMobile } from '@cyrokx/ui';
-import { publicApi, formatINR, ApiError } from '@cyrokx/api-client';
-import type { FormField } from '@cyrokx/api-client';
+import { Icon, Input, Button, EmptyState, Radio, Checkbox, useIsMobile } from '@showtik/ui';
+import { publicApi, formatINR, ApiError } from '@showtik/api-client';
+import type { FormField } from '@showtik/api-client';
 import { readCheckoutSelection, clearCheckoutSelection, type CheckoutSelection } from '@/lib/checkoutStore';
 
 export interface CheckoutViewProps {

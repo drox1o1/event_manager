@@ -1,8 +1,14 @@
 :root {
-  /* ---- Base palette (client brand: Portland Orange / Purple Kissed Blue) ---- */
-  --color-accent: #FC512A; /* Portland Orange */
-  --color-accent-tint: #FFF1EC;
-  --color-ink: #0D0D0D;
+  /* ---- Base palette (Showtik brand: Crimson / Brand Blue on Ink Navy) ----
+     Derived from the Showtik logo: crimson is the dominant mark colour and
+     carries every primary action; brand blue is the wayfinding accent; the
+     wordmark's deep navy becomes our ink for headings, borders and overlays. */
+  --color-accent: #C4143F; /* Showtik Crimson — deepened from the logo's #E41549 so it
+                              reads as a calm, confident accent in UI rather than a loud
+                              fill, and clears AA contrast (≈5.9:1) with white button text.
+                              The bright logo hex still lives in the logo art itself. */
+  --color-accent-tint: #FAE6EB; /* light crimson wash (~8% accent on white) */
+  --color-ink: #051747; /* Showtik Ink Navy (logo wordmark) */
   --color-body: #333333;
   --color-muted: #666666;
   --color-subtle: #999999;
@@ -13,10 +19,10 @@
   --color-warning: #B45309;
   --color-error: #C0392B;
 
-  /* Secondary brand accent (Purple Kissed Blue) — reserved for wayfinding/secondary
+  /* Secondary brand accent (Showtik Brand Blue) — reserved for wayfinding/secondary
      emphasis, e.g. distinguishing the Super Admin surface from the Organiser Portal.
      The primary accent above still carries every primary action, per system rule. */
-  --color-accent-secondary: #2641C8;
+  --color-accent-secondary: #2253F6;
   --color-accent-secondary-hover: color-mix(in srgb, var(--color-accent-secondary) 85%, black);
   --color-accent-secondary-active: color-mix(in srgb, var(--color-accent-secondary) 72%, black);
   --color-accent-secondary-tint: color-mix(in srgb, var(--color-accent-secondary) 10%, white);
@@ -43,7 +49,7 @@
   --surface-card: var(--color-surface);
   --surface-accent-tint: var(--color-accent-tint);
   --surface-accent-secondary-tint: var(--color-accent-secondary-tint);
-  --surface-overlay: rgba(13, 13, 13, 0.48);
+  --surface-overlay: rgba(5, 23, 71, 0.52); /* Ink Navy scrim */
 
   --border-default: var(--color-rule);
   --border-focus: var(--color-accent);

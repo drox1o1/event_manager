@@ -1,10 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import { Badge, Button, DataTable, EmptyState, Modal, Textarea } from '@cyrokx/ui';
-import type { BadgeStatus } from '@cyrokx/ui';
-import { adminApi, formatINR, formatTimestamp, ApiError } from '@cyrokx/api-client';
-import type { RefundSummary } from '@cyrokx/api-client';
+import { Badge, Button, DataTable, EmptyState, Modal, Textarea } from '@showtik/ui';
+import type { BadgeStatus } from '@showtik/ui';
+import { adminApi, formatINR, formatTimestamp, ApiError } from '@showtik/api-client';
+import type { RefundSummary } from '@showtik/api-client';
 import { AdminShell } from '@/components/AdminShell';
 import { useRequireAuth } from '@/lib/auth';
 

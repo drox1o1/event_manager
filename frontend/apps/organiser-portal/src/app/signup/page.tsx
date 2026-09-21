@@ -2,8 +2,8 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Icon, Input, Button } from '@cyrokx/ui';
-import { organiserApi, ApiError } from '@cyrokx/api-client';
+import { Icon, Input, Button } from '@showtik/ui';
+import { organiserApi, ApiError } from '@showtik/api-client';
 import { AuthShell } from '@/components/AuthShell';
 
 export default function SignupPage() {

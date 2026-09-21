@@ -22,10 +22,13 @@ export interface SidebarShellProps {
 }
 
 function Wordmark({ brandLabel }: { brandLabel: string }) {
+  // Render the brand with its final letter in the accent colour (e.g. Showti + k).
+  const head = brandLabel.slice(0, -1);
+  const tail = brandLabel.slice(-1);
   return (
     <span style={{ fontSize: 19, fontWeight: 700, color: '#fff' }}>
-      {brandLabel.replace(/x$/i, '')}
-      <span style={{ color: 'var(--color-accent)' }}>x</span>
+      {head}
+      <span style={{ color: 'var(--color-accent)' }}>{tail}</span>
     </span>
   );
 }
@@ -34,7 +37,7 @@ function Wordmark({ brandLabel }: { brandLabel: string }) {
  *  On phones the fixed sidebar collapses into a top bar with a hamburger that opens the nav as an overlay drawer.
  *  accentColor lets a surface signal its own identity (e.g. the Super Admin Panel uses the secondary
  *  brand blue) while every primary action elsewhere still uses the one confident accent. */
-export function SidebarShell({ brandLabel = 'CyRokx', navItems = [], activeKey, onNavigate, footer, accentColor = 'var(--color-accent)', children }: SidebarShellProps) {
+export function SidebarShell({ brandLabel = 'Showtik', navItems = [], activeKey, onNavigate, footer, accentColor = 'var(--color-accent)', children }: SidebarShellProps) {
   const isMobile = useIsMobile();
   const [drawerOpen, setDrawerOpen] = React.useState(false);
 
