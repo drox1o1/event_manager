@@ -9,7 +9,12 @@ Description: >
 
   Demo-grade simplification, to be revisited: Function URLs are AuthType
   NONE (reachable directly, bypassing CloudFront) rather than AWS_IAM +
-  CloudFront Origin Access Control. No custom domains/ACM certs.
+  CloudFront Origin Access Control.
+
+  Custom domains (showtik.in prod only -- see AcmCertificateArn) are
+  showtik.in + www.showtik.in -> public-site, host.showtik.in ->
+  organiser-portal, admin.showtik.in -> admin-panel. DNS itself (Route 53
+  hosted zone, ALIAS records) is managed outside this template.
 
 Parameters:
   Stage:
@@ -24,6 +29,19 @@ Parameters:
       AWS-published layer (account 753240598075) implementing the exec
       wrapper that runs each app's `node server.js` as a subprocess and
       proxies Function URL requests to it over HTTP.
+  AcmCertificateArn:
+    Type: String
+    Default: ""
+    Description: >
+      us-east-1 ACM cert covering showtik.in, www.showtik.in,
+      host.showtik.in, admin.showtik.in (CloudFront only accepts certs from
+      us-east-1, regardless of the distribution's own region). Leave blank
+      to fall back to each distribution's default *.cloudfront.net domain
+      with no custom Aliases -- used for the dev stage, which doesn't have
+      its own subdomains.
+
+Conditions:
+  HasCustomDomain: !Not [!Equals [!Ref AcmCertificateArn, ""]]
 
 Resources:
   # --- public-site ---
@@ -54,6 +72,13 @@ Resources:
         Enabled: true
         HttpVersion: http2
         PriceClass: PriceClass_100
+        Aliases: !If [HasCustomDomain, ["showtik.in", "www.showtik.in"], !Ref "AWS::NoValue"]
+        ViewerCertificate: !If
+          - HasCustomDomain
+          - AcmCertificateArn: !Ref AcmCertificateArn
+            SslSupportMethod: sni-only
+            MinimumProtocolVersion: TLSv1.2_2021
+          - !Ref "AWS::NoValue"
         DefaultCacheBehavior:
           TargetOriginId: lambda-origin
           ViewerProtocolPolicy: redirect-to-https
@@ -101,6 +126,13 @@ Resources:
         Enabled: true
         HttpVersion: http2
         PriceClass: PriceClass_100
+        Aliases: !If [HasCustomDomain, ["host.showtik.in"], !Ref "AWS::NoValue"]
+        ViewerCertificate: !If
+          - HasCustomDomain
+          - AcmCertificateArn: !Ref AcmCertificateArn
+            SslSupportMethod: sni-only
+            MinimumProtocolVersion: TLSv1.2_2021
+          - !Ref "AWS::NoValue"
         DefaultCacheBehavior:
           TargetOriginId: lambda-origin
           ViewerProtocolPolicy: redirect-to-https
@@ -148,6 +180,13 @@ Resources:
         Enabled: true
         HttpVersion: http2
         PriceClass: PriceClass_100
+        Aliases: !If [HasCustomDomain, ["admin.showtik.in"], !Ref "AWS::NoValue"]
+        ViewerCertificate: !If
+          - HasCustomDomain
+          - AcmCertificateArn: !Ref AcmCertificateArn
+            SslSupportMethod: sni-only
+            MinimumProtocolVersion: TLSv1.2_2021
+          - !Ref "AWS::NoValue"
         DefaultCacheBehavior:
           TargetOriginId: lambda-origin
           ViewerProtocolPolicy: redirect-to-https
