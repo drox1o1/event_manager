@@ -47,30 +47,39 @@ export function HomepageView({ content }: HomepageViewProps) {
       <div
         style={{
           position: 'relative',
-          padding: 'clamp(56px, 10vw, 96px) clamp(20px, 5vw, 32px) clamp(64px, 12vw, 120px)',
-          background: 'linear-gradient(135deg, #241f1c, #3a2e28)',
+          padding: 'clamp(64px, 11vw, 112px) clamp(20px, 5vw, 32px) clamp(84px, 13vw, 132px)',
+          background: 'var(--gradient-hero)',
           color: '#fff',
           textAlign: 'center',
+          overflow: 'hidden',
+          clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 44px), 0 100%)',
         }}
       >
-        <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)', marginBottom: 12 }}>
-          {hero.eyebrow}
-        </div>
-        <h1 style={{ fontSize: 'clamp(30px, 6vw, 48px)', fontWeight: 700, lineHeight: 1.2, margin: `0 0 ${hero.subheadline ? 16 : 32}px` }}>{hero.headline}</h1>
-        {hero.subheadline && (
-          <p style={{ fontSize: 17, color: 'rgba(255,255,255,0.75)', maxWidth: 620, margin: '0 auto 32px', lineHeight: 1.5 }}>{hero.subheadline}</p>
-        )}
-        {hero.search_enabled && (
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <SearchBar
-              keyword={keyword}
-              onKeywordChange={(e) => setKeyword(e.target.value)}
-              location={city}
-              onLocationChange={(e) => setCity(e.target.value)}
-              onSubmit={goSearch}
-            />
+        {/* Diagonal brand-gradient energy streak */}
+        <span aria-hidden style={{ position: 'absolute', top: '-30%', right: '-12%', width: '46%', height: '190%', background: 'var(--gradient-brand)', opacity: 0.5, transform: 'rotate(18deg)', filter: 'blur(2px)', borderRadius: 40 }} />
+        <span aria-hidden style={{ position: 'absolute', bottom: '-40%', left: '-14%', width: '38%', height: '170%', background: 'radial-gradient(circle, rgba(34,83,246,0.55), transparent 70%)', transform: 'rotate(-12deg)' }} />
+        <div style={{ position: 'relative' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.72)', marginBottom: 16 }}>
+            <span style={{ width: 22, height: 2, background: 'var(--color-accent)', borderRadius: 2 }} />
+            {hero.eyebrow}
+            <span style={{ width: 22, height: 2, background: 'var(--color-accent)', borderRadius: 2 }} />
           </div>
-        )}
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(38px, 7.5vw, 68px)', fontWeight: 800, lineHeight: 0.98, letterSpacing: '-0.02em', textTransform: 'uppercase', margin: `0 0 ${hero.subheadline ? 18 : 34}px` }}>{hero.headline}</h1>
+          {hero.subheadline && (
+            <p style={{ fontSize: 18, color: 'rgba(255,255,255,0.82)', maxWidth: 620, margin: '0 auto 34px', lineHeight: 1.5 }}>{hero.subheadline}</p>
+          )}
+          {hero.search_enabled && (
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <SearchBar
+                keyword={keyword}
+                onKeywordChange={(e) => setKeyword(e.target.value)}
+                location={city}
+                onLocationChange={(e) => setCity(e.target.value)}
+                onSubmit={goSearch}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       <div style={{ maxWidth: 'var(--content-max-width)', margin: '0 auto', padding: 'clamp(32px, 6vw, 48px) clamp(16px, 4vw, 32px)' }}>
@@ -102,17 +111,10 @@ function SectionBlock({
     if (categories.length === 0) return null;
     return (
       <div style={{ marginBottom: 56 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 20 }}>{section.title}</h2>
+        <SectionHeading title={section.title} />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
           {categories.map((c: CategorySummary) => (
-            <div
-              key={c.id}
-              onClick={() => onOpenCategory(c.name)}
-              style={{ background: 'var(--surface-card)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)', padding: '20px 12px', textAlign: 'center', cursor: 'pointer' }}
-            >
-              <Icon name={iconForCategory(c.name)} size={22} color="var(--color-accent)" />
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-body)', marginTop: 8 }}>{c.name}</div>
-            </div>
+            <CategoryTile key={c.id} name={c.name} onClick={() => onOpenCategory(c.name)} />
           ))}
         </div>
       </div>
@@ -124,11 +126,11 @@ function SectionBlock({
   return (
     <div style={{ marginBottom: 56 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-heading)', margin: 0 }}>{section.title}</h2>
+        <SectionHeading title={section.title} />
         <a
           href="/events"
           onClick={(e) => { e.preventDefault(); onSeeAll(); }}
-          style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-link)', textDecoration: 'none' }}
+          style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-link)', textDecoration: 'none', whiteSpace: 'nowrap' }}
         >
           See all &rarr;
         </a>
@@ -147,6 +149,39 @@ function SectionBlock({
           />
         ))}
       </div>
+    </div>
+  );
+}
+
+function SectionHeading({ title }: { title: string }) {
+  return (
+    <h2 style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 800, letterSpacing: '-0.01em', textTransform: 'uppercase', color: 'var(--text-heading)', margin: 0 }}>
+      <span aria-hidden style={{ width: 5, height: 26, background: 'var(--gradient-brand)', borderRadius: 3, flex: 'none' }} />
+      {title}
+    </h2>
+  );
+}
+
+function CategoryTile({ name, onClick }: { name: string; onClick: () => void }) {
+  const [hover, setHover] = React.useState(false);
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        background: hover ? 'var(--color-ink)' : 'var(--surface-card)',
+        borderRadius: 'var(--radius-card)',
+        boxShadow: hover ? 'var(--shadow-card-hover)' : 'var(--shadow-card)',
+        padding: '22px 12px',
+        textAlign: 'center',
+        cursor: 'pointer',
+        transform: hover ? 'translateY(-3px)' : 'none',
+        transition: 'transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease',
+      }}
+    >
+      <Icon name={iconForCategory(name)} size={24} color={hover ? '#fff' : 'var(--color-accent)'} />
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 13.5, fontWeight: 700, letterSpacing: '0.01em', color: hover ? '#fff' : 'var(--text-heading)', marginTop: 10 }}>{name}</div>
     </div>
   );
 }

@@ -39,39 +39,45 @@ export function EventDetailView({ event }: EventDetailViewProps) {
     <div style={{ fontFamily: 'var(--font-sans)', maxWidth: 'var(--content-max-width)', margin: '0 auto', padding: 'clamp(16px, 4vw, 32px)', paddingBottom: 120 }}>
       <div
         style={{
-          aspectRatio: '16/6',
-          borderRadius: 'var(--radius-card)',
+          position: 'relative',
+          overflow: 'hidden',
+          borderRadius: 'var(--radius-modal)',
           marginBottom: 32,
-          background: event.banner_image_url
-            ? `center/cover no-repeat url(${event.banner_image_url})`
-            : 'linear-gradient(135deg,#efeae4,#e2dcd3)',
+          minHeight: 'clamp(220px, 34vw, 340px)',
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'var(--text-subtle)',
+          flexDirection: 'column',
+          justifyContent: 'flex-end',
+          padding: 'clamp(24px, 4vw, 44px)',
+          color: '#fff',
+          background: event.banner_image_url
+            ? `linear-gradient(180deg, rgba(5,23,71,0.35) 0%, rgba(5,23,71,0.82) 100%), center/cover no-repeat url(${event.banner_image_url})`
+            : 'var(--gradient-hero)',
         }}
       >
-        {!event.banner_image_url && <Icon name="image" size={36} />}
+        {!event.banner_image_url && (
+          <span aria-hidden style={{ position: 'absolute', top: '-30%', right: '-10%', width: '42%', height: '180%', background: 'var(--gradient-brand)', opacity: 0.5, transform: 'rotate(18deg)', borderRadius: 40 }} />
+        )}
+        <div style={{ position: 'relative' }}>
+          {event.category && (
+            <div style={{ display: 'inline-block', fontFamily: 'var(--font-display)', fontSize: 12.5, fontWeight: 700, color: '#fff', background: 'var(--color-accent)', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '5px 12px', borderRadius: 'var(--radius-pill)', marginBottom: 14 }}>
+              {event.category}
+            </div>
+          )}
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 5vw, 48px)', fontWeight: 800, lineHeight: 1.02, letterSpacing: '-0.02em', textTransform: 'uppercase', margin: '0 0 16px', maxWidth: 820 }}>{event.title}</h1>
+          <div style={{ display: 'flex', gap: 22, fontSize: 15, fontWeight: 500, color: 'rgba(255,255,255,0.9)', flexWrap: 'wrap' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <Icon name="calendar" size={16} /> {formatDateTime(event.event_date, event.event_time)}
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <Icon name="map-pin" size={16} /> {event.venue_name}, {event.city}
+            </span>
+          </div>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: isMobile ? 28 : 48 }}>
         <div>
-          {event.category && (
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-accent)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
-              {event.category}
-            </div>
-          )}
-          <h1 style={{ fontSize: 36, fontWeight: 700, color: 'var(--text-heading)', margin: '0 0 16px' }}>{event.title}</h1>
-          <div style={{ display: 'flex', gap: 24, marginBottom: 28, fontSize: 15, color: 'var(--text-body)', flexWrap: 'wrap' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Icon name="calendar" size={16} color="var(--text-muted)" /> {formatDateTime(event.event_date, event.event_time)}
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Icon name="map-pin" size={16} color="var(--text-muted)" /> {event.venue_name}, {event.city}
-            </span>
-          </div>
-
-          <h3 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 10 }}>About this event</h3>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '-0.01em' }}>About this event</h3>
           <p style={{ fontSize: 16, lineHeight: 1.6, color: 'var(--text-body)', marginBottom: 28, whiteSpace: 'pre-wrap' }}>{event.description}</p>
 
           {event.gallery_images && event.gallery_images.length > 0 && (
