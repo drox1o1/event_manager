@@ -75,7 +75,7 @@ export function SidebarShell({ brandLabel = 'Showtik', navItems = [], activeKey,
 
   if (isMobile) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', fontFamily: 'var(--font-sans)', background: 'var(--surface-page)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh', fontFamily: 'var(--font-sans)', background: 'var(--surface-page)' }}>
         <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--color-ink)', position: 'sticky', top: 0, zIndex: 30 }}>
           <Wordmark brandLabel={brandLabel} />
           <button onClick={() => setDrawerOpen(true)} aria-label="Open menu" style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', padding: 4 }}>
@@ -107,7 +107,7 @@ export function SidebarShell({ brandLabel = 'Showtik', navItems = [], activeKey,
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100%', fontFamily: 'var(--font-sans)', background: 'var(--surface-page)' }}>
+    <div style={{ display: 'flex', minHeight: '100dvh', fontFamily: 'var(--font-sans)', background: 'var(--surface-page)' }}>
       <aside style={{ width: 240, background: 'var(--gradient-sidebar)', color: 'rgba(255,255,255,0.75)', display: 'flex', flexDirection: 'column', flex: 'none' }}>
         <div style={{ padding: '22px 24px' }}><Wordmark brandLabel={brandLabel} /></div>
         {navList}
