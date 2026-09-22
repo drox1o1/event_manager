@@ -46,8 +46,11 @@ export function EventListingView({ events, categories, activeCategory, activeCit
   return (
     <div style={{ fontFamily: 'var(--font-sans)', maxWidth: 'var(--content-max-width)', margin: '0 auto', padding: 'clamp(16px, 4vw, 32px)' }}>
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-heading)', margin: '0 0 6px' }}>{heading}</h1>
-        <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>{filtered.length} events found</div>
+        <h1 style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: 'var(--font-display)', fontSize: 'clamp(26px, 4vw, 34px)', fontWeight: 800, letterSpacing: '-0.02em', textTransform: 'uppercase', color: 'var(--text-heading)', margin: '0 0 6px' }}>
+          <span aria-hidden style={{ width: 5, height: 28, background: 'var(--gradient-brand)', borderRadius: 3, flex: 'none' }} />
+          {heading}
+        </h1>
+        <div style={{ fontSize: 14, color: 'var(--text-muted)', marginLeft: 17 }}>{filtered.length} events found</div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '240px 1fr', gap: isMobile ? 20 : 32 }}>
         <aside>

@@ -39,7 +39,7 @@ export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
       <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--status-success-bg)', color: 'var(--color-success)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
         <Icon name="check-circle" size={30} />
       </div>
-      <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-heading)', margin: '0 0 8px' }}>You&apos;re going!</h1>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(30px, 5vw, 40px)', fontWeight: 800, letterSpacing: '-0.02em', textTransform: 'uppercase', color: 'var(--text-heading)', margin: '0 0 8px' }}>You&apos;re going!</h1>
       <p style={{ fontSize: 15, color: 'var(--text-muted)', margin: '0 0 32px' }}>Order #{shortId} confirmed.</p>
 
       <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)', padding: 24, textAlign: 'left', marginBottom: 24 }}>
@@ -52,7 +52,7 @@ export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
         ))}
         <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-default)', paddingTop: 14, marginTop: 6 }}>
           <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-heading)' }}>Total paid</span>
-          <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-accent)' }}>{formatINR(order.total_amount)}</span>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 800, color: 'var(--color-accent)', letterSpacing: '-0.01em' }}>{formatINR(order.total_amount)}</span>
         </div>
       </div>
 
