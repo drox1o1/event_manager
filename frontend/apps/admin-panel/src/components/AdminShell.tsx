@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { SidebarShell, Avatar, Button } from '@showtik/ui';
+import { SidebarShell, Avatar, Button, PageLoader } from '@showtik/ui';
 import { useRequireAuth, useAuth } from '@/lib/auth';
 
 // Admin nav. The Super Admin surface signals its own identity with the
@@ -25,7 +25,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   if (!token) {
-    return <div style={{ padding: 40, fontFamily: 'var(--font-sans)', color: 'var(--text-muted)' }}>Loading…</div>;
+    return <PageLoader tone="dark" />;
   }
 
   const activeKey = NAV_ITEMS.find((n) => pathname.startsWith(n.href))?.key ?? 'dashboard';

@@ -1,7 +1,7 @@
 /* Showtik — Fonts
-   No local webfont binaries were provided with the source material, so Inter
-   (the exact face specified in the PRD — not a substitution) is loaded from
-   Google Fonts. If the client later supplies licensed static/variable font
-   files, drop them in assets/fonts/ and replace this @import with local
-   @font-face rules using the same family name so nothing downstream changes. */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+   Body/UI: Inter (the PRD face). Headings/display: Sora — a modern geometric
+   face that gives the brand a confident, premium, trustworthy voice while
+   staying highly legible. Both from Google Fonts; swap for licensed local
+   @font-face files later using the same family names and nothing downstream
+   changes. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap');

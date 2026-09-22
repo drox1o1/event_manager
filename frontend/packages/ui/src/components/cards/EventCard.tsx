@@ -36,7 +36,7 @@ export function EventCard({ image, title, date, city, priceFrom, category, soldO
         ...style,
       }}
     >
-      <div style={{ position: 'relative', aspectRatio: '4/3', background: image ? `center/cover no-repeat url(${image})` : 'linear-gradient(135deg, #EFEAE4, #E4DED6)' }}>
+      <div style={{ position: 'relative', aspectRatio: '4/3', background: image ? `center/cover no-repeat url(${image})` : 'var(--gradient-poster)' }}>
         {!image && (
           <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-subtle)' }}>
             <Icon name="image" size={28} />
@@ -53,14 +53,14 @@ export function EventCard({ image, title, date, city, priceFrom, category, soldO
           </span>
         )}
       </div>
-      <div style={{ padding: 16 }}>
-        <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 6, lineHeight: 1.3 }}>{title}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)', marginBottom: 10 }}>
+      <div style={{ padding: 18 }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 8, lineHeight: 1.28, letterSpacing: '-0.01em' }}>{title}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)', marginBottom: 14 }}>
           <Icon name="calendar" size={13} /> {date}
           <span style={{ margin: '0 2px' }}>&middot;</span>
           <Icon name="map-pin" size={13} /> {city}
         </div>
-        <div style={{ fontSize: 13, color: 'var(--text-subtle)' }}>from <span style={{ color: 'var(--color-accent)', fontWeight: 700, fontSize: 16 }}>{priceFrom}</span></div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, fontSize: 13, color: 'var(--text-subtle)' }}>from <span style={{ fontFamily: 'var(--font-display)', color: 'var(--color-accent)', fontWeight: 700, fontSize: 17 }}>{priceFrom}</span></div>
       </div>
     </div>
   );

@@ -340,7 +340,7 @@ class PlatformSettings(Base):
     commission_pct: Mapped[Numeric] = mapped_column(Numeric(5, 2), nullable=False, default=8)
     buyer_fee_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     auto_payout_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    email_sender_name: Mapped[str] = mapped_column(String(200), nullable=False, default="CyRokx")
+    email_sender_name: Mapped[str] = mapped_column(String(200), nullable=False, default="Showtik")
     email_reply_to: Mapped[str | None] = mapped_column(String(320), nullable=True)
     email_footer_note: Mapped[str | None] = mapped_column(Text, nullable=True)
 

@@ -114,7 +114,7 @@ export function CreateEventForm({ token }: CreateEventFormProps) {
   return (
     <div style={{ maxWidth: 720 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-heading)' }}>Create event</div>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 700, color: 'var(--text-heading)', letterSpacing: '-0.01em' }}>Create event</div>
         <button onClick={() => router.push('/events')} style={{ background: 'none', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer', display: 'flex' }}><Icon name="x" size={20} /></button>
       </div>
 

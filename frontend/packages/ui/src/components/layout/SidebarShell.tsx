@@ -51,19 +51,21 @@ export function SidebarShell({ brandLabel = 'Showtik', navItems = [], activeKey,
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 10,
-              padding: '10px 12px',
-              borderRadius: 8,
+              gap: 11,
+              padding: '11px 14px',
+              borderRadius: 10,
               border: 'none',
-              background: active ? `color-mix(in srgb, ${accentColor} 16%, transparent)` : 'transparent',
-              color: active ? '#fff' : 'rgba(255,255,255,0.65)',
+              background: active ? 'rgba(255,255,255,0.10)' : 'transparent',
+              boxShadow: active ? `inset 3px 0 0 ${accentColor}` : 'none',
+              color: active ? '#fff' : 'rgba(255,255,255,0.62)',
               fontWeight: active ? 700 : 500,
               fontSize: 14,
               cursor: 'pointer',
               textAlign: 'left',
+              transition: 'background 0.15s ease, color 0.15s ease',
             }}
           >
-            {item.icon && <Icon name={item.icon} size={17} />}
+            {item.icon && <Icon name={item.icon} size={17} color={active ? accentColor : 'currentColor'} />}
             {item.label}
           </button>
         );
@@ -106,7 +108,7 @@ export function SidebarShell({ brandLabel = 'Showtik', navItems = [], activeKey,
 
   return (
     <div style={{ display: 'flex', minHeight: '100%', fontFamily: 'var(--font-sans)', background: 'var(--surface-page)' }}>
-      <aside style={{ width: 232, background: 'var(--color-ink)', color: 'rgba(255,255,255,0.75)', display: 'flex', flexDirection: 'column', flex: 'none' }}>
+      <aside style={{ width: 240, background: 'var(--gradient-sidebar)', color: 'rgba(255,255,255,0.75)', display: 'flex', flexDirection: 'column', flex: 'none' }}>
         <div style={{ padding: '22px 24px' }}><Wordmark brandLabel={brandLabel} /></div>
         {navList}
         {footer && <div style={{ padding: 16, borderTop: '1px solid rgba(255,255,255,0.1)' }}>{footer}</div>}

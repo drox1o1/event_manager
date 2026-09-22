@@ -97,8 +97,14 @@ export function Button({
         width: fullWidth ? '100%' : 'auto',
         flexShrink: 0,
         whiteSpace: 'nowrap',
-        transition: 'background 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease',
-        boxShadow: focus && !disabled ? 'var(--shadow-focus-ring)' : 'none',
+        letterSpacing: '0.01em',
+        transition: 'background 0.15s ease, box-shadow 0.18s ease, border-color 0.15s ease, transform 0.08s ease',
+        boxShadow: focus && !disabled
+          ? 'var(--shadow-focus-ring)'
+          : !disabled && variant === 'primary'
+            ? (hover ? 'var(--shadow-accent)' : 'var(--shadow-xs)')
+            : 'none',
+        transform: active && !disabled ? 'translateY(1px)' : 'none',
         opacity: loading ? 0.75 : 1,
         ...colors,
         ...style,
