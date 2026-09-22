@@ -9,5 +9,5 @@
 # Fill in your actual GitHub org/repo before running apply.py.
 
 trusted_subjects:
-  - repo:event_manager/cyrokx:ref:refs/heads/main
-  - repo:event_manager/cyrokx:pull_request
+  - repo:drox1o1/event_manager:ref:refs/heads/main
+  - repo:drox1o1/event_manager:pull_request
