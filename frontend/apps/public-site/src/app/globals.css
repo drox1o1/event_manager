@@ -1,11 +1,14 @@
 @import "@showtik/ui/tokens.css";
 
-html,
-body {
-  min-height: 100%;
+html {
+  height: 100%;
 }
 
+/* Full-viewport flex column so the footer is pushed to the bottom on short
+   pages (no floating footer / blank space beneath it). */
 body {
+  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }

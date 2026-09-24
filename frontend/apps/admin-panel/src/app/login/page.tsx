@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Icon, Input, Button } from '@showtik/ui';
+import { Icon, Input, Button, LogoFull } from '@showtik/ui';
 import { adminApi, ApiError } from '@showtik/api-client';
 import { useAuth } from '@/lib/auth';
 
@@ -30,13 +30,11 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--color-ink)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: 'var(--font-sans)' }}>
-      <div style={{ width: 400, maxWidth: '100%', background: 'var(--surface-card)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-modal)', padding: 40 }}>
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-heading)' }}>
-            Showti<span style={{ color: 'var(--color-accent)' }}>k</span>
-          </div>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', marginTop: 8 }}>
+    <div style={{ minHeight: '100vh', background: 'var(--gradient-hero)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: 'var(--font-sans)' }}>
+      <div style={{ width: 400, maxWidth: '100%', background: 'var(--surface-card)', borderRadius: 'var(--radius-modal)', boxShadow: 'var(--shadow-modal)', padding: 40 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginBottom: 28 }}>
+          <LogoFull style={{ height: 32 }} />
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'var(--font-display)', fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
             <Icon name="shield" size={13} /> Super admin
           </div>
         </div>

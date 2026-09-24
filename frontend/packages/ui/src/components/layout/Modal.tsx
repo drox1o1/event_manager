@@ -22,10 +22,13 @@ export function Modal({ open = true, title, children, footer, onClose, width = 4
         position: 'fixed',
         inset: 0,
         background: 'var(--surface-overlay)',
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 100,
+        padding: 20,
         fontFamily: 'var(--font-sans)',
       }}
       onClick={onClose}
@@ -44,7 +47,7 @@ export function Modal({ open = true, title, children, footer, onClose, width = 4
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-heading)' }}>{title}</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--text-heading)', letterSpacing: '-0.01em' }}>{title}</div>
           {onClose && (
             <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-subtle)' }}>
               <Icon name="x" size={20} />

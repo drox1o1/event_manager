@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
+import { PageLoader } from '@showtik/ui';
 import { useAuth } from '@/lib/auth';
 
 export default function Home() {
@@ -13,5 +14,5 @@ export default function Home() {
     router.replace(token ? '/dashboard' : '/login');
   }, [ready, token, router]);
 
-  return <div style={{ padding: 40, fontFamily: 'var(--font-sans)', color: 'var(--text-muted)' }}>Loading…</div>;
+  return <PageLoader tone="dark" />;
 }

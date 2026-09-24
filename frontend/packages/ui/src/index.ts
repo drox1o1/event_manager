@@ -6,6 +6,8 @@ export { useMediaQuery, useIsMobile } from './hooks/useMediaQuery';
 
 export { LogoFull, LogoMark } from './components/brand/Logo';
 export type { LogoProps } from './components/brand/Logo';
+export { PageLoader } from './components/brand/PageLoader';
+export type { PageLoaderProps } from './components/brand/PageLoader';
 
 export { Icon } from './components/icons/Icon';
 export type { IconProps } from './components/icons/Icon';

@@ -51,6 +51,12 @@
   --surface-accent-secondary-tint: var(--color-accent-secondary-tint);
   --surface-overlay: rgba(5, 23, 71, 0.52); /* Ink Navy scrim */
 
+  /* ---- Brand gradients — for hero bands, feature flourishes, empty posters ---- */
+  --gradient-hero: radial-gradient(120% 140% at 15% 10%, #0A2A6B 0%, #071F5A 45%, #051747 100%);
+  --gradient-brand: linear-gradient(120deg, var(--color-accent) 0%, var(--color-accent-secondary) 100%);
+  --gradient-poster: linear-gradient(135deg, #EAF0FF 0%, #FDE7EC 100%); /* soft brand-tinted placeholder */
+  --gradient-sidebar: linear-gradient(180deg, #071F5A 0%, #051747 100%);
+
   --border-default: var(--color-rule);
   --border-focus: var(--color-accent);
 

@@ -78,7 +78,7 @@ def _fake_settings(**overrides):
         commission_pct=Decimal("8.00"),
         buyer_fee_enabled=True,
         auto_payout_enabled=False,
-        email_sender_name="CyRokx",
+        email_sender_name="Showtik",
         email_reply_to=None,
         email_footer_note=None,
     )
@@ -196,7 +196,7 @@ def test_get_settings_returns_existing_row(monkeypatch, mock_jwt_secret):
     response = api_handler(event, MagicMock())
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
-    assert body["email_sender_name"] == "CyRokx"
+    assert body["email_sender_name"] == "Showtik"
     assert Decimal(body["commission_pct"]) == Decimal("10.00")
 
 

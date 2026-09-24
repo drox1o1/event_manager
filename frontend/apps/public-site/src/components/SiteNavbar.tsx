@@ -10,5 +10,11 @@ import { Navbar } from '@showtik/ui';
  */
 export function SiteNavbar() {
   const router = useRouter();
-  return <Navbar onSearchClick={() => router.push('/events')} />;
+  return (
+    <Navbar
+      onSearchClick={() => router.push('/events')}
+      onCategoryClick={(category) => router.push(`/category/${encodeURIComponent(category)}`)}
+      onCityChange={(city) => router.push(`/city/${encodeURIComponent(city)}`)}
+    />
+  );
 }

@@ -203,7 +203,7 @@ def upgrade() -> None:
         sa.Column("commission_pct", sa.Numeric(5, 2), nullable=False, server_default="8"),
         sa.Column("buyer_fee_enabled", sa.Boolean, nullable=False, server_default=sa.true()),
         sa.Column("auto_payout_enabled", sa.Boolean, nullable=False, server_default=sa.false()),
-        sa.Column("email_sender_name", sa.String(200), nullable=False, server_default="CyRokx"),
+        sa.Column("email_sender_name", sa.String(200), nullable=False, server_default="Showtik"),
         sa.Column("email_reply_to", sa.String(320), nullable=True),
         sa.Column("email_footer_note", sa.Text, nullable=True),
     )

@@ -31,10 +31,10 @@ export function StatCard({ label, value, delta, icon, style }: StatCardProps) {
         <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 600 }}>{label}</span>
         {icon && <Icon name={icon} size={16} color="var(--text-subtle)" />}
       </div>
-      <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-heading)' }}>{value}</div>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 30, fontWeight: 700, color: 'var(--text-heading)', letterSpacing: '-0.02em' }}>{value}</div>
       {delta && (
-        <div style={{ fontSize: 13, fontWeight: 600, marginTop: 4, color: up ? 'var(--color-success)' : down ? 'var(--color-error)' : 'var(--text-muted)' }}>
-          {delta}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12.5, fontWeight: 600, marginTop: 8, padding: '3px 8px', borderRadius: 'var(--radius-pill)', background: up ? 'var(--color-success-bg)' : down ? 'var(--color-error-bg)' : 'var(--color-muted-bg)', color: up ? 'var(--color-success)' : down ? 'var(--color-error)' : 'var(--text-muted)' }}>
+          {up ? '▲' : down ? '▼' : ''} {delta}
         </div>
       )}
     </div>

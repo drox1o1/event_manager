@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Icon, Input, Button, EmptyState, Radio, Checkbox, useIsMobile } from '@showtik/ui';
+import { Icon, Input, Button, EmptyState, Radio, Checkbox, PageLoader, useIsMobile } from '@showtik/ui';
 import { publicApi, formatINR, ApiError } from '@showtik/api-client';
 import type { FormField } from '@showtik/api-client';
 import { readCheckoutSelection, clearCheckoutSelection, type CheckoutSelection } from '@/lib/checkoutStore';
@@ -90,7 +90,7 @@ export function CheckoutView({ eventId }: CheckoutViewProps) {
   };
 
   if (selection === undefined) {
-    return <div style={{ maxWidth: 900, margin: '0 auto', padding: 32, color: 'var(--text-muted)' }}>Loading…</div>;
+    return <PageLoader variant="inline" />;
   }
 
   if (!selection || selection.items.length === 0) {
@@ -108,7 +108,7 @@ export function CheckoutView({ eventId }: CheckoutViewProps) {
 
   return (
     <div style={{ fontFamily: 'var(--font-sans)', maxWidth: 900, margin: '0 auto', padding: 'clamp(16px, 4vw, 32px)' }}>
-      <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 24 }}>Checkout</h1>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(26px, 4vw, 34px)', fontWeight: 800, letterSpacing: '-0.02em', textTransform: 'uppercase', color: 'var(--text-heading)', marginBottom: 24 }}>Checkout</h1>
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.4fr 1fr', gap: isMobile ? 24 : 40 }}>
         <div>
           <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 14 }}>Buyer details</h3>
@@ -179,7 +179,7 @@ export function CheckoutView({ eventId }: CheckoutViewProps) {
             </div>
             <div style={{ borderTop: '1px solid var(--border-default)', paddingTop: 14, display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
               <span style={{ fontWeight: 700, color: 'var(--text-heading)' }}>Total</span>
-              <span style={{ fontWeight: 700, fontSize: 20, color: 'var(--color-accent)' }}>{formatINR(total)}</span>
+              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 22, color: 'var(--color-accent)', letterSpacing: '-0.01em' }}>{formatINR(total)}</span>
             </div>
             {apiError && <div style={{ fontSize: 13, color: 'var(--color-error)', marginBottom: 12 }}>{apiError}</div>}
             <Button fullWidth size="lg" loading={submitting} onClick={pay}>Pay {formatINR(total)}</Button>
