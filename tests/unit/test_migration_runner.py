@@ -8,7 +8,7 @@ from migration_runner.handler import _bundled_head_revision, _drop_schema, _seed
 
 
 def test_bundled_head_revision_matches_the_latest_migration():
-    assert _bundled_head_revision() == "0003"
+    assert _bundled_head_revision() == "0005"
 
 
 @pytest.mark.parametrize(
