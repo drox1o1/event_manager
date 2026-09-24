@@ -38,7 +38,7 @@ function VerifyInner() {
         <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--status-success-bg)', color: 'var(--color-success)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
           <Icon name="check-circle" size={26} />
         </div>
-        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 8 }}>Email verified</div>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 8 }}>Email verified</div>
         <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 24 }}>Your organiser account is active. Log in to get started.</div>
         <Link href="/login"><Button fullWidth size="lg">Go to login</Button></Link>
       </div>
@@ -50,7 +50,7 @@ function VerifyInner() {
       <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--status-error-bg)', color: 'var(--color-error)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
         <Icon name="x-circle" size={26} />
       </div>
-      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 8 }}>Verification failed</div>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 8 }}>Verification failed</div>
       <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 24 }}>{message}</div>
       <Link href="/login"><Button variant="secondary" fullWidth>Back to login</Button></Link>
     </div>

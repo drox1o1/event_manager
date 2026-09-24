@@ -26,17 +26,18 @@ export function CityPageView({ city, events }: CityPageViewProps) {
 
   return (
     <div style={{ fontFamily: 'var(--font-sans)' }}>
-      <div style={{ padding: '56px 32px', background: 'var(--color-ink)', color: '#fff' }}>
-        <div style={{ maxWidth: 'var(--content-max-width)', margin: '0 auto' }}>
+      <div style={{ position: 'relative', overflow: 'hidden', padding: '56px 32px', background: 'var(--gradient-hero)', color: '#fff' }}>
+        <span aria-hidden style={{ position: 'absolute', top: '-40%', right: '-8%', width: '36%', height: '200%', background: 'var(--gradient-brand)', opacity: 0.45, transform: 'rotate(18deg)', borderRadius: 40 }} />
+        <div style={{ position: 'relative', maxWidth: 'var(--content-max-width)', margin: '0 auto' }}>
           <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', marginBottom: 20 }}>
             <a href="/" onClick={(e) => { e.preventDefault(); router.push('/'); }} style={{ color: 'rgba(255,255,255,0.55)', textDecoration: 'none' }}>Home</a>
             {' / '}<span style={{ color: 'rgba(255,255,255,0.8)' }}>{city}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <Icon name="map-pin" size={22} color="var(--color-accent)" />
-            <h1 style={{ fontSize: 36, fontWeight: 700, margin: 0 }}>Events in {city}</h1>
+            <Icon name="map-pin" size={24} color="var(--color-accent)" />
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(30px, 5.5vw, 44px)', fontWeight: 800, letterSpacing: '-0.02em', textTransform: 'uppercase', margin: 0 }}>Events in {city}</h1>
           </div>
-          <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.65)' }}>{events.length} events happening across {city}</div>
+          <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)' }}>{events.length} events happening across {city}</div>
         </div>
       </div>
 
