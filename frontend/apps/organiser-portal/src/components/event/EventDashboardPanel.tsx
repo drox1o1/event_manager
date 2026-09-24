@@ -85,7 +85,7 @@ export function EventDashboardPanel({ event }: { event?: OrganiserEventDetail | 
       </div>
 
       <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)', padding: 24 }}>
-        <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 18 }}>Orders by date</div>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 18 }}>Orders by date</div>
         <OrdersChart />
       </div>
     </div>
