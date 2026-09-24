@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import datetime as dt
 import os
+import re
 import uuid
 
 import boto3
@@ -37,6 +38,7 @@ from common.messaging import publish
 from common.models import (
     ActivityLog,
     AdminUser,
+    Category,
     Event,
     EventFormField,
     EventImage,
@@ -55,9 +57,12 @@ from common.models import (
     PlatformSettings,
     RefundRequest,
     RefundStatus,
+    SitePage,
     TicketTier,
 )
 from common.schemas import (
+    CategoriesReplaceRequest,
+    CategorySummary,
     EventCreateRequest,
     EventImagesReplaceRequest,
     EventUpdateRequest,
@@ -71,6 +76,10 @@ from common.schemas import (
     PlatformSettingsResponse,
     PlatformSettingsUpdateRequest,
     RefundResolveRequest,
+    SitePageListItem,
+    SitePageResponse,
+    SitePageUpsertRequest,
+    SLUG_PATTERN,
     TicketTiersCreateRequest,
     TokenResponse,
 )
@@ -992,6 +1001,9 @@ def _homepage_settings_dict(s: HomepageSettings) -> dict:
         "banner_enabled": s.banner_enabled,
         "banner_text": s.banner_text,
         "banner_link_url": s.banner_link_url,
+        "footer_tagline": s.footer_tagline,
+        "footer_columns": s.footer_columns or [],
+        "active_cities": s.active_cities or [],
     }
 
 
@@ -1075,6 +1087,131 @@ def replace_homepage():
         ]
 
         return {"settings": _homepage_settings_dict(settings), "sections": result}
+
+
+# --- Admin: categories (authenticated) ---
+
+
+@app.get("/admin/categories")
+def list_categories_admin():
+    _require_admin_id()
+
+    with get_session() as session:
+        categories = session.execute(select(Category).order_by(Category.sort_order.asc())).scalars().all()
+        return {"categories": [CategorySummary.model_validate(c).model_dump(mode="json") for c in categories]}
+
+
+@app.put("/admin/categories")
+def replace_categories():
+    """Replace-all save, mirroring the homepage sections / registration form
+    builder convention: rows with an id are updated, rows without one are
+    created, and any existing category missing from the list is deleted --
+    unless it still has events, in which case nothing is persisted and a 409
+    names the categories blocking the delete."""
+    _require_admin_id()
+    body = _parse_body(CategoriesReplaceRequest)
+
+    names = [c.name.strip().lower() for c in body.categories]
+    if len(names) != len(set(names)):
+        raise BadRequestError("Category names must be unique")
+
+    with get_session() as session:
+        existing = {c.id: c for c in session.execute(select(Category)).scalars().all()}
+        keep_ids = {c.id for c in body.categories if c.id is not None}
+        to_delete = [c for cid, c in existing.items() if cid not in keep_ids]
+
+        if to_delete:
+            blocked = (
+                session.execute(
+                    select(Category.name)
+                    .join(Event, Event.category_id == Category.id)
+                    .where(Category.id.in_(c.id for c in to_delete))
+                    .distinct()
+                )
+                .scalars()
+                .all()
+            )
+            if blocked:
+                raise ConflictError(
+                    f"Can't delete {', '.join(blocked)} -- events still use "
+                    f"{'this category' if len(blocked) == 1 else 'these categories'}."
+                )
+
+        for c in to_delete:
+            session.delete(c)
+
+        result = []
+        for idx, cat_in in enumerate(body.categories):
+            if cat_in.id is not None and cat_in.id in existing:
+                category = existing[cat_in.id]
+                category.name = cat_in.name
+                category.sort_order = idx
+            else:
+                category = Category(name=cat_in.name, sort_order=idx)
+                session.add(category)
+            result.append(category)
+
+        session.flush()
+        return {"categories": [CategorySummary.model_validate(c).model_dump(mode="json") for c in result]}
+
+
+# --- Admin: site pages (authenticated; public reads by slug in public_api) ---
+
+
+def _site_page_or_404(session, slug: str) -> SitePage:
+    page = session.execute(select(SitePage).where(SitePage.slug == slug)).scalar_one_or_none()
+    if page is None:
+        raise NotFoundError("Page not found")
+    return page
+
+
+@app.get("/admin/site-pages")
+def list_site_pages():
+    _require_admin_id()
+
+    with get_session() as session:
+        pages = session.execute(select(SitePage).order_by(SitePage.slug.asc())).scalars().all()
+        return {"pages": [SitePageListItem.model_validate(p).model_dump(mode="json") for p in pages]}
+
+
+@app.get("/admin/site-pages/<slug>")
+def get_site_page_admin(slug: str):
+    _require_admin_id()
+
+    with get_session() as session:
+        page = _site_page_or_404(session, slug)
+        return SitePageResponse.model_validate(page).model_dump(mode="json")
+
+
+@app.put("/admin/site-pages/<slug>")
+def upsert_site_page(slug: str):
+    """Creates the page if `slug` doesn't exist yet (so admins can add brand
+    new pages, not just edit the seeded six), otherwise updates it in place."""
+    _require_admin_id()
+    if not re.match(SLUG_PATTERN, slug):
+        raise BadRequestError("Slug must be lowercase letters, numbers and hyphens only")
+    body = _parse_body(SitePageUpsertRequest)
+
+    with get_session() as session:
+        page = session.execute(select(SitePage).where(SitePage.slug == slug)).scalar_one_or_none()
+        if page is None:
+            page = SitePage(slug=slug, title=body.title, body=body.body)
+            session.add(page)
+        else:
+            page.title = body.title
+            page.body = body.body
+        session.flush()
+        return SitePageResponse.model_validate(page).model_dump(mode="json")
+
+
+@app.delete("/admin/site-pages/<slug>")
+def delete_site_page(slug: str):
+    _require_admin_id()
+
+    with get_session() as session:
+        page = _site_page_or_404(session, slug)
+        session.delete(page)
+        return {"deleted": slug}
 
 
 @logger.inject_lambda_context

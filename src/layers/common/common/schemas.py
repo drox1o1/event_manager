@@ -157,6 +157,19 @@ class CategorySummary(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CategoryInput(BaseModel):
+    """One row in an admin categories replace-all save. `id` present means
+    update that category; `id` omitted/None means create a new one. Any
+    existing category whose id is absent from the full list is deleted."""
+
+    id: uuid.UUID | None = None
+    name: str = Field(min_length=1, max_length=100)
+
+
+class CategoriesReplaceRequest(BaseModel):
+    categories: list[CategoryInput] = Field(min_length=1, max_length=100)
+
+
 # --- Checkout (public, test-mode -- see public_api/handler.py::checkout) ---
 
 
@@ -252,6 +265,16 @@ HomepageSectionModeStr = Literal["auto", "curated"]
 # --- Homepage CMS (admin) ---
 
 
+class FooterLinkItem(BaseModel):
+    label: str = Field(min_length=1, max_length=100)
+    href: str = Field(min_length=1, max_length=300)
+
+
+class FooterColumnItem(BaseModel):
+    title: str = Field(min_length=1, max_length=100)
+    links: list[FooterLinkItem] = Field(default_factory=list, max_length=12)
+
+
 class HomepageSettingsInput(BaseModel):
     hero_eyebrow: str = Field(min_length=1, max_length=200)
     hero_headline: str = Field(min_length=1, max_length=200)
@@ -260,6 +283,9 @@ class HomepageSettingsInput(BaseModel):
     banner_enabled: bool = False
     banner_text: str | None = None
     banner_link_url: str | None = Field(default=None, max_length=500)
+    footer_tagline: str | None = Field(default=None, max_length=300)
+    footer_columns: list[FooterColumnItem] = Field(default_factory=list, max_length=8)
+    active_cities: list[str] = Field(default_factory=list, max_length=100)
 
 
 class HomepageSectionInput(BaseModel):
@@ -293,3 +319,36 @@ class PlatformSettingsUpdateRequest(BaseModel):
     email_sender_name: str | None = Field(default=None, min_length=1, max_length=200)
     email_reply_to: EmailStr | None = None
     email_footer_note: str | None = None
+
+
+# --- Site pages (admin CRUD, public read by slug) ---
+
+
+class SitePageListItem(BaseModel):
+    id: uuid.UUID
+    slug: str
+    title: str
+    updated_at: dt.datetime
+
+    model_config = {"from_attributes": True}
+
+
+class SitePageResponse(BaseModel):
+    id: uuid.UUID
+    slug: str
+    title: str
+    body: str
+    updated_at: dt.datetime
+
+    model_config = {"from_attributes": True}
+
+
+SLUG_PATTERN = r"^[a-z0-9]+(-[a-z0-9]+)*$"
+
+
+class SitePageUpsertRequest(BaseModel):
+    """PUT body for /admin/site-pages/{slug} -- creates the page if that slug
+    doesn't exist yet, otherwise updates it in place."""
+
+    title: str = Field(min_length=1, max_length=200)
+    body: str = Field(min_length=1)

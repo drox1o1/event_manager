@@ -38,6 +38,7 @@ from common.models import (
     OrderItem,
     PaymentStatus,
     RefundRequest,
+    SitePage,
     Ticket,
     TicketTier,
 )
@@ -48,6 +49,7 @@ from common.schemas import (
     EventSummary,
     FormFieldResponse,
     RefundRequestCreate,
+    SitePageResponse,
     TicketTierSummary,
 )
 from pydantic import ValidationError
@@ -213,6 +215,59 @@ def list_categories():
         results = [CategorySummary.model_validate(c).model_dump(mode="json") for c in categories]
 
     return {"categories": results}
+
+
+# Fallback used until the super admin's site settings have ever been saved
+# (or when a database is migrated before the 0005 seed ran) so the navbar and
+# footer are never bare.
+_DEFAULT_CITIES = ["Mumbai", "Delhi", "Bengaluru", "Pune", "Ahmedabad", "Chennai", "Hyderabad", "Kolkata"]
+_DEFAULT_FOOTER_TAGLINE = "Discover and book live events near you — no account needed to buy a ticket."
+_DEFAULT_FOOTER_COLUMNS = [
+    {"title": "Discover", "links": [
+        {"label": "Categories", "href": "/events"},
+        {"label": "Cities", "href": "/events"},
+        {"label": "Trending", "href": "/events"},
+        {"label": "For organisers", "href": "/signup"},
+    ]},
+    {"title": "Company", "links": [
+        {"label": "About", "href": "/about"},
+        {"label": "Careers", "href": "/careers"},
+        {"label": "Press", "href": "/press"},
+    ]},
+    {"title": "Support", "links": [
+        {"label": "Help centre", "href": "/help"},
+        {"label": "Contact us", "href": "/contact"},
+        {"label": "Refund policy", "href": "/refund-policy"},
+    ]},
+]
+
+
+@app.get("/site-chrome")
+def get_site_chrome():
+    """Site-wide chrome the super admin controls: the city list (navbar
+    dropdown, event-listing city filter) and the public footer's tagline +
+    link columns. Fetched once by the root layout and passed down, so every
+    page shows the same admin-edited content."""
+    with get_session() as session:
+        settings = session.execute(select(HomepageSettings).limit(1)).scalar_one_or_none()
+
+        return {
+            "cities": (settings.active_cities if settings and settings.active_cities else _DEFAULT_CITIES),
+            "footer": {
+                "tagline": (settings.footer_tagline if settings and settings.footer_tagline else _DEFAULT_FOOTER_TAGLINE),
+                "columns": (settings.footer_columns if settings and settings.footer_columns else _DEFAULT_FOOTER_COLUMNS),
+            },
+        }
+
+
+@app.get("/site-pages/<slug>")
+def get_site_page(slug: str):
+    with get_session() as session:
+        page = session.execute(select(SitePage).where(SitePage.slug == slug)).scalar_one_or_none()
+        if page is None:
+            raise NotFoundError("Page not found")
+
+        return SitePageResponse.model_validate(page).model_dump(mode="json")
 
 
 def _event_summary_dict(e: Event) -> dict:

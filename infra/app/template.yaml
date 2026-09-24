@@ -155,6 +155,22 @@ Resources:
             Method: get
             Auth:
               Authorizer: NONE
+        GetSiteChrome:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /site-chrome
+            Method: get
+            Auth:
+              Authorizer: NONE
+        GetSitePage:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /site-pages/{slug}
+            Method: get
+            Auth:
+              Authorizer: NONE
         Checkout:
           Type: Api
           Properties:
@@ -469,6 +485,54 @@ Resources:
             RestApiId: !Ref CyrokxApi
             Path: /admin/homepage
             Method: put
+            Auth:
+              Authorizer: JwtAuthorizer
+        ListCategoriesAdmin:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/categories
+            Method: get
+            Auth:
+              Authorizer: JwtAuthorizer
+        ReplaceCategories:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/categories
+            Method: put
+            Auth:
+              Authorizer: JwtAuthorizer
+        ListSitePages:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/site-pages
+            Method: get
+            Auth:
+              Authorizer: JwtAuthorizer
+        GetSitePageAdmin:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/site-pages/{slug}
+            Method: get
+            Auth:
+              Authorizer: JwtAuthorizer
+        UpsertSitePage:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/site-pages/{slug}
+            Method: put
+            Auth:
+              Authorizer: JwtAuthorizer
+        DeleteSitePage:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/site-pages/{slug}
+            Method: delete
             Auth:
               Authorizer: JwtAuthorizer
 

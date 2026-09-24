@@ -16,17 +16,19 @@ export default async function EventsPage({ searchParams }: EventsPageProps) {
   // (multi-value) filtering client-side.
   const hasFacetFilter = !!sp.category || !!sp.city;
 
-  const [{ events }, { categories }] = await Promise.all([
+  const [{ events }, { categories }, chrome] = await Promise.all([
     publicApi
       .listEvents(hasFacetFilter ? { pageSize: 100 } : { page, pageSize: 24 })
       .catch(() => ({ events: [], page, page_size: 24 })),
     publicApi.listCategories().catch(() => ({ categories: [] })),
+    publicApi.getSiteChrome().catch(() => ({ cities: [], footer: { tagline: '', columns: [] } })),
   ]);
 
   return (
     <EventListingView
       events={events}
       categories={categories}
+      allCities={chrome.cities}
       activeCategory={sp.category}
       activeCity={sp.city}
       keyword={sp.q}
