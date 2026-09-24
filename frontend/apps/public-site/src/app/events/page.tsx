@@ -10,10 +10,15 @@ interface EventsPageProps {
 export default async function EventsPage({ searchParams }: EventsPageProps) {
   const sp = await searchParams;
   const page = Number(sp.page) || 1;
+  // Category/city can each hold several comma-separated values (multi-select
+  // checkboxes) -- the API only filters by one of each, so when a facet is
+  // active we fetch the unfiltered page and let EventListingView do the
+  // (multi-value) filtering client-side.
+  const hasFacetFilter = !!sp.category || !!sp.city;
 
   const [{ events }, { categories }] = await Promise.all([
     publicApi
-      .listEvents({ category: sp.category, city: sp.city, page, pageSize: 24 })
+      .listEvents(hasFacetFilter ? { pageSize: 100 } : { page, pageSize: 24 })
       .catch(() => ({ events: [], page, page_size: 24 })),
     publicApi.listCategories().catch(() => ({ categories: [] })),
   ]);
