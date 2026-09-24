@@ -23,12 +23,12 @@ export function CategoryPageView({ category, events }: CategoryPageViewProps) {
         {' / '}<span style={{ color: 'var(--text-muted)' }}>{category}</span>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, marginBottom: 28 }}>
-        <div style={{ width: 56, height: 56, borderRadius: 'var(--radius-card)', background: 'var(--color-accent-tint)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <Icon name={iconForCategory(category)} size={26} color="var(--color-accent)" />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginBottom: 28 }}>
+        <div style={{ width: 60, height: 60, borderRadius: 'var(--radius-card)', background: 'var(--gradient-brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Icon name={iconForCategory(category)} size={28} color="#fff" />
         </div>
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-heading)', margin: '0 0 4px' }}>{category}</h1>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 5vw, 38px)', fontWeight: 800, letterSpacing: '-0.02em', textTransform: 'uppercase', color: 'var(--text-heading)', margin: '0 0 4px' }}>{category}</h1>
           <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>{events.length} event{events.length === 1 ? '' : 's'} found</div>
         </div>
       </div>

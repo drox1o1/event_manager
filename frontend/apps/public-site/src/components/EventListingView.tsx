@@ -9,6 +9,9 @@ import type { CategorySummary, EventSummary } from '@showtik/api-client';
 export interface EventListingViewProps {
   events: EventSummary[];
   categories: CategorySummary[];
+  /** The super admin's full city list -- shown in the filter even for a city
+   *  with no events on the current page. */
+  allCities?: string[];
   /** Comma-separated list of active categories/cities from the URL (?category=Sports,Music). */
   activeCategory?: string;
   activeCity?: string;
@@ -24,7 +27,7 @@ function parseList(v?: string): string[] {
  *  grid, pagination. All filtering happens client-side against the fetched
  *  page of events, so checking several categories/cities at once actually
  *  combines results instead of replacing the previous selection. */
-export function EventListingView({ events, categories, activeCategory, activeCity, keyword, page }: EventListingViewProps) {
+export function EventListingView({ events, categories, allCities, activeCategory, activeCity, keyword, page }: EventListingViewProps) {
   const router = useRouter();
   const isMobile = useIsMobile();
 
@@ -33,6 +36,7 @@ export function EventListingView({ events, categories, activeCategory, activeCit
 
   const cities = React.useMemo(() => {
     const set = new Set<string>();
+    (allCities ?? []).forEach((c) => set.add(c));
     events.forEach((e) => set.add(e.city));
     selectedCities.forEach((c) => set.add(c));
     return Array.from(set).sort();

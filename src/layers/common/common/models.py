@@ -360,6 +360,28 @@ class HomepageSettings(Base):
     banner_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     banner_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     banner_link_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Site-wide chrome, also super-admin controlled (0005): the public
+    # footer's tagline/columns and the city list shown in the navbar dropdown
+    # and event-listing city filter.
+    footer_tagline: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    footer_columns: Mapped[list | None] = mapped_column(JSONB, nullable=True)  # [{title, links:[{label, href}]}]
+    active_cities: Mapped[list | None] = mapped_column(JSONB, nullable=True)  # ["Mumbai", "Delhi", ...]
+    updated_at: Mapped[dt.datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class SitePage(Base):
+    """A freeform title/body content page (About, Careers, Help centre...),
+    addressed by slug. Fully admin-managed: create, edit, or delete any page;
+    the public site fetches by slug and 404s if one doesn't exist."""
+
+    __tablename__ = "site_pages"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    slug: Mapped[str] = mapped_column(String(80), nullable=False, unique=True)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
     updated_at: Mapped[dt.datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

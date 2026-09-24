@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Icon, Input, Textarea, Select, Button } from '@showtik/ui';
+import { Icon, Input, Textarea, Select, Button, PageHeading } from '@showtik/ui';
 import { organiserApi, publicApi, ApiError } from '@showtik/api-client';
 import type { CategorySummary, OrganiserEventDetail } from '@showtik/api-client';
 import { PortalShell } from '@/components/PortalShell';
@@ -125,7 +125,7 @@ function EditEventInner() {
       <button onClick={() => router.push(`/events/${eventId}`)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer', marginBottom: 16, padding: 0 }}>
         <Icon name="arrow-left" size={15} /> Back to event
       </button>
-      <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 24 }}>Edit event</div>
+      <PageHeading title="Edit event" />
 
       <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)', padding: 28, display: 'flex', flexDirection: 'column', gap: 18 }}>
         <Input label="Event title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />

@@ -15,6 +15,8 @@ const NAV_ITEMS = [
   { key: 'transactions', label: 'Transactions', icon: 'receipt', href: '/transactions' },
   { key: 'refunds', label: 'Refunds', icon: 'rotate-ccw', href: '/refunds' },
   { key: 'homepage', label: 'Homepage', icon: 'layout-template', href: '/homepage' },
+  { key: 'categories', label: 'Categories', icon: 'tags', href: '/categories' },
+  { key: 'site-pages', label: 'Site pages', icon: 'file-text', href: '/site-pages' },
   { key: 'settings', label: 'Platform settings', icon: 'settings', href: '/settings' },
 ];
 

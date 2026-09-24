@@ -12,6 +12,8 @@ import type {
   OrderDetail,
   RefundRequestCreatedResponse,
   RefundRequestInput,
+  SiteChrome,
+  SitePage,
 } from './types';
 
 export interface ListEventsParams {
@@ -43,6 +45,17 @@ export function listCategories(): Promise<{ categories: CategorySummary[] }> {
 /** The resolved homepage layout controlled by the super-admin CMS. */
 export function getHomepage(): Promise<HomepageContent> {
   return apiFetch<HomepageContent>('/homepage');
+}
+
+/** Site-wide chrome the super admin controls: the city list (navbar dropdown,
+ *  event-listing city filter) and the public footer's tagline + link columns. */
+export function getSiteChrome(): Promise<SiteChrome> {
+  return apiFetch<SiteChrome>('/site-chrome');
+}
+
+/** A standalone content page (About, Careers, Help centre...) by slug. */
+export function getSitePage(slug: string): Promise<SitePage> {
+  return apiFetch<SitePage>(`/site-pages/${slug}`);
 }
 
 export function checkout(eventId: string, body: CheckoutRequest): Promise<CheckoutResponse> {

@@ -165,7 +165,7 @@ export function EventRegistrationFormPanel({ eventId, token }: Props) {
 
       {/* Composer */}
       <div style={cardStyle}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 14 }}>Add a field</div>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 14 }}>Add a field</div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div style={{ flex: '2 1 240px' }}>
             <Input label="Field label" placeholder="e.g. Club / team name" value={draftLabel} onChange={(e) => setDraftLabel(e.target.value)} />
@@ -190,7 +190,7 @@ export function EventRegistrationFormPanel({ eventId, token }: Props) {
       {/* Field list */}
       <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px' }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-heading)' }}>Form fields{fields.length > 0 && <span style={{ color: 'var(--text-subtle)', fontWeight: 500 }}> · {fields.length}</span>}</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 700, color: 'var(--text-heading)' }}>Form fields{fields.length > 0 && <span style={{ color: 'var(--text-subtle)', fontWeight: 500 }}> · {fields.length}</span>}</div>
           <Button size="sm" onClick={save} loading={saving} disabled={!token || loading}>
             <Icon name={saved ? 'check' : 'save'} size={15} />{saved ? 'Saved' : 'Save form'}
           </Button>

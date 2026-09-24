@@ -1,11 +1,9 @@
+import { notFound } from 'next/navigation';
+import { publicApi } from '@showtik/api-client';
 import { InfoPageView } from '@/components/InfoPageView';
 
-export const metadata = { title: 'Contact us — Showtik' };
-
-export default function ContactPage() {
-  return (
-    <InfoPageView title="Contact us">
-      <p>Email us at <a href="mailto:support@showtik.com" style={{ color: 'var(--text-link)' }}>support@showtik.com</a> and we&apos;ll get back to you within a business day.</p>
-    </InfoPageView>
-  );
+export default async function ContactPage() {
+  const page = await publicApi.getSitePage('contact').catch(() => null);
+  if (!page) notFound();
+  return <InfoPageView title={page.title} body={page.body} />;
 }

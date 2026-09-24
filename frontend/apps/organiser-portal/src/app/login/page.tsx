@@ -32,7 +32,7 @@ export default function LoginPage() {
 
   return (
     <AuthShell>
-      <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 4 }}>Log in</div>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 21, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 4 }}>Log in</div>
       <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 24 }}>Manage your events and registrations.</div>
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <Input label="Email" type="email" placeholder="you@organisation.com" value={email} onChange={(e) => setEmail(e.target.value)} />

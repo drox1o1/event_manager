@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { StatCard, Badge } from '@showtik/ui';
+import { StatCard, Badge, PageHeading } from '@showtik/ui';
 import { adminApi, formatTimestamp } from '@showtik/api-client';
 import type { AdminEventSummary, ModerationQueueItem } from '@showtik/api-client';
 import { AdminShell } from '@/components/AdminShell';
@@ -31,10 +31,7 @@ function DashboardInner() {
 
   return (
     <div>
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-heading)' }}>Platform overview</div>
-        <div style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>Across all organisers and cities.</div>
-      </div>
+      <PageHeading title="Platform overview" description="Across all organisers and cities." style={{ marginBottom: 28 }} />
 
       {error && <div style={{ color: 'var(--color-error)', marginBottom: 20 }}>{error}</div>}
 
@@ -47,7 +44,7 @@ function DashboardInner() {
 
       <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)', padding: 24, maxWidth: 640 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-heading)' }}>Awaiting moderation</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-heading)' }}>Awaiting moderation</div>
           <a href="/moderation" onClick={(e) => { e.preventDefault(); router.push('/moderation'); }} style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-link)', textDecoration: 'none' }}>Open queue &rarr;</a>
         </div>
         {queue === null ? (

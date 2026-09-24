@@ -1,9 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { Icon, Input, Textarea, Select, Switch, Button, Toast } from '@showtik/ui';
+import { Icon, Input, Textarea, Select, Switch, Button, Toast, PageHeading } from '@showtik/ui';
 import { adminApi, ApiError } from '@showtik/api-client';
-import type { HomepageConfig, HomepageSection, HomepageSectionType, HomepageSectionMode, AdminEventSummary } from '@showtik/api-client';
+import type { HomepageConfig, HomepageSection, HomepageSectionType, HomepageSectionMode, AdminEventSummary, FooterColumnItem } from '@showtik/api-client';
 import { AdminShell } from '@/components/AdminShell';
 import { useRequireAuth } from '@/lib/auth';
 
@@ -39,7 +39,7 @@ function CardHead({ icon, title, description }: { icon: string; title: string; d
         <Icon name={icon} size={17} />
       </span>
       <div>
-        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-heading)' }}>{title}</div>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-heading)' }}>{title}</div>
         <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>{description}</div>
       </div>
     </div>
@@ -53,6 +53,7 @@ function HomepageInner() {
   const [sections, setSections] = React.useState<DraftSection[]>([]);
   const [liveEvents, setLiveEvents] = React.useState<AdminEventSummary[]>([]);
   const [addType, setAddType] = React.useState<HomepageSectionType>('featured_events');
+  const [newCity, setNewCity] = React.useState('');
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -109,6 +110,51 @@ function HomepageInner() {
       return { ...s, event_ids: has ? s.event_ids.filter((id) => id !== eventId) : [...s.event_ids, eventId] };
     }));
 
+  // --- Cities (navbar dropdown + event-listing city filter) ---
+  const addCity = () => {
+    const name = newCity.trim();
+    if (!name || !settings) return;
+    if (settings.active_cities.some((c) => c.toLowerCase() === name.toLowerCase())) { setNewCity(''); return; }
+    setS('active_cities', [...settings.active_cities, name]);
+    setNewCity('');
+  };
+  const removeCity = (name: string) => {
+    if (!settings) return;
+    setS('active_cities', settings.active_cities.filter((c) => c !== name));
+  };
+
+  // --- Footer (tagline + link columns) ---
+  const patchColumn = (idx: number, updates: Partial<FooterColumnItem>) => {
+    if (!settings) return;
+    setS('footer_columns', settings.footer_columns.map((c, i) => (i === idx ? { ...c, ...updates } : c)));
+  };
+  const addColumn = () => {
+    if (!settings) return;
+    setS('footer_columns', [...settings.footer_columns, { title: 'New column', links: [] }]);
+  };
+  const removeColumn = (idx: number) => {
+    if (!settings) return;
+    setS('footer_columns', settings.footer_columns.filter((_, i) => i !== idx));
+  };
+  const patchLink = (colIdx: number, linkIdx: number, updates: Partial<{ label: string; href: string }>) => {
+    if (!settings) return;
+    setS('footer_columns', settings.footer_columns.map((c, i) =>
+      i !== colIdx ? c : { ...c, links: c.links.map((l, j) => (j === linkIdx ? { ...l, ...updates } : l)) }
+    ));
+  };
+  const addLink = (colIdx: number) => {
+    if (!settings) return;
+    setS('footer_columns', settings.footer_columns.map((c, i) =>
+      i !== colIdx ? c : { ...c, links: [...c.links, { label: 'New link', href: '/' }] }
+    ));
+  };
+  const removeLink = (colIdx: number, linkIdx: number) => {
+    if (!settings) return;
+    setS('footer_columns', settings.footer_columns.map((c, i) =>
+      i !== colIdx ? c : { ...c, links: c.links.filter((_, j) => j !== linkIdx) }
+    ));
+  };
+
   const save = async () => {
     if (!token || !settings) return;
     setSaving(true);
@@ -140,13 +186,11 @@ function HomepageInner() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div>
-          <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-heading)' }}>Homepage</div>
-          <div style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>Control the public event website front page — hero, banner, and the sections buyers see.</div>
-        </div>
-        <Button onClick={save} loading={saving}><Icon name={saved ? 'check' : 'save'} size={16} />{saved ? 'Saved' : 'Save changes'}</Button>
-      </div>
+      <PageHeading
+        title="Homepage"
+        description="Control the public event website front page — hero, banner, and the sections buyers see."
+        actions={<Button onClick={save} loading={saving}><Icon name={saved ? 'check' : 'save'} size={16} />{saved ? 'Saved' : 'Save changes'}</Button>}
+      />
 
       {error && <div style={{ color: 'var(--color-error)', marginBottom: 16 }}>{error}</div>}
 
@@ -262,6 +306,58 @@ function HomepageInner() {
         )}
       </div>
 
+      {/* Cities */}
+      <div style={card}>
+        <CardHead icon="map-pin" title="Cities" description="The city list shown in the navbar dropdown and the events page city filter." />
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+          {settings.active_cities.length === 0 ? (
+            <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>No cities yet — add at least one below.</div>
+          ) : settings.active_cities.map((c) => (
+            <span key={c} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--color-accent-tint)', color: 'var(--color-accent)', borderRadius: 'var(--radius-control)', padding: '6px 10px', fontSize: 13, fontWeight: 600 }}>
+              {c}
+              <button onClick={() => removeCity(c)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', display: 'inline-flex' }}><Icon name="x" size={13} /></button>
+            </span>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', maxWidth: 360 }}>
+          <div style={{ flex: 1 }}>
+            <Input label="Add a city" placeholder="Jaipur" value={newCity} onChange={(e) => setNewCity(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCity(); } }} />
+          </div>
+          <Button variant="secondary" onClick={addCity} disabled={!newCity.trim()}><Icon name="plus" size={15} />Add</Button>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div style={card}>
+        <CardHead icon="layout-panel-top" title="Footer" description="The tagline and link columns shown at the bottom of every page." />
+        <Textarea label="Tagline" rows={2} value={settings.footer_tagline ?? ''} onChange={(e) => setS('footer_tagline', e.target.value || null)} style={{ marginBottom: 20 }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {settings.footer_columns.map((col, ci) => (
+            <div key={ci} style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-card)', padding: 16 }}>
+              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', marginBottom: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <Input label={`Column ${ci + 1} title`} value={col.title} onChange={(e) => patchColumn(ci, { title: e.target.value })} />
+                </div>
+                <button title="Remove column" onClick={() => removeColumn(ci)} style={iconBtn('var(--color-error)')}><Icon name="trash-2" size={16} /></button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {col.links.map((link, li) => (
+                  <div key={li} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input value={link.label} onChange={(e) => patchLink(ci, li, { label: e.target.value })} placeholder="Label" style={miniInput(1.2)} />
+                    <input value={link.href} onChange={(e) => patchLink(ci, li, { href: e.target.value })} placeholder="/path or https://…" style={miniInput(1.6)} />
+                    <button title="Remove link" onClick={() => removeLink(ci, li)} style={{ ...iconBtn('var(--color-error)'), width: 30, height: 30 }}><Icon name="x" size={14} /></button>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => addLink(ci)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'none', color: 'var(--color-accent)', border: 'none', padding: '10px 2px 0', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
+                <Icon name="plus" size={13} />Add link
+              </button>
+            </div>
+          ))}
+        </div>
+        <Button variant="secondary" size="sm" onClick={addColumn} style={{ marginTop: 16 }}><Icon name="plus" size={15} />Add column</Button>
+      </div>
+
       {saved && (
         <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 100 }}>
           <Toast variant="success" title="Homepage saved" />
@@ -285,6 +381,10 @@ function reorderBtn(disabled: boolean): React.CSSProperties {
 
 function iconBtn(color: string): React.CSSProperties {
   return { width: 34, height: 34, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-control)', background: 'var(--surface-card)', color, cursor: 'pointer' };
+}
+
+function miniInput(flex: number): React.CSSProperties {
+  return { flex, padding: '8px 11px', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-control)', fontSize: 13.5, fontFamily: 'var(--font-sans)', color: 'var(--text-heading)', background: 'var(--surface-card)' };
 }
 
 export default function HomepageCmsPage() {

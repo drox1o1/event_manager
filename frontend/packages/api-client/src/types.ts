@@ -137,6 +137,16 @@ export interface HomepageContent {
 
 // --- Admin: homepage CMS (editable config) ---
 
+export interface FooterLinkItem {
+  label: string;
+  href: string;
+}
+
+export interface FooterColumnItem {
+  title: string;
+  links: FooterLinkItem[];
+}
+
 export interface HomepageSettings {
   hero_eyebrow: string;
   hero_headline: string;
@@ -145,6 +155,9 @@ export interface HomepageSettings {
   banner_enabled: boolean;
   banner_text: string | null;
   banner_link_url: string | null;
+  footer_tagline: string | null;
+  footer_columns: FooterColumnItem[];
+  active_cities: string[];
 }
 
 export interface HomepageSection {
@@ -173,6 +186,53 @@ export interface HomepageSectionInput {
 export interface HomepageReplaceRequest {
   settings: HomepageSettings;
   sections: HomepageSectionInput[];
+}
+
+// --- Public: site chrome (cities + footer, super-admin controlled) ---
+
+export interface SiteChrome {
+  cities: string[];
+  footer: {
+    tagline: string;
+    columns: FooterColumnItem[];
+  };
+}
+
+// --- Admin: categories (replace-all CRUD) ---
+
+export interface CategoryInput {
+  id?: string;
+  name: string;
+}
+
+export interface CategoriesReplaceRequest {
+  categories: CategoryInput[];
+}
+
+export interface CategoriesResponse {
+  categories: CategorySummary[];
+}
+
+// --- Site pages (admin CRUD, public read by slug) ---
+
+export interface SitePageListItem {
+  id: string;
+  slug: string;
+  title: string;
+  updated_at: string;
+}
+
+export interface SitePage {
+  id: string;
+  slug: string;
+  title: string;
+  body: string;
+  updated_at: string;
+}
+
+export interface SitePageUpsertRequest {
+  title: string;
+  body: string;
 }
 
 // --- Public: checkout / orders / refunds ---

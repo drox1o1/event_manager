@@ -9,8 +9,11 @@ export interface FooterLink {
 export interface FooterProps {
   style?: React.CSSProperties;
   /** Override the default link columns (label -> real href). Defaults point at
-   *  live routes on the public site so nothing renders as a dead "#" link. */
+   *  live routes on the public site so nothing renders as a dead "#" link.
+   *  In production this comes from the super admin's site-chrome settings. */
   columns?: { title: string; links: FooterLink[] }[];
+  /** The blurb under the wordmark; also super-admin controlled. */
+  tagline?: string;
 }
 
 const DEFAULT_COLS: { title: string; links: FooterLink[] }[] = [
@@ -40,7 +43,9 @@ const DEFAULT_COLS: { title: string; links: FooterLink[] }[] = [
 
 /** Footer — public site footer: brand blurb, link columns, legal line.
  *  Every link points at a real route by default (see `columns` to override). */
-export function Footer({ style, columns = DEFAULT_COLS }: FooterProps) {
+const DEFAULT_TAGLINE = 'Discover and book live events near you — no account needed to buy a ticket.';
+
+export function Footer({ style, columns = DEFAULT_COLS, tagline = DEFAULT_TAGLINE }: FooterProps) {
   return (
     <footer style={{ background: 'var(--color-ink)', color: 'rgba(255,255,255,0.7)', fontFamily: 'var(--font-sans)', padding: '48px 32px 24px', ...style }}>
       <div style={{ display: 'flex', gap: 64, marginBottom: 32, flexWrap: 'wrap' }}>
@@ -49,7 +54,7 @@ export function Footer({ style, columns = DEFAULT_COLS }: FooterProps) {
             <LogoMark style={{ height: 30 }} />
             <span style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>showtik</span>
           </div>
-          <div style={{ fontSize: 13, lineHeight: 1.6 }}>Discover and book live events near you — no account needed to buy a ticket.</div>
+          <div style={{ fontSize: 13, lineHeight: 1.6 }}>{tagline}</div>
         </div>
         {columns.map((c) => (
           <div key={c.title}>

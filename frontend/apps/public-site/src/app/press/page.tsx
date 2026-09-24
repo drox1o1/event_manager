@@ -1,11 +1,9 @@
+import { notFound } from 'next/navigation';
+import { publicApi } from '@showtik/api-client';
 import { InfoPageView } from '@/components/InfoPageView';
 
-export const metadata = { title: 'Press — Showtik' };
-
-export default function PressPage() {
-  return (
-    <InfoPageView title="Press">
-      <p>For press and media enquiries, reach out to <a href="mailto:press@showtik.com" style={{ color: 'var(--text-link)' }}>press@showtik.com</a>.</p>
-    </InfoPageView>
-  );
+export default async function PressPage() {
+  const page = await publicApi.getSitePage('press').catch(() => null);
+  if (!page) notFound();
+  return <InfoPageView title={page.title} body={page.body} />;
 }

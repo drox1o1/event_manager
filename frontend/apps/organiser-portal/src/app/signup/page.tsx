@@ -39,7 +39,7 @@ export default function SignupPage() {
           <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--color-accent-tint)', color: 'var(--color-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
             <Icon name="mail-check" size={26} />
           </div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 8 }}>Verify your email</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 8 }}>Verify your email</div>
           <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 24, lineHeight: 1.5 }}>
             We sent a verification link to <strong style={{ color: 'var(--text-body)' }}>{form.email}</strong>. Confirm it, then log in to your organiser account.
           </div>
@@ -51,7 +51,7 @@ export default function SignupPage() {
 
   return (
     <AuthShell>
-      <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 4 }}>Create your organiser account</div>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 21, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 4 }}>Create your organiser account</div>
       <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 24 }}>Start selling tickets in minutes.</div>
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <Input label="Full name" placeholder="Aditi Rao" value={form.name} onChange={set('name')} />

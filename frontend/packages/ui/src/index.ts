@@ -61,5 +61,7 @@ export { Modal } from './components/layout/Modal';
 export type { ModalProps } from './components/layout/Modal';
 export { DataTable } from './components/layout/DataTable';
 export type { DataTableProps, DataTableColumn } from './components/layout/DataTable';
+export { PageHeading } from './components/layout/PageHeading';
+export type { PageHeadingProps } from './components/layout/PageHeading';
 export { SidebarShell } from './components/layout/SidebarShell';
 export type { SidebarShellProps, SidebarNavItem } from './components/layout/SidebarShell';

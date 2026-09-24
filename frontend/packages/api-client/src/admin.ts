@@ -3,6 +3,8 @@
 import { apiFetch } from './http';
 import type {
   AdminEventListResponse,
+  CategoriesReplaceRequest,
+  CategoriesResponse,
   EventActionResponse,
   HomepageConfig,
   HomepageReplaceRequest,
@@ -15,6 +17,9 @@ import type {
   PlatformSettingsUpdateRequest,
   RefundListResponse,
   RefundResolveRequest,
+  SitePage,
+  SitePageListItem,
+  SitePageUpsertRequest,
   TokenResponse,
   TransactionListResponse,
 } from './types';
@@ -97,4 +102,36 @@ export function getHomepageConfig(token: string): Promise<HomepageConfig> {
 /** Replace-all save of the entire homepage (hero/banner + ordered sections). */
 export function replaceHomepage(token: string, body: HomepageReplaceRequest): Promise<HomepageConfig> {
   return apiFetch<HomepageConfig>('/admin/homepage', { method: 'PUT', body, token });
+}
+
+// --- Categories ---
+
+export function listCategories(token: string): Promise<CategoriesResponse> {
+  return apiFetch<CategoriesResponse>('/admin/categories', { token });
+}
+
+/** Replace-all save: rows with an id are updated, rows without one are
+ *  created, and any existing category missing from the list is deleted
+ *  (rejected with 409 if events still reference it). */
+export function replaceCategories(token: string, body: CategoriesReplaceRequest): Promise<CategoriesResponse> {
+  return apiFetch<CategoriesResponse>('/admin/categories', { method: 'PUT', body, token });
+}
+
+// --- Site pages ---
+
+export function listSitePages(token: string): Promise<{ pages: SitePageListItem[] }> {
+  return apiFetch<{ pages: SitePageListItem[] }>('/admin/site-pages', { token });
+}
+
+export function getSitePage(token: string, slug: string): Promise<SitePage> {
+  return apiFetch<SitePage>(`/admin/site-pages/${slug}`, { token });
+}
+
+/** Creates the page if `slug` doesn't exist yet, otherwise updates it. */
+export function upsertSitePage(token: string, slug: string, body: SitePageUpsertRequest): Promise<SitePage> {
+  return apiFetch<SitePage>(`/admin/site-pages/${slug}`, { method: 'PUT', body, token });
+}
+
+export function deleteSitePage(token: string, slug: string): Promise<{ deleted: string }> {
+  return apiFetch<{ deleted: string }>(`/admin/site-pages/${slug}`, { method: 'DELETE', token });
 }
