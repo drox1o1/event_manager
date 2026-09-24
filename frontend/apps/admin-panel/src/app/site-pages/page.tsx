@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Icon, Input, Textarea, Button, Toast } from '@showtik/ui';
+import { Icon, Input, Textarea, Button, Toast, PageHeading } from '@showtik/ui';
 import { adminApi, ApiError } from '@showtik/api-client';
 import type { SitePageListItem } from '@showtik/api-client';
 import { AdminShell } from '@/components/AdminShell';
@@ -147,15 +147,11 @@ function SitePagesInner() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div>
-          <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-heading)' }}>Site pages</div>
-          <div style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>
-            Edit the About, Careers, Press, Help, Contact and Refund policy pages — or add a brand new one.
-          </div>
-        </div>
-        <Button onClick={openCreate}><Icon name="plus" size={16} />New page</Button>
-      </div>
+      <PageHeading
+        title="Site pages"
+        description="Edit the About, Careers, Press, Help, Contact and Refund policy pages — or add a brand new one."
+        actions={<Button onClick={openCreate}><Icon name="plus" size={16} />New page</Button>}
+      />
 
       {error && <div style={{ color: 'var(--color-error)', marginBottom: 16, fontSize: 14 }}>{error}</div>}
 

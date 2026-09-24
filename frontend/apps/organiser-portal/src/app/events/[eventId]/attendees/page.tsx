@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Icon, Input, Button, EmptyState } from '@showtik/ui';
+import { Icon, Input, Button, EmptyState, PageHeading } from '@showtik/ui';
 import { organiserApi, ApiError } from '@showtik/api-client';
 import type { Attendee } from '@showtik/api-client';
 import { PortalShell } from '@/components/PortalShell';
@@ -53,15 +53,11 @@ function AttendeesInner() {
         <Icon name="arrow-left" size={15} /> Back to event
       </button>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div>
-          <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-heading)' }}>Attendees</div>
-          <div style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>
-            {attendees ? `${attendees.length} registrations · ${attendees.filter((a) => a.checked_in).length} checked in` : 'Loading…'}
-          </div>
-        </div>
-        <Button variant="secondary" onClick={exportCsv} disabled={!attendees || attendees.length === 0}><Icon name="download" size={15} />Export CSV</Button>
-      </div>
+      <PageHeading
+        title="Attendees"
+        description={attendees ? `${attendees.length} registrations · ${attendees.filter((a) => a.checked_in).length} checked in` : 'Loading…'}
+        actions={<Button variant="secondary" onClick={exportCsv} disabled={!attendees || attendees.length === 0}><Icon name="download" size={15} />Export CSV</Button>}
+      />
 
       <div style={{ width: 300, marginBottom: 20 }}>
         <Input icon="search" placeholder="Search by name or email" value={query} onChange={(e) => setQuery(e.target.value)} />

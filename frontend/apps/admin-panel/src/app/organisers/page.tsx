@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Input, Avatar, Button, DataTable, EmptyState } from '@showtik/ui';
+import { Input, Avatar, Button, DataTable, EmptyState, PageHeading } from '@showtik/ui';
 import { adminApi, formatTimestamp, ApiError } from '@showtik/api-client';
 import type { OrganiserSummary } from '@showtik/api-client';
 import { AdminShell } from '@/components/AdminShell';
@@ -56,12 +56,14 @@ function OrganisersInner() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-heading)' }}>Organiser management</div>
-        <div style={{ width: 260 }}>
-          <Input icon="search" placeholder="Search organisers" value={query} onChange={(e) => setQuery(e.target.value)} />
-        </div>
-      </div>
+      <PageHeading
+        title="Organiser management"
+        actions={
+          <div style={{ width: 260 }}>
+            <Input icon="search" placeholder="Search organisers" value={query} onChange={(e) => setQuery(e.target.value)} />
+          </div>
+        }
+      />
 
       {error && <div style={{ color: 'var(--color-error)', marginBottom: 16 }}>{error}</div>}
 

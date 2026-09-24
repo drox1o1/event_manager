@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Icon, StatCard, Badge, Button } from '@showtik/ui';
+import { Icon, StatCard, Badge, Button, PageHeading } from '@showtik/ui';
 import type { BadgeStatus } from '@showtik/ui';
 import { organiserApi, formatEventDate } from '@showtik/api-client';
 import type { OrganiserEventSummary } from '@showtik/api-client';
@@ -34,13 +34,12 @@ function DashboardInner() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
-        <div>
-          <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-heading)' }}>Dashboard</div>
-          <div style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>Here&apos;s how your events are doing.</div>
-        </div>
-        <Button onClick={() => router.push('/events/new')}><Icon name="plus" size={16} />Create event</Button>
-      </div>
+      <PageHeading
+        title="Dashboard"
+        description="Here's how your events are doing."
+        actions={<Button onClick={() => router.push('/events/new')}><Icon name="plus" size={16} />Create event</Button>}
+        style={{ marginBottom: 28 }}
+      />
 
       {error && <div style={{ color: 'var(--color-error)', marginBottom: 20 }}>{error}</div>}
 

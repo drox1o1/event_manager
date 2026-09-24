@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Icon, Input, Button, Switch, Textarea, Toast } from '@showtik/ui';
+import { Icon, Input, Button, Switch, Textarea, Toast, PageHeading } from '@showtik/ui';
 import { adminApi, ApiError } from '@showtik/api-client';
 import type { PlatformSettings } from '@showtik/api-client';
 import { AdminShell } from '@/components/AdminShell';
@@ -70,13 +70,11 @@ function SettingsInner() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div>
-          <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-heading)' }}>Platform settings</div>
-          <div style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>Commission and buyer notifications — platform-wide.</div>
-        </div>
-        <Button onClick={save} loading={saving}>Save changes</Button>
-      </div>
+      <PageHeading
+        title="Platform settings"
+        description="Commission and buyer notifications — platform-wide."
+        actions={<Button onClick={save} loading={saving}>Save changes</Button>}
+      />
 
       {error && <div style={{ color: 'var(--color-error)', marginBottom: 16 }}>{error}</div>}
 

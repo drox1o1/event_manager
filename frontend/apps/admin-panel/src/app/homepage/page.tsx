@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Icon, Input, Textarea, Select, Switch, Button, Toast } from '@showtik/ui';
+import { Icon, Input, Textarea, Select, Switch, Button, Toast, PageHeading } from '@showtik/ui';
 import { adminApi, ApiError } from '@showtik/api-client';
 import type { HomepageConfig, HomepageSection, HomepageSectionType, HomepageSectionMode, AdminEventSummary, FooterColumnItem } from '@showtik/api-client';
 import { AdminShell } from '@/components/AdminShell';
@@ -186,13 +186,11 @@ function HomepageInner() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div>
-          <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-heading)' }}>Homepage</div>
-          <div style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>Control the public event website front page — hero, banner, and the sections buyers see.</div>
-        </div>
-        <Button onClick={save} loading={saving}><Icon name={saved ? 'check' : 'save'} size={16} />{saved ? 'Saved' : 'Save changes'}</Button>
-      </div>
+      <PageHeading
+        title="Homepage"
+        description="Control the public event website front page — hero, banner, and the sections buyers see."
+        actions={<Button onClick={save} loading={saving}><Icon name={saved ? 'check' : 'save'} size={16} />{saved ? 'Saved' : 'Save changes'}</Button>}
+      />
 
       {error && <div style={{ color: 'var(--color-error)', marginBottom: 16 }}>{error}</div>}
 

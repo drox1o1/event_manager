@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { DataTable, EmptyState } from '@showtik/ui';
+import { DataTable, EmptyState, PageHeading } from '@showtik/ui';
 import { adminApi, formatINR, formatTimestamp } from '@showtik/api-client';
 import type { TransactionSummary } from '@showtik/api-client';
 import { AdminShell } from '@/components/AdminShell';
@@ -34,7 +34,7 @@ function TransactionsInner() {
 
   return (
     <div>
-      <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 24 }}>All transactions</div>
+      <PageHeading title="All transactions" />
 
       {error && <div style={{ color: 'var(--color-error)', marginBottom: 16 }}>{error}</div>}
 

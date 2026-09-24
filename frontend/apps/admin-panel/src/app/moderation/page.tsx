@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Icon, Badge, Button, Textarea, EmptyState } from '@showtik/ui';
+import { Icon, Badge, Button, Textarea, EmptyState, PageHeading } from '@showtik/ui';
 import { adminApi, formatTimestamp, ApiError } from '@showtik/api-client';
 import type { ModerationQueueItem } from '@showtik/api-client';
 import { AdminShell } from '@/components/AdminShell';
@@ -68,12 +68,10 @@ function ModerationInner() {
 
   return (
     <div>
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-heading)' }}>Moderation queue</div>
-        <div style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>
-          {items === null ? 'Loading…' : `${pendingCount} event${pendingCount === 1 ? '' : 's'} awaiting review`}
-        </div>
-      </div>
+      <PageHeading
+        title="Moderation queue"
+        description={items === null ? 'Loading…' : `${pendingCount} event${pendingCount === 1 ? '' : 's'} awaiting review`}
+      />
 
       {error && <div style={{ color: 'var(--color-error)', marginBottom: 16 }}>{error}</div>}
 

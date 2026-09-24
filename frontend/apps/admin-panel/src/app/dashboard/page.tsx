@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { StatCard, Badge } from '@showtik/ui';
+import { StatCard, Badge, PageHeading } from '@showtik/ui';
 import { adminApi, formatTimestamp } from '@showtik/api-client';
 import type { AdminEventSummary, ModerationQueueItem } from '@showtik/api-client';
 import { AdminShell } from '@/components/AdminShell';
@@ -31,10 +31,7 @@ function DashboardInner() {
 
   return (
     <div>
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-heading)' }}>Platform overview</div>
-        <div style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>Across all organisers and cities.</div>
-      </div>
+      <PageHeading title="Platform overview" description="Across all organisers and cities." style={{ marginBottom: 28 }} />
 
       {error && <div style={{ color: 'var(--color-error)', marginBottom: 20 }}>{error}</div>}
 

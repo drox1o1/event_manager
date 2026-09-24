@@ -26,20 +26,21 @@ export function DataTable<T extends { id?: string | number }>({ columns = [], ro
   }
   return (
     <div style={{ overflowX: 'auto', fontFamily: 'var(--font-sans)', ...style }}>
+      <style>{'.showtik-dt-row{transition:background 0.12s ease}.showtik-dt-row:hover{background:var(--color-off-white)}'}</style>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
         <thead>
           <tr>
             {columns.map((c) => (
-              <th key={c.key} style={{ textAlign: 'left', padding: '10px 16px', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-subtle)', fontWeight: 600, borderBottom: '1px solid var(--border-default)' }}>
+              <th key={c.key} style={{ textAlign: 'left', padding: '13px 16px', fontSize: 11.5, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-subtle)', fontWeight: 700, background: 'var(--color-off-white)', borderBottom: '1px solid var(--border-default)' }}>
                 {c.label}
               </th>
             ))}
-            {actions && <th style={{ borderBottom: '1px solid var(--border-default)' }} />}
+            {actions && <th style={{ background: 'var(--color-off-white)', borderBottom: '1px solid var(--border-default)' }} />}
           </tr>
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={row.id ?? i}>
+            <tr key={row.id ?? i} className="showtik-dt-row">
               {columns.map((c) => (
                 <td key={c.key} style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-default)', color: 'var(--text-body)' }}>
                   {c.render ? c.render(row) : String((row as Record<string, unknown>)[c.key] ?? '')}

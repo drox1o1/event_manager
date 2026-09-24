@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Badge, Button, DataTable, EmptyState, Modal, Textarea } from '@showtik/ui';
+import { Badge, Button, DataTable, EmptyState, Modal, Textarea, PageHeading } from '@showtik/ui';
 import type { BadgeStatus } from '@showtik/ui';
 import { adminApi, formatINR, formatTimestamp, ApiError } from '@showtik/api-client';
 import type { RefundSummary } from '@showtik/api-client';
@@ -67,12 +67,10 @@ function RefundsInner() {
 
   return (
     <div>
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--text-heading)' }}>Refund management</div>
-        <div style={{ fontSize: 14, color: 'var(--text-muted)', marginTop: 4 }}>
-          {refunds === null ? 'Loading…' : `${pending} refund request${pending === 1 ? '' : 's'} awaiting a decision`}
-        </div>
-      </div>
+      <PageHeading
+        title="Refund management"
+        description={refunds === null ? 'Loading…' : `${pending} refund request${pending === 1 ? '' : 's'} awaiting a decision`}
+      />
 
       {error && <div style={{ color: 'var(--color-error)', marginBottom: 16 }}>{error}</div>}
 
