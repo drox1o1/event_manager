@@ -51,7 +51,7 @@ function DashboardInner() {
 
       <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)', padding: 24 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-heading)' }}>Your events</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-heading)' }}>Your events</div>
           <a href="/events" onClick={(e) => { e.preventDefault(); router.push('/events'); }} style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-link)', textDecoration: 'none' }}>View all &rarr;</a>
         </div>
         {events === null ? (

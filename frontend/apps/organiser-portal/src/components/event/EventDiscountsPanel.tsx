@@ -89,7 +89,7 @@ export function EventDiscountsPanel() {
         </div>
 
         <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)', padding: 24 }}>
-          <div style={{ fontSize: 17, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 20 }}>{activeId === 'new' ? 'New discount' : 'Edit discount'}</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 20 }}>{activeId === 'new' ? 'New discount' : 'Edit discount'}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             <div>
               <Input label="Discount code" placeholder="RUNXTREME-30" value={active.code} onChange={(e) => patch('code', e.target.value)} />

@@ -93,7 +93,7 @@ export function EventTaxPanel() {
           <PreviewRow label={`${label || 'Tax'} (${enabled ? rate || 0 : 0}%)${mode === TAX_MODE[1] ? ' incl.' : ''}`} value={enabled ? `₹${taxAmt.toLocaleString('en-IN')}` : '₹0'} muted={mode === TAX_MODE[1]} />
           <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 12, marginTop: 6, borderTop: '1.5px solid var(--border-default)' }}>
             <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-heading)' }}>Total</span>
-            <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-accent)' }}>₹{total.toLocaleString('en-IN')}</span>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 800, color: 'var(--color-accent)' }}>₹{total.toLocaleString('en-IN')}</span>
           </div>
           <div style={{ marginTop: 16, fontSize: 12, color: 'var(--text-subtle)', display: 'flex', gap: 6, alignItems: 'flex-start' }}>
             <Icon name="info" size={14} /> {mode === TAX_MODE[1] ? 'Tax is already part of the ticket price shown to buyers.' : 'Tax is added on top at checkout.'}

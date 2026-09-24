@@ -15,7 +15,7 @@ function SettingsCard({ icon, title, description, children }: { icon: string; ti
           <Icon name={icon} size={17} />
         </span>
         <div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-heading)' }}>{title}</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-heading)' }}>{title}</div>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>{description}</div>
         </div>
       </div>
