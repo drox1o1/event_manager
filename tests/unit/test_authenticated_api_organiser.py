@@ -12,14 +12,14 @@ from unittest.mock import MagicMock
 from common.models import Event, EventStatus
 
 
-def _api_event(method, path, body=None, authorizer=None):
+def _api_event(method, path, body=None, authorizer=None, query=None):
     return {
         "httpMethod": method,
         "path": path,
         "resource": path,
         "headers": {"Content-Type": "application/json"},
         "multiValueHeaders": {},
-        "queryStringParameters": None,
+        "queryStringParameters": query,
         "multiValueQueryStringParameters": None,
         "pathParameters": None,
         "body": json.dumps(body) if body is not None else None,
@@ -189,6 +189,58 @@ def test_create_image_upload_url_returns_presigned_url(monkeypatch, mock_jwt_sec
     body = json.loads(response["body"])
     assert body["upload_url"] == "https://example.com/presigned"
     assert body["image_url"].startswith("https://d123.cloudfront.net/")
+
+
+def test_upload_url_signs_the_caller_supplied_content_type(monkeypatch, mock_jwt_secret):
+    """The presigned URL's signed Content-Type must match ?content_type --
+    which itself must match the Content-Type the frontend's PUT actually
+    sends (the picked File's own .type). Previously hardcoded to
+    "image/jpeg" regardless of the real file type, so any non-JPEG upload's
+    PUT sent a Content-Type the signature didn't cover, and S3 rejected it
+    with SignatureDoesNotMatch (403) -- see _resolve_image_content_type."""
+    fake_event = _fake_event()
+    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_event))
+    monkeypatch.setenv("BANNERS_BUCKET_NAME", "cyrokx-banners-test")
+    monkeypatch.setenv("BANNERS_CDN_DOMAIN", "d123.cloudfront.net")
+
+    mock_s3 = MagicMock()
+    mock_s3.generate_presigned_url.return_value = "https://example.com/presigned"
+    monkeypatch.setattr("authenticated_api.handler._s3", lambda: mock_s3)
+
+    from authenticated_api.handler import handler as api_handler
+
+    event = _api_event(
+        "POST",
+        f"/organiser/events/{fake_event.id}/banner-upload-url",
+        authorizer={"role": "organiser", "organiser_id": str(fake_event.organiser_id)},
+        query={"content_type": "image/png"},
+    )
+    response = api_handler(event, MagicMock())
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert body["banner_image_url"].endswith(".png")
+
+    _, kwargs = mock_s3.generate_presigned_url.call_args
+    assert kwargs["Params"]["ContentType"] == "image/png"
+    assert kwargs["Params"]["Key"].endswith(".png")
+
+
+def test_upload_url_rejects_unsupported_content_type(monkeypatch, mock_jwt_secret):
+    fake_event = _fake_event()
+    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_event))
+    monkeypatch.setenv("BANNERS_BUCKET_NAME", "cyrokx-banners-test")
+    monkeypatch.setenv("BANNERS_CDN_DOMAIN", "d123.cloudfront.net")
+
+    from authenticated_api.handler import handler as api_handler
+
+    event = _api_event(
+        "POST",
+        f"/organiser/events/{fake_event.id}/banner-upload-url",
+        authorizer={"role": "organiser", "organiser_id": str(fake_event.organiser_id)},
+        query={"content_type": "application/pdf"},
+    )
+    response = api_handler(event, MagicMock())
+    assert response["statusCode"] == 400
 
 
 def test_attendees_rejects_when_not_owner(monkeypatch, mock_jwt_secret):

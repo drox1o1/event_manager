@@ -169,7 +169,7 @@ export function CreateEventForm({ token }: CreateEventFormProps) {
 
       if (bannerFile) {
         setSubmitStage('Uploading banner…');
-        const { upload_url, banner_image_url } = await organiserApi.createBannerUploadUrl(token, eventId);
+        const { upload_url, banner_image_url } = await organiserApi.createBannerUploadUrl(token, eventId, bannerFile.type);
         await organiserApi.uploadBannerFile(upload_url, bannerFile);
         await organiserApi.updateEvent(token, eventId, { banner_image_url });
       }
@@ -178,8 +178,9 @@ export function CreateEventForm({ token }: CreateEventFormProps) {
         setSubmitStage('Uploading gallery photos…');
         const uploaded: { image_url: string; sort_order: number }[] = [];
         for (let i = 0; i < galleryImages.length; i++) {
-          const { upload_url, image_url } = await organiserApi.createImageUploadUrl(token, eventId);
-          await organiserApi.uploadImageFile(upload_url, galleryImages[i].file);
+          const file = galleryImages[i].file;
+          const { upload_url, image_url } = await organiserApi.createImageUploadUrl(token, eventId, file.type);
+          await organiserApi.uploadImageFile(upload_url, file);
           uploaded.push({ image_url, sort_order: i });
         }
         await organiserApi.replaceEventImages(token, eventId, uploaded);

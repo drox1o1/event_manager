@@ -104,6 +104,36 @@ def _s3():
     return _s3_client
 
 
+_ALLOWED_IMAGE_TYPES = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+}
+
+
+def _resolve_image_content_type(raw: str | None) -> tuple[str, str]:
+    """(content_type, file_extension) for a presigned upload, from the
+    caller-supplied `content_type` query param.
+
+    Must match whatever Content-Type the frontend's PUT to S3 actually
+    sends (the browser's File.type for the file the user picked) --
+    presigned URLs sign the Content-Type header, so any mismatch between
+    what's signed here and what's sent on the PUT is a SignatureDoesNotMatch
+    (403), regardless of it being a real image. Previously hardcoded to
+    "image/jpeg" here while the frontend sent the real file type, which is
+    exactly why every non-JPEG upload 403'd.
+    """
+    content_type = (raw or "image/jpeg").split(";")[0].strip().lower()
+    extension = _ALLOWED_IMAGE_TYPES.get(content_type)
+    if extension is None:
+        raise BadRequestError(
+            f"Unsupported content_type {content_type!r} -- expected one of "
+            f"{sorted(_ALLOWED_IMAGE_TYPES)}"
+        )
+    return content_type, extension
+
+
 def _banners_cdn_url(key: str) -> str:
     """Public URL for an object in BannersBucket, via the CloudFront
     distribution in front of it (infra/app/template.yaml's
@@ -450,7 +480,11 @@ def create_ticket_tiers(event_id: str):
 def create_banner_upload_url(event_id: str):
     """Issues a presigned PUT URL against BannersBucket -- the frontend PUTs
     the file directly to S3, then calls PATCH /organiser/events/{id} with the
-    returned banner_image_url to persist it on the event."""
+    returned banner_image_url to persist it on the event.
+
+    ?content_type=<mime> (optional, defaults to image/jpeg) must match the
+    Content-Type the frontend's PUT actually sends -- see
+    _resolve_image_content_type."""
     organiser_id = _require_organiser_id()
     event_uuid = _parse_uuid(event_id)
 
@@ -459,11 +493,14 @@ def create_banner_upload_url(event_id: str):
         if event is None or event.organiser_id != organiser_id:
             raise NotFoundError("Event not found")
 
+    params = app.current_event.query_string_parameters or {}
+    content_type, extension = _resolve_image_content_type(params.get("content_type"))
+
     bucket = os.environ["BANNERS_BUCKET_NAME"]
-    key = f"{event_uuid}/{uuid.uuid4()}.jpg"
+    key = f"{event_uuid}/{uuid.uuid4()}.{extension}"
     upload_url = _s3().generate_presigned_url(
         "put_object",
-        Params={"Bucket": bucket, "Key": key, "ContentType": "image/jpeg"},
+        Params={"Bucket": bucket, "Key": key, "ContentType": content_type},
         ExpiresIn=900,
     )
     banner_image_url = _banners_cdn_url(key)
@@ -539,18 +576,24 @@ def replace_form_fields(event_id: str):
 def create_image_upload_url(event_id: str):
     """Presigned PUT for a gallery image (same BannersBucket as the hero
     banner). The frontend PUTs the file, then PUTs the resulting URL list to
-    /organiser/events/{id}/images to persist it."""
+    /organiser/events/{id}/images to persist it.
+
+    ?content_type=<mime> (optional, defaults to image/jpeg) -- see
+    _resolve_image_content_type."""
     organiser_id = _require_organiser_id()
     event_uuid = _parse_uuid(event_id)
 
     with get_session() as session:
         _load_owned_event(session, event_uuid, organiser_id)
 
+    params = app.current_event.query_string_parameters or {}
+    content_type, extension = _resolve_image_content_type(params.get("content_type"))
+
     bucket = os.environ["BANNERS_BUCKET_NAME"]
-    key = f"{event_uuid}/gallery/{uuid.uuid4()}.jpg"
+    key = f"{event_uuid}/gallery/{uuid.uuid4()}.{extension}"
     upload_url = _s3().generate_presigned_url(
         "put_object",
-        Params={"Bucket": bucket, "Key": key, "ContentType": "image/jpeg"},
+        Params={"Bucket": bucket, "Key": key, "ContentType": content_type},
         ExpiresIn=900,
     )
     image_url = _banners_cdn_url(key)

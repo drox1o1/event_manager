@@ -66,8 +66,16 @@ export function createTicketTiers(token: string, eventId: string, tiers: TicketT
   });
 }
 
-export function createBannerUploadUrl(token: string, eventId: string): Promise<BannerUploadUrlResponse> {
-  return apiFetch<BannerUploadUrlResponse>(`/organiser/events/${eventId}/banner-upload-url`, { method: 'POST', token });
+/** contentType must be the exact MIME type the PUT to the returned upload_url
+ * will send (i.e. the picked File's own .type) -- the presigned URL signs
+ * Content-Type, so a mismatch between what's signed here and what's sent on
+ * the PUT fails as a 403 SignatureDoesNotMatch, not a helpful error. */
+export function createBannerUploadUrl(token: string, eventId: string, contentType?: string): Promise<BannerUploadUrlResponse> {
+  return apiFetch<BannerUploadUrlResponse>(`/organiser/events/${eventId}/banner-upload-url`, {
+    method: 'POST',
+    token,
+    query: { content_type: contentType },
+  });
 }
 
 export function listAttendees(token: string, eventId: string): Promise<AttendeeListResponse> {
@@ -91,8 +99,13 @@ export function replaceFormFields(token: string, eventId: string, fields: FormFi
 
 // --- Gallery images (up to 3, shown under the event description) ---
 
-export function createImageUploadUrl(token: string, eventId: string): Promise<ImageUploadUrlResponse> {
-  return apiFetch<ImageUploadUrlResponse>(`/organiser/events/${eventId}/image-upload-url`, { method: 'POST', token });
+/** See createBannerUploadUrl -- contentType must match the picked File's .type. */
+export function createImageUploadUrl(token: string, eventId: string, contentType?: string): Promise<ImageUploadUrlResponse> {
+  return apiFetch<ImageUploadUrlResponse>(`/organiser/events/${eventId}/image-upload-url`, {
+    method: 'POST',
+    token,
+    query: { content_type: contentType },
+  });
 }
 
 export function replaceEventImages(token: string, eventId: string, images: EventImageInput[]): Promise<{ images: string[] }> {
