@@ -144,6 +144,7 @@ def test_create_banner_upload_url_returns_presigned_url(monkeypatch, mock_jwt_se
     fake_event = _fake_event()
     monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_event))
     monkeypatch.setenv("BANNERS_BUCKET_NAME", "cyrokx-banners-test")
+    monkeypatch.setenv("BANNERS_CDN_DOMAIN", "d123.cloudfront.net")
 
     mock_s3 = MagicMock()
     mock_s3.generate_presigned_url.return_value = "https://example.com/presigned"
@@ -160,7 +161,34 @@ def test_create_banner_upload_url_returns_presigned_url(monkeypatch, mock_jwt_se
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert body["upload_url"] == "https://example.com/presigned"
-    assert "banner_image_url" in body
+    # Not a raw S3 URL -- BannersBucket blocks all public access, so the
+    # frontend must be given the CloudFront-fronted URL instead (see
+    # _banners_cdn_url in the handler).
+    assert body["banner_image_url"].startswith("https://d123.cloudfront.net/")
+
+
+def test_create_image_upload_url_returns_presigned_url(monkeypatch, mock_jwt_secret):
+    fake_event = _fake_event()
+    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_event))
+    monkeypatch.setenv("BANNERS_BUCKET_NAME", "cyrokx-banners-test")
+    monkeypatch.setenv("BANNERS_CDN_DOMAIN", "d123.cloudfront.net")
+
+    mock_s3 = MagicMock()
+    mock_s3.generate_presigned_url.return_value = "https://example.com/presigned"
+    monkeypatch.setattr("authenticated_api.handler._s3", lambda: mock_s3)
+
+    from authenticated_api.handler import handler as api_handler
+
+    event = _api_event(
+        "POST",
+        f"/organiser/events/{fake_event.id}/image-upload-url",
+        authorizer={"role": "organiser", "organiser_id": str(fake_event.organiser_id)},
+    )
+    response = api_handler(event, MagicMock())
+    assert response["statusCode"] == 200
+    body = json.loads(response["body"])
+    assert body["upload_url"] == "https://example.com/presigned"
+    assert body["image_url"].startswith("https://d123.cloudfront.net/")
 
 
 def test_attendees_rejects_when_not_owner(monkeypatch, mock_jwt_secret):

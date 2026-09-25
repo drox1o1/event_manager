@@ -219,6 +219,7 @@ Resources:
           JWT_SECRET_ARN: !ImportValue cyrokx-network-data-JwtSigningSecretArn
           EMAIL_QUEUE_URL: !Ref EmailQueue
           BANNERS_BUCKET_NAME: !Ref BannersBucket
+          BANNERS_CDN_DOMAIN: !GetAtt BannersDistribution.DomainName
       Policies:
         - Statement:
             - Effect: Allow
@@ -696,6 +697,56 @@ Resources:
           - AllowedMethods: [GET, PUT]
             AllowedOrigins: ["*"]
             AllowedHeaders: ["*"]
+
+  # Bucket itself stays fully private (PublicAccessBlockConfiguration above)
+  # -- uploaded images are served to browsers through this distribution
+  # instead, via Origin Access Control below, rather than the bucket's own
+  # (blocked) public URL. create_banner_upload_url/create_image_upload_url
+  # in authenticated_api return BANNERS_CDN_DOMAIN-based URLs, not raw S3
+  # ones, for exactly this reason.
+  BannersOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub cyrokx-banners-oac-${Stage}
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  BannersDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        HttpVersion: http2
+        PriceClass: PriceClass_100
+        DefaultCacheBehavior:
+          TargetOriginId: banners-s3-origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD]
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6 # Managed-CachingOptimized
+        Origins:
+          - Id: banners-s3-origin
+            DomainName: !GetAtt BannersBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt BannersOriginAccessControl.Id
+            S3OriginConfig:
+              OriginAccessIdentity: ""
+
+  BannersBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref BannersBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub "${BannersBucket.Arn}/*"
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub arn:aws:cloudfront::${AWS::AccountId}:distribution/${BannersDistribution}
 
 Outputs:
   ApiUrl:

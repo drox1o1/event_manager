@@ -104,6 +104,15 @@ def _s3():
     return _s3_client
 
 
+def _banners_cdn_url(key: str) -> str:
+    """Public URL for an object in BannersBucket, via the CloudFront
+    distribution in front of it (infra/app/template.yaml's
+    BannersDistribution) -- not the bucket's own S3 URL, which 403s: the
+    bucket has full PublicAccessBlockConfiguration and only grants read
+    access to that distribution's Origin Access Control."""
+    return f"https://{os.environ['BANNERS_CDN_DOMAIN']}/{key}"
+
+
 class ConflictError(ServiceError):
     """409 -- aws_lambda_powertools only ships 400/401/404/500 built in."""
 
@@ -457,7 +466,7 @@ def create_banner_upload_url(event_id: str):
         Params={"Bucket": bucket, "Key": key, "ContentType": "image/jpeg"},
         ExpiresIn=900,
     )
-    banner_image_url = f"https://{bucket}.s3.amazonaws.com/{key}"
+    banner_image_url = _banners_cdn_url(key)
 
     return {"upload_url": upload_url, "banner_image_url": banner_image_url}
 
@@ -544,7 +553,7 @@ def create_image_upload_url(event_id: str):
         Params={"Bucket": bucket, "Key": key, "ContentType": "image/jpeg"},
         ExpiresIn=900,
     )
-    image_url = f"https://{bucket}.s3.amazonaws.com/{key}"
+    image_url = _banners_cdn_url(key)
 
     return {"upload_url": upload_url, "image_url": image_url}
 
