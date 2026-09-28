@@ -70,7 +70,7 @@ export function FeaturedHero({ events }: { events: FeaturedEvent[] }) {
                 <div style={{ display: 'flex', gap: isMobile ? 12 : 22, flexWrap: 'wrap', fontSize: 15, color: 'rgba(255,255,255,0.88)', marginBottom: 28 }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}><Icon name="calendar" size={16} />{formatDateTime(e.event_date, e.event_time ?? undefined)}</span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}><Icon name="map-pin" size={16} />{e.location_type === 'venue' && e.venue_name ? `${e.venue_name}, ${e.city}` : e.city}</span>
-                  {e.price_from !== null && <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}><Icon name="ticket" size={16} />{e.price_from === '0' || Number(e.price_from) === 0 ? 'Free entry' : `From ${formatINR(e.price_from)}`}</span>}
+                  {e.price_from !== null && <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}><Icon name="ticket" size={16} />{Number(e.price_from) === 0 ? 'Free entry available' : `From ${formatINR(e.price_from)}`}</span>}
                 </div>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                   <button type="button" tabIndex={active ? 0 : -1} onClick={() => router.push(`/events/${e.id}?book=1`)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, height: 52, padding: '0 28px', borderRadius: 12, border: 'none', background: 'var(--color-accent)', color: '#fff', fontSize: 16, fontWeight: 700, cursor: 'pointer', boxShadow: '0 10px 30px rgba(196,20,63,0.45)' }}>

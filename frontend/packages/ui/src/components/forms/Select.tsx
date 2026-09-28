@@ -60,6 +60,7 @@ export function Select({ label, value, onChange, options = [], placeholder = 'Se
           <Icon name="chevron-down" size={16} />
         </span>
       </span>
+      {error && <span style={{ fontSize: 12, color: 'var(--color-error)' }}>{error}</span>}
     </label>
   );
 }

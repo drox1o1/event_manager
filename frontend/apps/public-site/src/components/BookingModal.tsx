@@ -7,6 +7,8 @@ import { publicApi, formatINR, formatEventDate, ApiError } from '@showtik/api-cl
 import type { EventDetail, FormField, TicketTierSummary } from '@showtik/api-client';
 
 const HOLD_SECONDS = 10 * 60;
+// Money amounts in the booking UI: ₹0 rather than formatINR's "Free".
+const money = (n: number) => (n === 0 ? '₹0' : formatINR(n));
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const PHONE_RE = /^\+?[\d\s-]{8,16}$/;
 
@@ -384,10 +386,10 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
                     <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 3 }}>{(people[t.id] ?? []).map((p) => p.name).join(', ')}</div>
                   </div>
                 ))}
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13.5, color: 'var(--text-muted)', paddingTop: 10, borderTop: '1px solid var(--border-default)' }}><span>Booking fee</span><span>{formatINR(0)}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13.5, color: 'var(--text-muted)', paddingTop: 10, borderTop: '1px solid var(--border-default)' }}><span>Booking fee</span><span>₹0</span></div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 8 }}>
                   <span style={{ fontWeight: 700 }}>Total</span>
-                  <span style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 800, color: 'var(--color-accent)' }}>{formatINR(total)}</span>
+                  <span style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 800, color: 'var(--color-accent)' }}>{money(total)}</span>
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-subtle)', marginTop: 10, lineHeight: 1.45 }}>One payment for the whole order. Each participant receives a separate ticket ID.</div>
               </div>
@@ -398,7 +400,7 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 22px', borderTop: '1px solid var(--border-default)', background: 'var(--surface-card)' }}>
           <div style={{ fontSize: 15, color: 'var(--text-muted)' }}>Qty : <strong style={{ color: 'var(--color-accent-secondary)', fontSize: 17 }}>{totalQty}</strong></div>
-          <div style={{ fontSize: 15, color: 'var(--text-muted)' }}>Total : <strong style={{ color: 'var(--color-accent-secondary)', fontSize: 17 }}>{formatINR(total)}</strong></div>
+          <div style={{ fontSize: 15, color: 'var(--text-muted)' }}>Total : <strong style={{ color: 'var(--color-accent-secondary)', fontSize: 17 }}>{money(total)}</strong></div>
           <span style={{ flex: 1 }} />
           {step === 'select' && <Button onClick={proceedFromSelect} disabled={totalQty === 0} style={{ minWidth: isMobile ? 120 : 180 }}>Proceed <Icon name="chevron-right" size={16} /></Button>}
           {step === 'attendees' && <Button onClick={() => { if (validateAttendees()) { setStep('buyer'); bodyRef.current?.scrollTo({ top: 0 }); } }} style={{ minWidth: isMobile ? 120 : 180 }}>Continue <Icon name="chevron-right" size={16} /></Button>}

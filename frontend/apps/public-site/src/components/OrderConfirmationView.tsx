@@ -117,7 +117,7 @@ export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
             <span style={{ fontWeight: 600 }}>{formatINR(item.quantity * Number(item.unit_price))}</span>
           </div>
         ))}
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: 'var(--text-muted)', marginBottom: 8 }}><span>Booking fee</span><span>{formatINR(order.booking_fee)}</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: 'var(--text-muted)', marginBottom: 8 }}><span>Booking fee</span><span>{Number(order.booking_fee) === 0 ? '₹0' : formatINR(order.booking_fee)}</span></div>
         <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-default)', paddingTop: 12 }}>
           <span style={{ fontWeight: 700 }}>Total</span>
           <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800, color: 'var(--color-accent)' }}>{formatINR(order.total_amount)}</span>
