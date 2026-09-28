@@ -26,8 +26,10 @@ export function OrganiserPageView({ page, onOpenEvent, previewLabel }: Organiser
         {previewLabel && <span style={{ position: 'absolute', top: 14, left: 14, padding: '5px 12px', borderRadius: 'var(--radius-pill)', background: 'rgba(5,23,71,0.75)', color: '#fff', fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{previewLabel}</span>}
       </div>
       <div style={{ maxWidth: 'var(--content-max-width)', margin: '0 auto', padding: isMobile ? '0 16px 48px' : '0 32px 64px' }}>
-        <div style={{ display: 'flex', alignItems: isMobile ? 'flex-start' : 'flex-end', gap: 20, marginTop: isMobile ? -44 : -64, flexDirection: isMobile ? 'column' : 'row' }}>
-          <div style={{ width: isMobile ? 88 : 128, height: isMobile ? 88 : 128, borderRadius: 24, border: '4px solid var(--surface-card)', background: page.logo_url ? `center/cover no-repeat url(${page.logo_url})` : 'var(--gradient-brand)', boxShadow: 'var(--shadow-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: isMobile ? 34 : 48, flex: 'none', position: 'relative' }}>
+        {/* Only the logo overlaps the cover; the name/meta row sits below it so
+            dark text never lands on the dark cover. */}
+        <div style={{ display: 'flex', alignItems: isMobile ? 'flex-start' : 'flex-end', gap: 20, marginTop: 16, flexDirection: isMobile ? 'column' : 'row' }}>
+          <div style={{ marginTop: isMobile ? -60 : -80, width: isMobile ? 88 : 128, height: isMobile ? 88 : 128, borderRadius: 24, border: '4px solid var(--surface-card)', background: page.logo_url ? `center/cover no-repeat url(${page.logo_url})` : 'var(--gradient-brand)', boxShadow: 'var(--shadow-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: isMobile ? 34 : 48, flex: 'none', position: 'relative' }}>
             {!page.logo_url && page.org_name.charAt(0).toUpperCase()}
           </div>
           <div style={{ paddingBottom: 6, flex: 1 }}>

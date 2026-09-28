@@ -4,29 +4,88 @@
     {
       "name": "public-site",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "-w", "public-site"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "-w",
+        "public-site"
+      ],
       "port": 3000,
       "cwd": "frontend"
     },
     {
       "name": "organiser-portal",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "-w", "organiser-portal", "--", "--port", "3001"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "-w",
+        "organiser-portal",
+        "--",
+        "--port",
+        "3001"
+      ],
       "port": 3001,
       "cwd": "frontend"
     },
     {
       "name": "admin-panel",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "-w", "admin-panel", "--", "--port", "3002"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "-w",
+        "admin-panel",
+        "--",
+        "--port",
+        "3002"
+      ],
       "port": 3002,
       "cwd": "frontend"
     },
     {
       "name": "public-site-prod",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "start", "-w", "public-site", "--", "--port", "3000"],
+      "runtimeArgs": [
+        "run",
+        "start",
+        "-w",
+        "public-site",
+        "--",
+        "--port",
+        "3000"
+      ],
       "port": 3000,
+      "cwd": "frontend"
+    },
+    {
+      "name": "organiser-portal-prod",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "start",
+        "-w",
+        "organiser-portal",
+        "--",
+        "--port",
+        "3001"
+      ],
+      "port": 3001,
+      "cwd": "frontend"
+    },
+    {
+      "name": "admin-panel-prod",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "start",
+        "-w",
+        "admin-panel",
+        "--",
+        "--port",
+        "3002"
+      ],
+      "port": 3002,
       "cwd": "frontend"
     }
   ]

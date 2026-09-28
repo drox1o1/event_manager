@@ -52,7 +52,8 @@ export function EventDetailView({ event, autoBook }: EventDetailViewProps) {
   const minPrice = prices.length ? Math.min(...prices) : null;
   const allFree = onSale.length > 0 && onSale.every((t) => t.ticket_type === 'free' || Number(t.price) === 0);
   const canBook = onSale.length > 0;
-  const priceLabel = allFree ? 'Free' : minPrice !== null ? `From ${formatINR(minPrice)}` : '—';
+  // Cheapest option free (even alongside paid tiers) reads as "Free", not "From Free".
+  const priceLabel = allFree || minPrice === 0 ? 'Free' : minPrice !== null ? `From ${formatINR(minPrice)}` : '—';
   const vid = youtubeId(event.promo_video_url);
   const where = event.location_type === 'venue' ? `${event.venue_name}, ${event.city}` : event.location_type === 'online' ? 'Online event' : 'Recorded — watch anytime';
   const when = `${formatDateTime(event.event_date, event.event_time)}${event.end_time ? ` to ${event.end_date && event.end_date !== event.event_date ? `${formatEventDate(event.end_date)}, ` : ''}${to12h(event.end_time)}` : ''}`;
