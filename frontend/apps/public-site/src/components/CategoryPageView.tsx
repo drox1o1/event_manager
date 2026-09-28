@@ -40,6 +40,7 @@ export function CategoryPageView({ category, events }: CategoryPageViewProps) {
           {events.map((e) => (
             <EventCard
               key={e.id}
+              image={e.banner_image_url ?? undefined}
               title={e.title}
               date={formatEventDate(e.event_date)}
               city={e.city}

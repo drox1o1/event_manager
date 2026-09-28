@@ -11,6 +11,7 @@ pipeline. Swap this out once real Razorpay integration lands.
 
 from __future__ import annotations
 
+import datetime as dt
 import secrets
 import uuid
 from decimal import Decimal
@@ -23,7 +24,9 @@ from aws_lambda_powertools.event_handler.exceptions import (
     ServiceError,
 )
 from aws_lambda_powertools.utilities.typing import LambdaContext
+from common.cities import DEFAULT_CITIES
 from common.db import get_session
+from common.messaging import publish
 from common.models import (
     Category,
     Event,
@@ -36,6 +39,8 @@ from common.models import (
     Order,
     OrderFormResponse,
     OrderItem,
+    Organiser,
+    OrganiserStatus,
     PaymentStatus,
     RefundRequest,
     SitePage,
@@ -48,12 +53,13 @@ from common.schemas import (
     EventDetail,
     EventSummary,
     FormFieldResponse,
+    OrganiserPublicSummary,
     RefundRequestCreate,
     SitePageResponse,
     TicketTierSummary,
 )
 from pydantic import ValidationError
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import selectinload
 
 logger = Logger()
@@ -108,7 +114,7 @@ def list_events():
 
     query = (
         select(Event)
-        .where(Event.status == EventStatus.LIVE)
+        .where(Event.status == EventStatus.LIVE, Event.listing_type == "public")
         .options(selectinload(Event.ticket_tiers), selectinload(Event.category))
         .order_by(Event.event_date.asc())
     )
@@ -116,22 +122,15 @@ def list_events():
         query = query.join(Event.category).where(Category.name == category)
     if city:
         query = query.where(Event.city == city)
+    keyword = (params.get("q") or "").strip()
+    if keyword:
+        like = f"%{keyword}%"
+        query = query.where(or_(Event.title.ilike(like), Event.venue_name.ilike(like), Event.city.ilike(like)))
     query = query.offset((page - 1) * page_size).limit(page_size)
 
     with get_session() as session:
         events = session.execute(query).scalars().all()
-        results = [
-            EventSummary(
-                id=e.id,
-                title=e.title,
-                category=e.category.name if e.category else None,
-                city=e.city,
-                event_date=e.event_date,
-                price_from=_price_from(e.ticket_tiers),
-                sold_out=_sold_out(e.ticket_tiers),
-            ).model_dump(mode="json")
-            for e in events
-        ]
+        results = [_event_summary_dict(e) for e in events]
 
     return {"events": results, "page": page, "page_size": page_size}
 
@@ -148,11 +147,13 @@ def get_event(event_id: str):
                 selectinload(Event.ticket_tiers),
                 selectinload(Event.category),
                 selectinload(Event.images),
+                selectinload(Event.organiser),
             ],
         )
-        if event is None or event.status != EventStatus.LIVE:
+        if event is None or event.status not in (EventStatus.LIVE, EventStatus.SOLDOUT):
             raise NotFoundError("Event not found")
 
+        tiers = sorted(event.ticket_tiers, key=lambda t: (t.sort_order, t.created_at))
         detail = EventDetail(
             id=event.id,
             title=event.title,
@@ -167,7 +168,21 @@ def get_event(event_id: str):
             venue_address=event.venue_address,
             banner_image_url=event.banner_image_url,
             gallery_images=[img.image_url for img in sorted(event.images, key=lambda i: i.sort_order)],
-            ticket_tiers=[TicketTierSummary.model_validate(t) for t in event.ticket_tiers],
+            ticket_tiers=[TicketTierSummary.model_validate(t) for t in tiers],
+            location_type=event.location_type,
+            end_date=event.end_date,
+            end_time=event.end_time,
+            timezone=event.timezone,
+            schedule_type=event.schedule_type,
+            recurrence=event.recurrence,
+            allow_discussions=event.allow_discussions,
+            promo_video_url=event.promo_video_url,
+            tags=event.tags or [],
+            organiser=(
+                OrganiserPublicSummary(id=event.organiser.id, org_name=event.organiser.org_name, logo_url=event.organiser.logo_url)
+                if event.organiser
+                else None
+            ),
         )
 
     return detail.model_dump(mode="json")
@@ -181,7 +196,7 @@ def get_event_form_fields(event_id: str):
 
     with get_session() as session:
         event = session.get(Event, event_uuid)
-        if event is None or event.status != EventStatus.LIVE:
+        if event is None or event.status not in (EventStatus.LIVE, EventStatus.SOLDOUT):
             raise NotFoundError("Event not found")
 
         fields = (
@@ -220,7 +235,7 @@ def list_categories():
 # Fallback used until the super admin's site settings have ever been saved
 # (or when a database is migrated before the 0005 seed ran) so the navbar and
 # footer are never bare.
-_DEFAULT_CITIES = ["Mumbai", "Delhi", "Bengaluru", "Pune", "Ahmedabad", "Chennai", "Hyderabad", "Kolkata"]
+_DEFAULT_CITIES = DEFAULT_CITIES
 _DEFAULT_FOOTER_TAGLINE = "Discover and book live events near you — no account needed to buy a ticket."
 _DEFAULT_FOOTER_COLUMNS = [
     {"title": "Discover", "links": [
@@ -279,7 +294,23 @@ def _event_summary_dict(e: Event) -> dict:
         event_date=e.event_date,
         price_from=_price_from(e.ticket_tiers),
         sold_out=_sold_out(e.ticket_tiers),
+        event_time=e.event_time,
+        venue_name=e.venue_name,
+        banner_image_url=e.banner_image_url,
+        location_type=e.location_type,
     ).model_dump(mode="json")
+
+
+def _featured_dict(e: Event) -> dict:
+    base = _event_summary_dict(e)
+    base.update(
+        {
+            "headline": e.featured_headline or e.title,
+            "description": (e.description or "")[:220],
+            "organiser_name": e.organiser.org_name if e.organiser else None,
+        }
+    )
+    return base
 
 
 # Default homepage layout used when the CMS config table is empty (e.g. a
@@ -314,7 +345,7 @@ def get_homepage():
         live_pool = (
             session.execute(
                 select(Event)
-                .where(Event.status == EventStatus.LIVE)
+                .where(Event.status == EventStatus.LIVE, Event.listing_type == "public")
                 .options(selectinload(Event.ticket_tiers), selectinload(Event.category))
                 .order_by(Event.event_date.asc())
                 .limit(48)
@@ -377,13 +408,83 @@ def get_homepage():
             "link_url": settings.banner_link_url if settings else None,
         }
 
-        return {"hero": hero, "banner": banner, "sections": out_sections}
+        # Hero carousel: events the super admin pinned as featured (needs a
+        # banner -- enforced when featuring). One renders as a single hero,
+        # several as a carousel.
+        featured = (
+            session.execute(
+                select(Event)
+                .where(Event.status == EventStatus.LIVE, Event.is_featured.is_(True), Event.banner_image_url.is_not(None))
+                .options(selectinload(Event.ticket_tiers), selectinload(Event.category), selectinload(Event.organiser))
+                .order_by(Event.featured_order.asc(), Event.event_date.asc())
+                .limit(8)
+            )
+            .scalars()
+            .all()
+        )
+
+        return {
+            "hero": hero,
+            "banner": banner,
+            "featured": [_featured_dict(e) for e in featured],
+            "sections": out_sections,
+        }
+
+
+@app.get("/organisers/<organiser_id>")
+def get_organiser_page(organiser_id: str):
+    """Public organiser page: profile + their live public events. Only
+    approved organisers have a public page."""
+    organiser_uuid = _parse_uuid(organiser_id)
+    with get_session() as session:
+        organiser = session.get(Organiser, organiser_uuid)
+        if organiser is None or organiser.status != OrganiserStatus.VERIFIED:
+            raise NotFoundError("Organiser not found")
+        events = (
+            session.execute(
+                select(Event)
+                .where(
+                    Event.organiser_id == organiser_uuid,
+                    Event.status.in_([EventStatus.LIVE, EventStatus.SOLDOUT]),
+                    Event.listing_type == "public",
+                )
+                .options(selectinload(Event.ticket_tiers), selectinload(Event.category))
+                .order_by(Event.event_date.asc())
+            )
+            .scalars()
+            .all()
+        )
+        return {
+            "id": str(organiser.id),
+            "org_name": organiser.org_name,
+            "bio": organiser.bio,
+            "logo_url": organiser.logo_url,
+            "cover_url": organiser.cover_url,
+            "website_url": organiser.website_url,
+            "instagram_url": organiser.instagram_url,
+            "city": organiser.city,
+            "member_since": organiser.created_at.isoformat(),
+            "events": [_event_summary_dict(e) for e in events],
+        }
+
+
+def _short_code(value: uuid.UUID) -> str:
+    return value.hex[:8].upper()
+
+
+def _utcnow() -> dt.datetime:
+    return dt.datetime.now(dt.UTC)
 
 
 @app.post("/events/<event_id>/checkout")
 def checkout(event_id: str):
     """TEST-MODE checkout -- see module docstring. Marks the order paid and
-    issues tickets synchronously; no real payment gateway is involved."""
+    issues tickets synchronously; no real payment gateway is involved.
+
+    One order (= one payment id) can span several ticket types. Every ticket
+    issued is its own row with its own id, and -- when the buyer supplied
+    them -- its own participant name/contact and registration-form answers
+    (e.g. a Full Marathon runner and a Half Marathon runner in one payment)."""
     event_uuid = _parse_uuid(event_id)
     body = _parse_body(CheckoutRequest)
 
@@ -393,26 +494,60 @@ def checkout(event_id: str):
             raise NotFoundError("Event not found")
 
         tier_ids = [item.ticket_tier_id for item in body.items]
+        if len(tier_ids) != len(set(tier_ids)):
+            raise BadRequestError("Each ticket type may appear only once per order")
         tiers_by_id = {
             t.id: t
             for t in session.execute(
-                select(TicketTier).where(
-                    TicketTier.id.in_(tier_ids), TicketTier.event_id == event_uuid
-                )
+                select(TicketTier)
+                .where(TicketTier.id.in_(tier_ids), TicketTier.event_id == event_uuid)
+                .with_for_update()
             )
             .scalars()
             .all()
         }
 
+        fields = sorted(event.form_fields, key=lambda f: f.sort_order)
+        now = _utcnow()
         subtotal = Decimal("0")
+        unit_prices: dict = {}
         for item in body.items:
             tier = tiers_by_id.get(item.ticket_tier_id)
             if tier is None:
-                raise BadRequestError(f"Unknown ticket tier {item.ticket_tier_id}")
+                raise BadRequestError(f"Unknown ticket type {item.ticket_tier_id}")
+            if tier.sale_status != "on_sale":
+                raise ConflictError(f"'{tier.name}' is not on sale right now")
+            if tier.sale_start and now < tier.sale_start:
+                raise ConflictError(f"'{tier.name}' sales haven't started yet")
+            if tier.sale_end and now > tier.sale_end:
+                raise ConflictError(f"'{tier.name}' sales have ended")
+            if item.quantity < tier.min_per_order or item.quantity > tier.max_per_order:
+                raise BadRequestError(
+                    f"'{tier.name}' can be booked {tier.min_per_order}-{tier.max_per_order} per order"
+                )
             if tier.quantity_sold + item.quantity > tier.quantity_total:
                 raise ConflictError(f"Not enough '{tier.name}' tickets remaining")
-            subtotal += tier.price * item.quantity
+            if item.attendees and len(item.attendees) != item.quantity:
+                raise BadRequestError(f"Enter details for all {item.quantity} '{tier.name}' participant(s)")
+            if tier.ticket_type == "donation":
+                amount = item.amount if item.amount is not None else tier.price
+                if amount < tier.price:
+                    raise BadRequestError(f"Minimum contribution for '{tier.name}' is {tier.price}")
+                unit = amount
+            elif tier.ticket_type == "free":
+                unit = Decimal("0")
+            else:
+                unit = tier.price
+            unit_prices[tier.id] = unit
+            subtotal += unit * item.quantity
 
+        if event.schedule_type == "recurring":
+            if body.occurrence_date is None:
+                raise BadRequestError("Choose which date you're booking for")
+            if not _is_occurrence(event, body.occurrence_date):
+                raise BadRequestError("That date isn't one of this event's sessions")
+
+        issued: list[tuple[Ticket, str]] = []
         order = Order(
             event_id=event_uuid,
             buyer_name=body.buyer_name,
@@ -423,6 +558,7 @@ def checkout(event_id: str):
             total_amount=subtotal,
             payment_status=PaymentStatus.SUCCESS,
             payment_gateway_ref="TEST-MODE",
+            occurrence_date=body.occurrence_date if event.schedule_type == "recurring" else None,
         )
         session.add(order)
         session.flush()
@@ -433,25 +569,126 @@ def checkout(event_id: str):
                 order_id=order.id,
                 ticket_tier_id=tier.id,
                 quantity=item.quantity,
-                unit_price=tier.price,
+                unit_price=unit_prices[tier.id],
             )
             session.add(order_item)
             session.flush()
             tier.quantity_sold += item.quantity
-            for _ in range(item.quantity):
-                session.add(Ticket(order_item_id=order_item.id, qr_code_token=secrets.token_urlsafe(24)))
+            for idx in range(item.quantity):
+                attendee = item.attendees[idx] if item.attendees else None
+                answers = (
+                    _validated_answers(fields, attendee.form_responses, f"{tier.name} #{idx + 1} ({attendee.name})")
+                    if attendee
+                    else None
+                )
+                ticket = Ticket(
+                        order_item_id=order_item.id,
+                        qr_code_token=secrets.token_urlsafe(24),
+                        attendee_name=attendee.name if attendee else body.buyer_name,
+                        attendee_email=(attendee.email if attendee and attendee.email else None),
+                        attendee_phone=(attendee.phone if attendee and attendee.phone else None),
+                        attendee_answers=answers,
+                        approval_status="pending" if tier.requires_approval else "approved",
+                )
+                session.add(ticket)
+                issued.append((ticket, tier.name))
 
-        _persist_form_responses(session, event, order, body)
+        # Buyer-level answers (legacy single-form checkout, used when no
+        # per-participant details were sent).
+        if not any(item.attendees for item in body.items):
+            _persist_form_responses(session, event, order, body)
 
+        session.flush()
         order_id = order.id
+        try:
+            email = _order_email(event, order, body, subtotal, issued)
+        except Exception:  # noqa: BLE001 -- never let email rendering fail a paid order
+            logger.exception("could not build order email")
+            email = None
 
+    if email:
+        _notify(email)
     return {"order_id": str(order_id), "payment_status": PaymentStatus.SUCCESS.value}, 201
+
+
+def _order_email(event: Event, order: Order, body: CheckoutRequest, subtotal: Decimal, issued: list) -> dict:
+    return {
+        "type": "order_confirmation",
+        "to": body.buyer_email,
+        "buyer_name": body.buyer_name,
+        "order_id": str(order.id),
+        "order_code": _short_code(order.id),
+        "event_title": event.title,
+        "event_date": (order.occurrence_date or event.event_date).isoformat(),
+        "event_time": event.event_time.strftime("%I:%M %p").lstrip("0"),
+        "venue": f"{event.venue_name}, {event.city}" if event.location_type == "venue" else "Online",
+        "total": "Free" if subtotal == 0 else f"Rs. {subtotal:,.2f}",
+        "tickets": [
+            {
+                "attendee_name": t.attendee_name,
+                "tier": tier_name,
+                "ticket_code": _short_code(t.id),
+                "pending": t.approval_status == "pending",
+            }
+            for t, tier_name in issued
+        ],
+    }
+
+
+def _notify(message: dict) -> None:
+    """Best-effort: queue a confirmation email. The order is already
+    committed, so a queue failure must never fail the checkout."""
+    try:
+        publish("EMAIL_QUEUE_URL", message)
+    except Exception:  # noqa: BLE001
+        logger.exception("could not queue email", extra={"type": message.get("type")})
+
+
+def _is_occurrence(event: Event, day: dt.date) -> bool:
+    rec = event.recurrence or {}
+    until = rec.get("until")
+    until_date = dt.date.fromisoformat(until) if isinstance(until, str) else until
+    if day < event.event_date or (until_date and day > until_date):
+        return False
+    freq = rec.get("frequency")
+    if freq == "daily":
+        return True
+    if freq == "weekly":
+        weekdays = rec.get("weekdays") or [event.event_date.weekday()]
+        return day.weekday() in weekdays
+    if freq == "monthly":
+        return day.day == event.event_date.day
+    return day == event.event_date
 
 
 def _answer_is_empty(answer) -> bool:
     if isinstance(answer, list):
         return len([a for a in answer if str(a).strip()]) == 0
     return not str(answer).strip()
+
+
+def _validated_answers(fields, responses, who: str) -> list[dict]:
+    """Checks one participant's answers against the registration form and
+    returns them as [{field_id, field_label, answer}] for the ticket row."""
+    fields_by_id = {f.id: f for f in fields}
+    answers_by_id = {r.field_id: r.answer for r in responses}
+    for field in fields:
+        answer = answers_by_id.get(field.id)
+        if field.required and (answer is None or _answer_is_empty(answer)):
+            raise BadRequestError(f"'{field.label}' is required for {who}")
+    out = []
+    for field_id, answer in answers_by_id.items():
+        field = fields_by_id.get(field_id)
+        if field is None:
+            raise BadRequestError(f"Unknown form field {field_id}")
+        if _answer_is_empty(answer):
+            continue
+        if field.options and field.field_type.value != "text":
+            chosen = answer if isinstance(answer, list) else [answer]
+            if any(c not in field.options for c in chosen):
+                raise BadRequestError(f"Invalid choice for '{field.label}'")
+        out.append({"field_id": str(field.id), "field_label": field.label, "answer": answer})
+    return out
 
 
 def _persist_form_responses(session, event: Event, order: Order, body: CheckoutRequest) -> None:
@@ -508,21 +745,41 @@ def get_order(order_id: str):
         items = [
             {
                 "ticket_tier_id": str(oi.ticket_tier_id),
+                "ticket_tier_code": _short_code(oi.ticket_tier_id),
                 "ticket_tier_name": oi.ticket_tier.name if oi.ticket_tier else None,
                 "quantity": oi.quantity,
                 "unit_price": str(oi.unit_price),
                 "tickets": [
-                    {"id": str(t.id), "qr_code_token": t.qr_code_token, "checked_in": t.checked_in}
+                    {
+                        "id": str(t.id),
+                        "ticket_code": _short_code(t.id),
+                        "qr_code_token": t.qr_code_token,
+                        "checked_in": t.checked_in,
+                        "attendee_name": t.attendee_name,
+                        "attendee_email": t.attendee_email,
+                        "attendee_answers": t.attendee_answers or [],
+                        "approval_status": t.approval_status,
+                    }
                     for t in oi.tickets
                 ],
             }
             for oi in order.order_items
         ]
+        ev = order.event
+        online = ev is not None and ev.location_type == "online" and order.payment_status == PaymentStatus.SUCCESS
 
         return {
             "order_id": str(order.id),
+            "order_code": _short_code(order.id),
             "event_id": str(order.event_id),
-            "event_title": order.event.title if order.event else None,
+            "event_title": ev.title if ev else None,
+            "event_date": ev.event_date.isoformat() if ev else None,
+            "event_time": ev.event_time.isoformat() if ev else None,
+            "venue_name": ev.venue_name if ev else None,
+            "city": ev.city if ev else None,
+            "banner_image_url": ev.banner_image_url if ev else None,
+            "online_url": ev.online_url if online else None,
+            "occurrence_date": order.occurrence_date.isoformat() if order.occurrence_date else None,
             "buyer_name": order.buyer_name,
             "buyer_email": order.buyer_email,
             "buyer_phone": order.buyer_phone,
@@ -530,6 +787,7 @@ def get_order(order_id: str):
             "booking_fee": str(order.booking_fee),
             "total_amount": str(order.total_amount),
             "payment_status": order.payment_status.value,
+            "payment_ref": order.payment_gateway_ref,
             "created_at": order.created_at.isoformat(),
             "items": items,
             "form_responses": [

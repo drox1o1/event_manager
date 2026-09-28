@@ -65,3 +65,17 @@ export { PageHeading } from './components/layout/PageHeading';
 export type { PageHeadingProps } from './components/layout/PageHeading';
 export { SidebarShell } from './components/layout/SidebarShell';
 export type { SidebarShellProps, SidebarNavItem } from './components/layout/SidebarShell';
+
+// Event editor — shared by the organiser portal and the super-admin panel.
+export { EventEditor } from './event-editor/EventEditor';
+export type { EventEditorProps, EditorLink } from './event-editor/EventEditor';
+export { BasicInfoForm } from './event-editor/BasicInfoForm';
+export type { BasicInfoFormProps } from './event-editor/BasicInfoForm';
+export type { PublishAction } from './event-editor/PublishStep';
+export { RichText, RichTextArea } from './event-editor/RichTextArea';
+export { EDITOR_SECTIONS } from './event-editor/types';
+export type { EditorSection, EventEditorApi, HostOption } from './event-editor/types';
+export { RegistrationsView } from './event-editor/RegistrationsView';
+export type { RegistrationsApi } from './event-editor/RegistrationsView';
+export { OrganiserPageView } from './components/cards/OrganiserPageView';
+export type { OrganiserPageViewProps } from './components/cards/OrganiserPageView';

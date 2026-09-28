@@ -6,10 +6,12 @@ export const dynamic = 'force-dynamic';
 
 interface EventDetailPageProps {
   params: Promise<{ eventId: string }>;
+  searchParams: Promise<{ book?: string }>;
 }
 
-export default async function EventDetailPage({ params }: EventDetailPageProps) {
+export default async function EventDetailPage({ params, searchParams }: EventDetailPageProps) {
   const { eventId } = await params;
+  const { book } = await searchParams;
 
   let event;
   try {
@@ -19,5 +21,5 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
     throw err;
   }
 
-  return <EventDetailView event={event} />;
+  return <EventDetailView event={event} autoBook={book === '1'} />;
 }

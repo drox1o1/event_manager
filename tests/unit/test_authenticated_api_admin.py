@@ -18,6 +18,7 @@ from common.models import (
     PlatformSettings,
     RefundRequest,
     RefundStatus,
+    TicketTier,
 )
 
 
@@ -86,8 +87,8 @@ def _fake_settings(**overrides):
     return PlatformSettings(**defaults)
 
 
-def test_publish_event_rejects_when_not_approved(monkeypatch, mock_jwt_secret):
-    fake_event = _fake_event(status=EventStatus.REVIEW)
+def test_publish_event_rejects_when_already_live(monkeypatch, mock_jwt_secret):
+    fake_event = _fake_event(status=EventStatus.LIVE)
     monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_event))
 
     from authenticated_api.handler import handler as api_handler
@@ -97,8 +98,37 @@ def test_publish_event_rejects_when_not_approved(monkeypatch, mock_jwt_secret):
     assert response["statusCode"] == 409
 
 
-def test_publish_event_succeeds_from_approved(monkeypatch, mock_jwt_secret):
+def _with_ticket(event):
+    event.ticket_tiers = [TicketTier(name="General", price=499, quantity_total=100, quantity_sold=0, sale_status="on_sale")]
+    return event
+
+
+def test_publish_event_rejects_without_tickets(monkeypatch, mock_jwt_secret):
     fake_event = _fake_event(status=EventStatus.APPROVED)
+    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_event))
+
+    from authenticated_api.handler import handler as api_handler
+
+    event = _api_event("POST", f"/admin/events/{fake_event.id}/publish", authorizer=_admin_auth())
+    response = api_handler(event, MagicMock())
+    assert response["statusCode"] == 400
+    assert fake_event.status == EventStatus.APPROVED
+
+
+def test_admin_can_publish_straight_from_draft(monkeypatch, mock_jwt_secret):
+    fake_event = _with_ticket(_fake_event(status=EventStatus.DRAFT))
+    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_event))
+
+    from authenticated_api.handler import handler as api_handler
+
+    event = _api_event("POST", f"/admin/events/{fake_event.id}/publish", authorizer=_admin_auth())
+    response = api_handler(event, MagicMock())
+    assert response["statusCode"] == 200
+    assert fake_event.status == EventStatus.LIVE
+
+
+def test_publish_event_succeeds_from_approved(monkeypatch, mock_jwt_secret):
+    fake_event = _with_ticket(_fake_event(status=EventStatus.APPROVED))
     monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_event))
 
     from authenticated_api.handler import handler as api_handler
@@ -218,3 +248,35 @@ def test_update_settings_updates_existing_row(monkeypatch, mock_jwt_secret):
     response = api_handler(event, MagicMock())
     assert response["statusCode"] == 200
     assert settings.commission_pct == Decimal("12.5")
+
+
+def test_approve_organiser_sets_verified(monkeypatch, mock_jwt_secret):
+    fake_organiser = Organiser(
+        id=uuid.uuid4(), org_name="New Org", contact_name="N", email="n@example.com",
+        password_hash="x", status=OrganiserStatus.PENDING,
+    )
+    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_organiser))
+    monkeypatch.setattr("authenticated_api.handler.publish", MagicMock())
+
+    from authenticated_api.handler import handler as api_handler
+
+    event = _api_event("POST", f"/admin/organisers/{fake_organiser.id}/approve", authorizer=_admin_auth())
+    response = api_handler(event, MagicMock())
+    assert response["statusCode"] == 200
+    assert fake_organiser.status == OrganiserStatus.VERIFIED
+    assert fake_organiser.approved_at is not None
+
+
+def test_reject_organiser_requires_reason(monkeypatch, mock_jwt_secret):
+    fake_organiser = Organiser(
+        id=uuid.uuid4(), org_name="New Org", contact_name="N", email="n@example.com",
+        password_hash="x", status=OrganiserStatus.PENDING,
+    )
+    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_organiser))
+
+    from authenticated_api.handler import handler as api_handler
+
+    event = _api_event("POST", f"/admin/organisers/{fake_organiser.id}/reject", body={}, authorizer=_admin_auth())
+    response = api_handler(event, MagicMock())
+    assert response["statusCode"] == 400
+    assert fake_organiser.status == OrganiserStatus.PENDING

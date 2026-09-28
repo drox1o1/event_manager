@@ -1,0 +1,79 @@
+name: Deploy Frontend
+
+# Builds the three Next.js apps and deploys infra/frontend (Lambda + CloudFront).
+# Runs after a successful backend deploy on main, or manually.
+on:
+  workflow_run:
+    workflows: [Deploy Prod]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: Frontend stack stage (stack = cyrokx-frontend-<stage>)
+        default: prod
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    env:
+      STAGE: ${{ inputs.stage || 'prod' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.CI_ROLE_ARN }}
+          aws-region: ap-south-1
+
+      # The API base URL is baked into the browser bundle at build time.
+      - name: Resolve API URL and existing stack parameters
+        id: params
+        run: |
+          API_URL=$(aws cloudformation describe-stacks --stack-name cyrokx-app-prod \
+            --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
+          echo "api=${API_URL%/}" >> "$GITHUB_OUTPUT"
+          # Keep the custom-domain certificate the stack was deployed with --
+          # sam deploy would otherwise reset it to the template default ("")
+          # and strip showtik.in from the CloudFront distributions.
+          CERT=$(aws cloudformation describe-stacks --stack-name "cyrokx-frontend-${STAGE}" \
+            --query "Stacks[0].Parameters[?ParameterKey=='AcmCertificateArn'].ParameterValue" --output text 2>/dev/null || true)
+          [ "$CERT" = "None" ] && CERT=""
+          echo "cert=$CERT" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install
+        run: make frontend-install && make install
+
+      - name: Build and package
+        env:
+          NEXT_PUBLIC_API_BASE_URL: ${{ steps.params.outputs.api }}
+          NEXT_PUBLIC_SITE_URL: https://showtik.in
+          NEXT_PUBLIC_ORGANISER_URL: https://host.showtik.in/signup
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: make frontend-sam-build
+
+      - name: Deploy
+        run: |
+          .venv/bin/sam deploy \
+            --stack-name "cyrokx-frontend-${STAGE}" \
+            --s3-bucket "${{ vars.SAM_ARTIFACTS_BUCKET }}" \
+            --region ap-south-1 \
+            --capabilities CAPABILITY_IAM \
+            --parameter-overrides "Stage=${STAGE} AcmCertificateArn=${{ steps.params.outputs.cert }}" \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset

@@ -15,6 +15,9 @@ import type {
   ImageUploadUrlResponse,
   LoginRequest,
   OrganiserEventDetail,
+  OrganiserEventTier,
+  OrganiserProfile,
+  OrganiserProfileUpdate,
   OrganiserEventListResponse,
   OrganiserSignupRequest,
   OrganiserSignupResponse,
@@ -139,3 +142,44 @@ export async function uploadBannerFile(uploadUrl: string, file: File): Promise<v
     throw new Error(`Banner upload failed (${response.status})`);
   }
 }
+
+// --- Account + public organiser page ---
+
+export function getMe(token: string): Promise<OrganiserProfile> {
+  return apiFetch<OrganiserProfile>('/organiser/me', { token });
+}
+
+export function updateMe(token: string, body: OrganiserProfileUpdate): Promise<OrganiserProfile> {
+  return apiFetch<OrganiserProfile>('/organiser/me', { method: 'PATCH', body, token });
+}
+
+export function createProfileImageUploadUrl(token: string, kind: 'logo' | 'cover', contentType?: string): Promise<ImageUploadUrlResponse> {
+  return apiFetch<ImageUploadUrlResponse>('/organiser/me/image-upload-url', { method: 'POST', token, query: { kind, content_type: contentType } });
+}
+
+// --- Event editor (same signatures as adminApi's, so one editor drives both) ---
+
+export const getEvent = getMyEvent;
+
+export function deleteEvent(token: string, eventId: string): Promise<{ deleted: string }> {
+  return apiFetch(`/organiser/events/${eventId}`, { method: 'DELETE', token });
+}
+
+export function updateTicketTier(token: string, eventId: string, tierId: string, tier: TicketTierCreateInput): Promise<OrganiserEventTier> {
+  return apiFetch<OrganiserEventTier>(`/organiser/events/${eventId}/ticket-tiers/${tierId}`, { method: 'PUT', body: tier, token });
+}
+
+export function deleteTicketTier(token: string, eventId: string, tierId: string): Promise<{ deleted: string }> {
+  return apiFetch(`/organiser/events/${eventId}/ticket-tiers/${tierId}`, { method: 'DELETE', token });
+}
+
+export function approveTicket(token: string, eventId: string, ticketId: string): Promise<{ approval_status: string }> {
+  return apiFetch(`/organiser/events/${eventId}/tickets/${ticketId}/approve`, { method: 'POST', token });
+}
+
+export function rejectTicket(token: string, eventId: string, ticketId: string): Promise<{ approval_status: string }> {
+  return apiFetch(`/organiser/events/${eventId}/tickets/${ticketId}/reject`, { method: 'POST', token });
+}
+
+/** Uploads a file to S3 via a presigned PUT URL. */
+export const uploadFile = uploadImageFile;

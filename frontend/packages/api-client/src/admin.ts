@@ -3,6 +3,19 @@
 import { apiFetch } from './http';
 import type {
   AdminEventListResponse,
+  AttendeeListResponse,
+  BannerUploadUrlResponse,
+  EventCreateRequest,
+  EventImageInput,
+  EventUpdateRequest,
+  FeatureEventRequest,
+  FormFieldInput,
+  FormFieldsResponse,
+  ImageUploadUrlResponse,
+  OrganiserEventDetail,
+  OrganiserEventTier,
+  TicketTierCreateInput,
+  TicketTiersCreateResponse,
   CategoriesReplaceRequest,
   CategoriesResponse,
   EventActionResponse,
@@ -42,11 +55,11 @@ export function rejectEvent(token: string, eventId: string, body: ModerationReje
 
 export function listAllEvents(
   token: string,
-  params: { status?: string; page?: number; pageSize?: number } = {}
+  params: { status?: string; page?: number; pageSize?: number; featured?: boolean } = {}
 ): Promise<AdminEventListResponse> {
   return apiFetch<AdminEventListResponse>('/admin/events', {
     token,
-    query: { status: params.status, page: params.page, page_size: params.pageSize },
+    query: { status: params.status, page: params.page, page_size: params.pageSize, featured: params.featured ? 'true' : undefined },
   });
 }
 
@@ -54,12 +67,20 @@ export function publishEvent(token: string, eventId: string): Promise<EventActio
   return apiFetch<EventActionResponse>(`/admin/events/${eventId}/publish`, { method: 'POST', token });
 }
 
-export function listOrganisers(token: string): Promise<OrganiserListResponse> {
-  return apiFetch<OrganiserListResponse>('/admin/organisers', { token });
+export function listOrganisers(token: string, params: { status?: string } = {}): Promise<OrganiserListResponse> {
+  return apiFetch<OrganiserListResponse>('/admin/organisers', { token, query: { status: params.status } });
 }
 
-export function suspendOrganiser(token: string, organiserId: string): Promise<OrganiserActionResponse> {
-  return apiFetch<OrganiserActionResponse>(`/admin/organisers/${organiserId}/suspend`, { method: 'POST', token });
+export function approveOrganiser(token: string, organiserId: string): Promise<OrganiserActionResponse> {
+  return apiFetch<OrganiserActionResponse>(`/admin/organisers/${organiserId}/approve`, { method: 'POST', token });
+}
+
+export function rejectOrganiser(token: string, organiserId: string, reason: string): Promise<OrganiserActionResponse> {
+  return apiFetch<OrganiserActionResponse>(`/admin/organisers/${organiserId}/reject`, { method: 'POST', body: { reason }, token });
+}
+
+export function suspendOrganiser(token: string, organiserId: string, reason?: string): Promise<OrganiserActionResponse> {
+  return apiFetch<OrganiserActionResponse>(`/admin/organisers/${organiserId}/suspend`, { method: 'POST', body: { reason: reason || null }, token });
 }
 
 export function reactivateOrganiser(token: string, organiserId: string): Promise<OrganiserActionResponse> {
@@ -134,4 +155,78 @@ export function upsertSitePage(token: string, slug: string, body: SitePageUpsert
 
 export function deleteSitePage(token: string, slug: string): Promise<{ deleted: string }> {
   return apiFetch<{ deleted: string }>(`/admin/site-pages/${slug}`, { method: 'DELETE', token });
+}
+
+// --- Event editor: super admin creates/completes any event. Same
+// signatures as organiserApi's so the shared editor drives both portals. ---
+
+export function createEvent(token: string, body: EventCreateRequest): Promise<EventActionResponse> {
+  return apiFetch<EventActionResponse>('/admin/events', { method: 'POST', body, token });
+}
+
+export function getEvent(token: string, eventId: string): Promise<OrganiserEventDetail> {
+  return apiFetch<OrganiserEventDetail>(`/admin/events/${eventId}`, { token });
+}
+
+export function updateEvent(token: string, eventId: string, body: EventUpdateRequest): Promise<EventActionResponse> {
+  return apiFetch<EventActionResponse>(`/admin/events/${eventId}`, { method: 'PATCH', body, token });
+}
+
+export function createTicketTiers(token: string, eventId: string, tiers: TicketTierCreateInput[]): Promise<TicketTiersCreateResponse> {
+  return apiFetch<TicketTiersCreateResponse>(`/admin/events/${eventId}/ticket-tiers`, { method: 'POST', body: { tiers }, token });
+}
+
+export function updateTicketTier(token: string, eventId: string, tierId: string, tier: TicketTierCreateInput): Promise<OrganiserEventTier> {
+  return apiFetch<OrganiserEventTier>(`/admin/events/${eventId}/ticket-tiers/${tierId}`, { method: 'PUT', body: tier, token });
+}
+
+export function deleteTicketTier(token: string, eventId: string, tierId: string): Promise<{ deleted: string }> {
+  return apiFetch(`/admin/events/${eventId}/ticket-tiers/${tierId}`, { method: 'DELETE', token });
+}
+
+/** contentType must equal the picked File's .type (it's signed into the URL). */
+export function createBannerUploadUrl(token: string, eventId: string, contentType?: string): Promise<BannerUploadUrlResponse> {
+  return apiFetch<BannerUploadUrlResponse>(`/admin/events/${eventId}/banner-upload-url`, { method: 'POST', token, query: { content_type: contentType } });
+}
+
+export function createImageUploadUrl(token: string, eventId: string, contentType?: string): Promise<ImageUploadUrlResponse> {
+  return apiFetch<ImageUploadUrlResponse>(`/admin/events/${eventId}/image-upload-url`, { method: 'POST', token, query: { content_type: contentType } });
+}
+
+export function replaceEventImages(token: string, eventId: string, images: EventImageInput[]): Promise<{ images: string[] }> {
+  return apiFetch<{ images: string[] }>(`/admin/events/${eventId}/images`, { method: 'PUT', body: { images }, token });
+}
+
+export function getFormFields(token: string, eventId: string): Promise<FormFieldsResponse> {
+  return apiFetch<FormFieldsResponse>(`/admin/events/${eventId}/form-fields`, { token });
+}
+
+export function replaceFormFields(token: string, eventId: string, fields: FormFieldInput[]): Promise<FormFieldsResponse> {
+  return apiFetch<FormFieldsResponse>(`/admin/events/${eventId}/form-fields`, { method: 'PUT', body: { fields }, token });
+}
+
+export function listAttendees(token: string, eventId: string): Promise<AttendeeListResponse> {
+  return apiFetch<AttendeeListResponse>(`/admin/events/${eventId}/attendees`, { token });
+}
+
+export function approveTicket(token: string, eventId: string, ticketId: string): Promise<{ approval_status: string }> {
+  return apiFetch(`/admin/events/${eventId}/tickets/${ticketId}/approve`, { method: 'POST', token });
+}
+
+export function rejectTicket(token: string, eventId: string, ticketId: string): Promise<{ approval_status: string }> {
+  return apiFetch(`/admin/events/${eventId}/tickets/${ticketId}/reject`, { method: 'POST', token });
+}
+
+export function unpublishEvent(token: string, eventId: string): Promise<EventActionResponse> {
+  return apiFetch<EventActionResponse>(`/admin/events/${eventId}/unpublish`, { method: 'POST', token });
+}
+
+export function featureEvent(token: string, eventId: string, body: FeatureEventRequest): Promise<FeatureEventRequest & { event_id: string }> {
+  return apiFetch(`/admin/events/${eventId}/feature`, { method: 'POST', body, token });
+}
+
+/** Uploads a file to S3 via a presigned PUT URL. */
+export async function uploadFile(uploadUrl: string, file: File): Promise<void> {
+  const response = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type || 'image/jpeg' }, body: file });
+  if (!response.ok) throw new Error(`Upload failed (${response.status})`);
 }

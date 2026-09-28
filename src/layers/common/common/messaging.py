@@ -4,6 +4,7 @@ import json
 import os
 
 import boto3
+from botocore.config import Config
 
 _sqs = None
 
@@ -11,7 +12,12 @@ _sqs = None
 def _client():
     global _sqs
     if _sqs is None:
-        _sqs = boto3.client("sqs")
+        # Short timeouts: callers publish after committing (e.g. checkout's
+        # confirmation email), so a slow queue must fail fast, not stall the
+        # request until the Lambda times out.
+        _sqs = boto3.client(
+            "sqs", config=Config(connect_timeout=2, read_timeout=3, retries={"max_attempts": 2})
+        )
     return _sqs
 
 

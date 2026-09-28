@@ -13,6 +13,7 @@ function DashboardInner() {
   const router = useRouter();
   const [events, setEvents] = React.useState<AdminEventSummary[] | null>(null);
   const [queue, setQueue] = React.useState<ModerationQueueItem[] | null>(null);
+  const [pendingOrgs, setPendingOrgs] = React.useState<number | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -23,6 +24,7 @@ function DashboardInner() {
         setQueue(qRes.events);
       })
       .catch(() => setError('Could not load platform data.'));
+    adminApi.listOrganisers(token, { status: 'pending' }).then((r) => setPendingOrgs(r.organisers.length)).catch(() => setPendingOrgs(null));
   }, [token]);
 
   const totalEvents = events?.length ?? 0;
@@ -40,7 +42,14 @@ function DashboardInner() {
         <StatCard label="Live events" value={events ? liveEvents : '—'} icon="zap" />
         <StatCard label="Tickets sold" value={events ? ticketsSold.toLocaleString('en-IN') : '—'} icon="ticket" />
         <StatCard label="Awaiting review" value={queue ? queue.length : '—'} icon="shield-check" />
+        <StatCard label="Organisers to approve" value={pendingOrgs ?? '—'} icon="user-check" />
       </div>
+
+      {!!pendingOrgs && (
+        <div onClick={() => router.push('/organisers')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', marginBottom: 24, borderRadius: 'var(--radius-card)', background: 'var(--status-warning-bg)', color: 'var(--text-body)', fontSize: 14 }}>
+          <strong>{pendingOrgs} organiser{pendingOrgs === 1 ? ' is' : 's are'} waiting for approval.</strong> They can&apos;t create events until you approve them. <span style={{ marginLeft: 'auto', fontWeight: 700, color: 'var(--text-link)' }}>Review &rarr;</span>
+        </div>
+      )}
 
       <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)', padding: 24, maxWidth: 640 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>

@@ -19,6 +19,20 @@ Parameters:
       same sanitized branch name as Stage for PR-branch stacks, which share
       one RDS instance but get their own Postgres schema each.
 
+  EmailFromAddress:
+    Type: String
+    Default: no-reply@showtik.in
+    Description: >
+      Sender for transactional email. Must be an SES-verified identity (the
+      address or its whole domain) in this account/region. While SES is in
+      sandbox mode, recipients must be verified too.
+  PublicSiteUrl:
+    Type: String
+    Default: https://showtik.in
+  OrganiserPortalUrl:
+    Type: String
+    Default: https://host.showtik.in
+
 Conditions:
   HasDbSchema: !Not [!Equals [!Ref DbSchema, ""]]
 
@@ -109,11 +123,14 @@ Resources:
           DB_PROXY_HOST: !ImportValue cyrokx-network-data-DbProxyEndpoint
           DB_NAME: !ImportValue cyrokx-network-data-DbName
           DB_SCHEMA: !If [HasDbSchema, !Ref DbSchema, !Ref AWS::NoValue]
+          EMAIL_QUEUE_URL: !Ref EmailQueue
       Policies:
         - Statement:
             - Effect: Allow
               Action: secretsmanager:GetSecretValue
               Resource: !ImportValue cyrokx-network-data-AppDbSecretArn
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt EmailQueue.QueueName
       Events:
         ListEvents:
           Type: Api
@@ -193,6 +210,14 @@ Resources:
             RestApiId: !Ref CyrokxApi
             Path: /orders/{order_id}/refund-request
             Method: post
+            Auth:
+              Authorizer: NONE
+        GetOrganiserPage:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organisers/{organiser_id}
+            Method: get
             Auth:
               Authorizer: NONE
 
@@ -536,6 +561,214 @@ Resources:
             Method: delete
             Auth:
               Authorizer: JwtAuthorizer
+        GetOrganiserMe:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/me
+            Method: get
+            Auth:
+              Authorizer: JwtAuthorizer
+        UpdateOrganiserMe:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/me
+            Method: patch
+            Auth:
+              Authorizer: JwtAuthorizer
+        OrganiserImageUploadUrl:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/me/image-upload-url
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        DeleteDraftEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/events/{event_id}
+            Method: delete
+            Auth:
+              Authorizer: JwtAuthorizer
+        UpdateTicketTier:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/events/{event_id}/ticket-tiers/{tier_id}
+            Method: put
+            Auth:
+              Authorizer: JwtAuthorizer
+        DeleteTicketTier:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/events/{event_id}/ticket-tiers/{tier_id}
+            Method: delete
+            Auth:
+              Authorizer: JwtAuthorizer
+        ApproveTicket:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/events/{event_id}/tickets/{ticket_id}/approve
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        RejectTicket:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/events/{event_id}/tickets/{ticket_id}/reject
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        AdminCreateEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/events
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        AdminGetEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/events/{event_id}
+            Method: get
+            Auth:
+              Authorizer: JwtAuthorizer
+        AdminUpdateEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/events/{event_id}
+            Method: patch
+            Auth:
+              Authorizer: JwtAuthorizer
+        AdminCreateTicketTiers:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/events/{event_id}/ticket-tiers
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        AdminUpdateTicketTier:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/events/{event_id}/ticket-tiers/{tier_id}
+            Method: put
+            Auth:
+              Authorizer: JwtAuthorizer
+        AdminDeleteTicketTier:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/events/{event_id}/ticket-tiers/{tier_id}
+            Method: delete
+            Auth:
+              Authorizer: JwtAuthorizer
+        AdminBannerUploadUrl:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/events/{event_id}/banner-upload-url
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        AdminImageUploadUrl:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/events/{event_id}/image-upload-url
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        AdminReplaceEventImages:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/events/{event_id}/images
+            Method: put
+            Auth:
+              Authorizer: JwtAuthorizer
+        AdminListFormFields:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/events/{event_id}/form-fields
+            Method: get
+            Auth:
+              Authorizer: JwtAuthorizer
+        AdminReplaceFormFields:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/events/{event_id}/form-fields
+            Method: put
+            Auth:
+              Authorizer: JwtAuthorizer
+        AdminListAttendees:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/events/{event_id}/attendees
+            Method: get
+            Auth:
+              Authorizer: JwtAuthorizer
+        AdminApproveTicket:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/events/{event_id}/tickets/{ticket_id}/approve
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        AdminRejectTicket:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/events/{event_id}/tickets/{ticket_id}/reject
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        UnpublishEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/events/{event_id}/unpublish
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        FeatureEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/events/{event_id}/feature
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        ApproveOrganiser:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/organisers/{organiser_id}/approve
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        RejectOrganiser:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/organisers/{organiser_id}/reject
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
 
   # --- payment_webhook (stub) ---
 
@@ -586,6 +819,19 @@ Resources:
       Handler: handler.handler
       Layers:
         - !Ref CommonLayer
+      Environment:
+        Variables:
+          EMAIL_FROM_ADDRESS: !Ref EmailFromAddress
+          EMAIL_FROM_NAME: Showtik
+          PUBLIC_SITE_URL: !Ref PublicSiteUrl
+          ORGANISER_PORTAL_URL: !Ref OrganiserPortalUrl
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+                - ses:SendRawEmail
+              Resource: "*"
       Events:
         EmailQueueEvent:
           Type: SQS
