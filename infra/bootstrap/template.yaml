@@ -68,6 +68,7 @@ Resources:
                   - cloudformation:ListStackResources
                 Resource:
                   - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/cyrokx-app-*/*
+                  - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/cyrokx-frontend-*/*
               - Sid: ReadNetworkDataStackOutputs
                 Effect: Allow
                 Action:
@@ -101,6 +102,10 @@ Resources:
                   - lambda:GetLayerVersion
                   - lambda:ListVersionsByFunction
                   - lambda:GetPolicy
+                  - lambda:CreateFunctionUrlConfig
+                  - lambda:UpdateFunctionUrlConfig
+                  - lambda:DeleteFunctionUrlConfig
+                  - lambda:GetFunctionUrlConfig
                 Resource:
                   - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:cyrokx-*
                   - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:cyrokx-*
@@ -173,6 +178,43 @@ Resources:
                     iam:PassedToService:
                       - lambda.amazonaws.com
                       - states.amazonaws.com
+              # BannersDistribution (event image CDN) in infra/app.
+              - Sid: CloudFrontForBannersCdn
+                Effect: Allow
+                Action:
+                  - cloudfront:CreateDistribution
+                  - cloudfront:UpdateDistribution
+                  - cloudfront:DeleteDistribution
+                  - cloudfront:GetDistribution
+                  - cloudfront:GetDistributionConfig
+                  - cloudfront:TagResource
+                  - cloudfront:CreateOriginAccessControl
+                  - cloudfront:UpdateOriginAccessControl
+                  - cloudfront:DeleteOriginAccessControl
+                  - cloudfront:GetOriginAccessControl
+                  - cloudfront:GetOriginAccessControlConfig
+                  - cloudfront:ListOriginAccessControls
+                Resource: "*"
+              # Frontend CloudFront distributions use the us-east-1 ACM cert.
+              - Sid: AcmReadForCloudFrontAliases
+                Effect: Allow
+                Action:
+                  - acm:DescribeCertificate
+                  - acm:ListCertificates
+                Resource: "*"
+              - Sid: S3BannersBucketPolicyRead
+                Effect: Allow
+                Action:
+                  - s3:GetBucketPolicy
+                  - s3:DeleteBucketPolicy
+                Resource:
+                  - arn:aws:s3:::cyrokx-banners-*
+              # migrate-check / post-deploy migration in the deploy workflows.
+              - Sid: InvokeMigrationRunner
+                Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource:
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:cyrokx-migration-runner-*
               - Sid: Logs
                 Effect: Allow
                 Action:

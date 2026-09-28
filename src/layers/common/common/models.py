@@ -102,11 +102,27 @@ class Organiser(Base):
     contact_name: Mapped[str] = mapped_column(String(200), nullable=False)
     email: Mapped[str] = mapped_column(String(320), nullable=False, unique=True)
     password_hash: Mapped[str] = mapped_column(String(200), nullable=False)
+    # PENDING = signed up, awaiting super-admin approval (cannot create
+    # events); VERIFIED = approved by a super admin; SUSPENDED = blocked (also
+    # used for a rejected application, with status_reason explaining why).
+    # Email verification is tracked separately (0006) so confirming an email
+    # never bypasses the admin approval gate.
     status: Mapped[OrganiserStatus] = mapped_column(
         Enum(OrganiserStatus, name="organiser_status", values_callable=lambda cls: [e.value for e in cls]),
         nullable=False,
         default=OrganiserStatus.PENDING,
     )
+    email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    status_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    approved_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Public organiser page (0006).
+    bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+    logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    cover_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    website_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    instagram_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     events: Mapped[list["Event"]] = relationship(back_populates="organiser")
@@ -136,7 +152,9 @@ class Event(Base):
     __tablename__ = "events"
 
     id: Mapped[uuid.UUID] = _uuid_pk()
-    organiser_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organisers.id"), nullable=False)
+    # Nullable since 0006: a super admin can create a platform-hosted event
+    # with no organiser attached.
+    organiser_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("organisers.id"), nullable=True)
     category_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("categories.id"), nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
@@ -147,6 +165,21 @@ class Event(Base):
     city: Mapped[str] = mapped_column(String(100), nullable=False)
     capacity: Mapped[int] = mapped_column(Integer, nullable=False)
     banner_image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # --- 0006: allevents-style create flow ---
+    location_type: Mapped[str] = mapped_column(String(20), nullable=False, default="venue")  # venue|online|recorded
+    online_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    end_date: Mapped[dt.date | None] = mapped_column(Date, nullable=True)
+    end_time: Mapped[dt.time | None] = mapped_column(Time, nullable=True)
+    timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="Asia/Kolkata")
+    schedule_type: Mapped[str] = mapped_column(String(20), nullable=False, default="single")  # single|recurring
+    recurrence: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # {frequency, weekdays, until}
+    listing_type: Mapped[str] = mapped_column(String(20), nullable=False, default="public")  # public|private
+    allow_discussions: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    promo_video_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    tags: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    featured_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    featured_headline: Mapped[str | None] = mapped_column(String(200), nullable=True)
     status: Mapped[EventStatus] = mapped_column(
         Enum(EventStatus, name="event_status", values_callable=lambda cls: [e.value for e in cls]),
         nullable=False,
@@ -186,6 +219,15 @@ class TicketTier(Base):
     quantity_sold: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     sale_start: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     sale_end: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # --- 0006 ---
+    ticket_type: Mapped[str] = mapped_column(String(20), nullable=False, default="paid")  # paid|free|donation
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    min_per_order: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    max_per_order: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
+    requires_approval: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    group_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    sale_status: Mapped[str] = mapped_column(String(20), nullable=False, default="on_sale")  # on_sale|paused
+    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     event: Mapped["Event"] = relationship(back_populates="ticket_tiers")
@@ -248,6 +290,7 @@ class Order(Base):
         default=PaymentStatus.PENDING,
     )
     payment_gateway_ref: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    occurrence_date: Mapped[dt.date | None] = mapped_column(Date, nullable=True)  # recurring events (0006)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     event: Mapped["Event"] = relationship(back_populates="orders")
@@ -308,6 +351,12 @@ class Ticket(Base):
     qr_code_token: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     checked_in: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     checked_in_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # --- 0006: one ticket per participant, each with its own details ---
+    attendee_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    attendee_email: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    attendee_phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    attendee_answers: Mapped[list | None] = mapped_column(JSONB, nullable=True)  # [{field_label, answer}]
+    approval_status: Mapped[str] = mapped_column(String(20), nullable=False, default="approved")  # approved|pending|rejected
 
     order_item: Mapped["OrderItem"] = relationship(back_populates="tickets")
 

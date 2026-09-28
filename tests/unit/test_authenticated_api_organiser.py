@@ -9,7 +9,7 @@ import uuid
 from contextlib import contextmanager
 from unittest.mock import MagicMock
 
-from common.models import Event, EventStatus
+from common.models import Event, EventStatus, Organiser, OrganiserStatus
 
 
 def _api_event(method, path, body=None, authorizer=None, query=None):
@@ -28,9 +28,24 @@ def _api_event(method, path, body=None, authorizer=None, query=None):
     }
 
 
+def _session_get_dispatch(get_return):
+    """session.get(Model, id) fake: the approval gate looks up the calling
+    Organiser (an approved one here); everything else gets `get_return`."""
+
+    def _get(model, key, *args, **kwargs):
+        if model is Organiser:
+            return Organiser(
+                id=key, org_name="Terrace Live", contact_name="Aditi", email="o@example.com",
+                password_hash="x", status=OrganiserStatus.VERIFIED,
+            )
+        return get_return
+
+    return _get
+
+
 def _fake_get_session(get_return=None):
     session = MagicMock()
-    session.get.return_value = get_return
+    session.get.side_effect = _session_get_dispatch(get_return)
 
     @contextmanager
     def _get_session():

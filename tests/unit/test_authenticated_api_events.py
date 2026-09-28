@@ -11,7 +11,7 @@ import uuid
 from contextlib import contextmanager
 from unittest.mock import MagicMock
 
-from common.models import Event, EventStatus
+from common.models import Event, EventStatus, Organiser, OrganiserStatus, TicketTier
 
 
 def _api_event(method, path, body=None, authorizer=None):
@@ -30,9 +30,24 @@ def _api_event(method, path, body=None, authorizer=None):
     }
 
 
+def _session_get_dispatch(get_return):
+    """session.get(Model, id) fake: the approval gate looks up the calling
+    Organiser (an approved one here); everything else gets `get_return`."""
+
+    def _get(model, key, *args, **kwargs):
+        if model is Organiser:
+            return Organiser(
+                id=key, org_name="Terrace Live", contact_name="Aditi", email="o@example.com",
+                password_hash="x", status=OrganiserStatus.VERIFIED,
+            )
+        return get_return
+
+    return _get
+
+
 def _fake_get_session(event_obj):
     session = MagicMock()
-    session.get.return_value = event_obj
+    session.get.side_effect = _session_get_dispatch(event_obj)
 
     @contextmanager
     def _get_session():
@@ -79,6 +94,9 @@ def test_submit_event_rejects_event_already_live(monkeypatch, mock_jwt_secret):
 
 def test_submit_event_succeeds_from_draft(monkeypatch, mock_jwt_secret):
     fake_event = _fake_event(status=EventStatus.DRAFT)
+    fake_event.ticket_tiers = [
+        TicketTier(name="General", price=499, quantity_total=100, quantity_sold=0, sale_status="on_sale")
+    ]
     monkeypatch.setattr(
         "authenticated_api.handler.get_session", _fake_get_session(fake_event)
     )
@@ -145,3 +163,53 @@ def test_approve_event_succeeds_from_review(monkeypatch, mock_jwt_secret):
     response = api_handler(event, MagicMock())
     assert response["statusCode"] == 200
     assert fake_event.status == EventStatus.APPROVED
+
+
+def test_submit_event_rejects_without_tickets(monkeypatch, mock_jwt_secret):
+    fake_event = _fake_event(status=EventStatus.DRAFT)
+    monkeypatch.setattr(
+        "authenticated_api.handler.get_session", _fake_get_session(fake_event)
+    )
+
+    from authenticated_api.handler import handler as api_handler
+
+    event = _api_event(
+        "POST",
+        f"/organiser/events/{fake_event.id}/submit",
+        authorizer={"role": "organiser", "organiser_id": str(fake_event.organiser_id)},
+    )
+    response = api_handler(event, MagicMock())
+    assert response["statusCode"] == 400
+    assert "ticket" in json.loads(response["body"])["message"].lower()
+    assert fake_event.status == EventStatus.DRAFT
+
+
+def test_pending_organiser_cannot_create_event(monkeypatch, mock_jwt_secret):
+    session = MagicMock()
+    session.get.side_effect = lambda model, key, *a, **k: Organiser(
+        id=key, org_name="New Org", contact_name="N", email="n@example.com",
+        password_hash="x", status=OrganiserStatus.PENDING,
+    )
+
+    @contextmanager
+    def _get_session():
+        yield session
+
+    monkeypatch.setattr("authenticated_api.handler.get_session", _get_session)
+
+    from authenticated_api.handler import handler as api_handler
+
+    event = _api_event(
+        "POST",
+        "/organiser/events",
+        body={
+            "title": "Morning Run", "category_id": str(uuid.uuid4()),
+            "description": "A 10k run through the city at sunrise.",
+            "event_date": "2026-11-22", "event_time": "05:00:00",
+            "venue_name": "Stadium", "venue_address": "Paloura Camp, Jammu", "city": "Mumbai",
+        },
+        authorizer={"role": "organiser", "organiser_id": str(uuid.uuid4())},
+    )
+    response = api_handler(event, MagicMock())
+    assert response["statusCode"] == 403
+    session.add.assert_not_called()

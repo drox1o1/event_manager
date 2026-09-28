@@ -39,6 +39,14 @@ class TicketTierSummary(BaseModel):
     price: Decimal
     quantity_total: int
     quantity_sold: int
+    ticket_type: str = "paid"
+    description: str | None = None
+    min_per_order: int = 1
+    max_per_order: int = 10
+    requires_approval: bool = False
+    group_name: str | None = None
+    sale_status: str = "on_sale"
+    sort_order: int = 0
 
     model_config = {"from_attributes": True}
 
@@ -51,8 +59,18 @@ class EventSummary(BaseModel):
     event_date: dt.date
     price_from: Decimal | None = None
     sold_out: bool = False
+    event_time: dt.time | None = None
+    venue_name: str | None = None
+    banner_image_url: str | None = None
+    location_type: str = "venue"
 
     model_config = {"from_attributes": True}
+
+
+class OrganiserPublicSummary(BaseModel):
+    id: uuid.UUID
+    org_name: str
+    logo_url: str | None = None
 
 
 class EventDetail(EventSummary):
@@ -63,6 +81,15 @@ class EventDetail(EventSummary):
     banner_image_url: str | None = None
     gallery_images: list[str] = []
     ticket_tiers: list[TicketTierSummary] = []
+    end_date: dt.date | None = None
+    end_time: dt.time | None = None
+    timezone: str = "Asia/Kolkata"
+    schedule_type: str = "single"
+    recurrence: dict | None = None
+    allow_discussions: bool = True
+    promo_video_url: str | None = None
+    tags: list[str] = []
+    organiser: OrganiserPublicSummary | None = None
 
 
 # --- Registration form builder ---
@@ -127,16 +154,57 @@ class EventImagesReplaceRequest(BaseModel):
 # --- Events (organiser) ---
 
 
+LocationTypeStr = Literal["venue", "online", "recorded"]
+ScheduleTypeStr = Literal["single", "recurring"]
+ListingTypeStr = Literal["public", "private"]
+
+
+class RecurrenceInput(BaseModel):
+    frequency: Literal["daily", "weekly", "monthly"]
+    # 0=Mon..6=Sun, only meaningful for weekly
+    weekdays: list[int] = Field(default_factory=list, max_length=7)
+    until: dt.date
+
+    @field_validator("weekdays")
+    @classmethod
+    def _check_weekdays(cls, v: list[int]) -> list[int]:
+        if any(d < 0 or d > 6 for d in v):
+            raise ValueError("weekdays must be 0 (Mon) .. 6 (Sun)")
+        return sorted(set(v))
+
+
 class EventCreateRequest(BaseModel):
-    title: str = Field(min_length=1, max_length=200)
+    """Basic Info step. Creates a DRAFT; media, tickets and the publish
+    settings are added afterwards by the step-by-step editor."""
+
+    title: str = Field(min_length=3, max_length=200)
     category_id: uuid.UUID
-    description: str = Field(min_length=1)
+    description: str = Field(min_length=20)
     event_date: dt.date
     event_time: dt.time
-    venue_name: str = Field(min_length=1, max_length=200)
-    venue_address: str = Field(min_length=1)
+    end_date: dt.date | None = None
+    end_time: dt.time | None = None
+    timezone: str = Field(default="Asia/Kolkata", min_length=1, max_length=64)
+    location_type: LocationTypeStr = "venue"
+    online_url: str | None = Field(default=None, max_length=500)
+    venue_name: str | None = Field(default=None, max_length=200)
+    venue_address: str | None = None
     city: str = Field(min_length=1, max_length=100)
-    capacity: int = Field(gt=0)
+    capacity: int = Field(default=0, ge=0)
+    schedule_type: ScheduleTypeStr = "single"
+    recurrence: RecurrenceInput | None = None
+    listing_type: ListingTypeStr = "public"
+    allow_discussions: bool = True
+    promo_video_url: str | None = Field(default=None, max_length=500)
+    tags: list[str] = Field(default_factory=list, max_length=12)
+    # Admin-only: host the event under this organiser (None = platform-hosted).
+    # Ignored on the organiser endpoint.
+    organiser_id: uuid.UUID | None = None
+
+    @model_validator(mode="after")
+    def _check(self) -> "EventCreateRequest":
+        check_event_shape(self)
+        return self
 
 
 # --- Moderation (admin) ---
@@ -173,22 +241,37 @@ class CategoriesReplaceRequest(BaseModel):
 # --- Checkout (public, test-mode -- see public_api/handler.py::checkout) ---
 
 
-class CheckoutItem(BaseModel):
-    ticket_tier_id: uuid.UUID
-    quantity: int = Field(gt=0, le=20)
-
-
 class FormResponseInput(BaseModel):
     field_id: uuid.UUID
     answer: str | list[str]
+
+
+class AttendeeInput(BaseModel):
+    """One participant = one issued ticket. The event's registration form is
+    answered per participant (e.g. each runner's T-shirt size / DOB)."""
+
+    name: str = Field(min_length=1, max_length=200)
+    email: EmailStr | None = None
+    phone: str | None = Field(default=None, max_length=20)
+    form_responses: list[FormResponseInput] = []
+
+
+class CheckoutItem(BaseModel):
+    ticket_tier_id: uuid.UUID
+    quantity: int = Field(gt=0, le=20)
+    # Donation tiers: the amount per ticket the buyer chose (>= tier minimum).
+    amount: Decimal | None = Field(default=None, ge=0)
+    # When given, must contain exactly `quantity` participants.
+    attendees: list[AttendeeInput] = []
 
 
 class CheckoutRequest(BaseModel):
     buyer_name: str = Field(min_length=1, max_length=200)
     buyer_email: EmailStr
     buyer_phone: str = Field(min_length=1, max_length=20)
-    items: list[CheckoutItem] = Field(min_length=1)
+    items: list[CheckoutItem] = Field(min_length=1, max_length=20)
     form_responses: list[FormResponseInput] = []
+    occurrence_date: dt.date | None = None
 
 
 class RefundRequestCreate(BaseModel):
@@ -203,28 +286,127 @@ class RefundResolveRequest(BaseModel):
 
 
 class EventUpdateRequest(BaseModel):
-    title: str | None = Field(default=None, min_length=1, max_length=200)
+    """Partial update from any editor step. Cross-field rules (venue vs
+    online, end after start) are re-checked by the handler on the merged
+    event via check_event_shape."""
+
+    title: str | None = Field(default=None, min_length=3, max_length=200)
     category_id: uuid.UUID | None = None
-    description: str | None = Field(default=None, min_length=1)
+    description: str | None = Field(default=None, min_length=20)
     event_date: dt.date | None = None
     event_time: dt.time | None = None
-    venue_name: str | None = Field(default=None, min_length=1, max_length=200)
-    venue_address: str | None = Field(default=None, min_length=1)
+    end_date: dt.date | None = None
+    end_time: dt.time | None = None
+    timezone: str | None = Field(default=None, min_length=1, max_length=64)
+    location_type: LocationTypeStr | None = None
+    online_url: str | None = Field(default=None, max_length=500)
+    venue_name: str | None = Field(default=None, max_length=200)
+    venue_address: str | None = None
     city: str | None = Field(default=None, min_length=1, max_length=100)
-    capacity: int | None = Field(default=None, gt=0)
+    capacity: int | None = Field(default=None, ge=0)
     banner_image_url: str | None = None
+    schedule_type: ScheduleTypeStr | None = None
+    recurrence: RecurrenceInput | None = None
+    listing_type: ListingTypeStr | None = None
+    allow_discussions: bool | None = None
+    promo_video_url: str | None = Field(default=None, max_length=500)
+    tags: list[str] | None = Field(default=None, max_length=12)
+    organiser_id: uuid.UUID | None = None  # admin only
+
+
+def check_event_shape(e) -> None:
+    """Cross-field rules shared by create (on the request) and update (on the
+    merged ORM row). Raises ValueError with a user-facing message."""
+    loc = getattr(e, "location_type", "venue") or "venue"
+    if loc == "venue":
+        if not (getattr(e, "venue_name", None) or "").strip():
+            raise ValueError("Venue name is required for an in-person event")
+        if not (getattr(e, "venue_address", None) or "").strip():
+            raise ValueError("Venue address is required for an in-person event")
+    elif loc == "online":
+        url = (getattr(e, "online_url", None) or "").strip()
+        if not url.startswith(("http://", "https://")):
+            raise ValueError("A valid online event link (https://...) is required")
+    end_date = getattr(e, "end_date", None)
+    if end_date is not None:
+        if end_date < e.event_date:
+            raise ValueError("End date can't be before the start date")
+        end_time = getattr(e, "end_time", None)
+        if end_date == e.event_date and end_time is not None and end_time <= e.event_time:
+            raise ValueError("End time must be after the start time")
+    if getattr(e, "schedule_type", "single") == "recurring":
+        rec = getattr(e, "recurrence", None)
+        if not rec:
+            raise ValueError("Choose how often a recurring event repeats")
+        until = rec["until"] if isinstance(rec, dict) else rec.until
+        if isinstance(until, str):
+            until = dt.date.fromisoformat(until)
+        if until < e.event_date:
+            raise ValueError("A recurring event must repeat until on/after its start date")
+
+
+TicketTypeStr = Literal["paid", "free", "donation"]
 
 
 class TicketTierCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=100)
-    price: Decimal = Field(ge=0)
-    quantity_total: int = Field(gt=0)
+    name: str = Field(min_length=1, max_length=60)
+    ticket_type: TicketTypeStr = "paid"
+    # paid: the ticket price (>0); free: forced to 0; donation: the minimum amount.
+    price: Decimal = Field(default=Decimal("0"), ge=0)
+    quantity_total: int = Field(gt=0, le=100000)
+    description: str | None = Field(default=None, max_length=500)
+    min_per_order: int = Field(default=1, ge=1, le=100)
+    max_per_order: int = Field(default=10, ge=1, le=100)
+    requires_approval: bool = False
+    group_name: str | None = Field(default=None, max_length=100)
+    sale_status: Literal["on_sale", "paused"] = "on_sale"
     sale_start: dt.datetime | None = None
     sale_end: dt.datetime | None = None
+
+    @model_validator(mode="after")
+    def _check(self) -> "TicketTierCreate":
+        if self.ticket_type == "free":
+            self.price = Decimal("0")
+        elif self.ticket_type == "paid" and self.price <= 0:
+            raise ValueError("A paid ticket needs a price above 0")
+        if self.min_per_order > self.max_per_order:
+            raise ValueError("Minimum per order can't exceed the maximum")
+        if self.sale_start and self.sale_end and self.sale_end <= self.sale_start:
+            raise ValueError("Sale end must be after sale start")
+        return self
 
 
 class TicketTiersCreateRequest(BaseModel):
     tiers: list[TicketTierCreate] = Field(min_length=1)
+
+
+class TicketTierUpdate(TicketTierCreate):
+    """Full replacement of one ticket type (the edit drawer sends every field)."""
+
+
+class FeatureEventRequest(BaseModel):
+    is_featured: bool
+    featured_order: int = Field(default=0, ge=0, le=1000)
+    featured_headline: str | None = Field(default=None, max_length=200)
+
+
+# --- Organiser profile / approval ---
+
+
+class OrganiserProfileUpdate(BaseModel):
+    org_name: str | None = Field(default=None, min_length=1, max_length=200)
+    contact_name: str | None = Field(default=None, min_length=1, max_length=200)
+    bio: str | None = Field(default=None, max_length=4000)
+    logo_url: str | None = Field(default=None, max_length=500)
+    cover_url: str | None = Field(default=None, max_length=500)
+    website_url: str | None = Field(default=None, max_length=500)
+    instagram_url: str | None = Field(default=None, max_length=500)
+    phone: str | None = Field(default=None, max_length=20)
+    city: str | None = Field(default=None, max_length=100)
+
+
+class OrganiserDecisionRequest(BaseModel):
+    reason: str | None = Field(default=None, max_length=1000)
 
 
 # --- Organisers (admin) ---
@@ -242,6 +424,13 @@ class OrganiserSummary(BaseModel):
     email: EmailStr
     status: str
     created_at: dt.datetime
+    email_verified: bool = False
+    status_reason: str | None = None
+    approved_at: dt.datetime | None = None
+    city: str | None = None
+    phone: str | None = None
+    logo_url: str | None = None
+    events_count: int = 0
 
 
 # --- Platform settings (admin) ---

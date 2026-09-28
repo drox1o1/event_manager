@@ -104,7 +104,7 @@ function EventWorkspace() {
   const selectOverflow = (key: string) => {
     setMoreOpen(false);
     if (key === 'attendees') { router.push(`/events/${eventId}/attendees`); return; }
-    if (key === 'edit') { router.push(`/events/${eventId}/edit`); return; }
+    if (key === 'edit') { router.push(`/events/${eventId}/manage/basic`); return; }
     setTab(key);
   };
 
@@ -136,7 +136,7 @@ function EventWorkspace() {
         </div>
         <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
           <Button variant="secondary" size="sm" onClick={copyLink}><Icon name="link" size={15} />{copied ? 'Link copied' : 'Copy registration link'}</Button>
-          {canEdit && <Button size="sm" onClick={() => router.push(`/events/${eventId}/edit`)}><Icon name="pencil" size={15} />Edit event</Button>}
+          <Button size="sm" variant={canEdit ? 'primary' : 'secondary'} onClick={() => router.push(`/events/${eventId}/manage/${canEdit ? 'basic' : 'tickets'}`)}><Icon name="pencil" size={15} />{canEdit ? 'Edit event' : 'Manage tickets'}</Button>
           {canSubmit && <Button size="sm" onClick={submitForReview} loading={busy}>Submit for review</Button>}
         </div>
       </div>
@@ -182,7 +182,7 @@ function EventWorkspace() {
       {tab === 'tax' && <EventTaxPanel />}
       {tab === 'orders' && <EventOrdersPanel />}
       {moreSelected && overflowItem && (
-        <ComingSoonPanel label={overflowItem.label} icon={overflowItem.icon} tab={tab} onEdit={() => router.push(`/events/${eventId}/edit`)} />
+        <ComingSoonPanel label={overflowItem.label} icon={overflowItem.icon} tab={tab} onEdit={() => router.push(`/events/${eventId}/manage/basic`)} />
       )}
     </div>
   );

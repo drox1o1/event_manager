@@ -20,12 +20,33 @@ export interface TokenResponse {
 
 // --- Public: events, categories ---
 
+export type TicketType = 'paid' | 'free' | 'donation';
+export type TicketSaleStatus = 'on_sale' | 'paused';
+export type LocationType = 'venue' | 'online' | 'recorded';
+export type ScheduleType = 'single' | 'recurring';
+export type ListingType = 'public' | 'private';
+
+export interface Recurrence {
+  frequency: 'daily' | 'weekly' | 'monthly';
+  /** 0 = Mon .. 6 = Sun (weekly only). */
+  weekdays: number[];
+  until: string;
+}
+
 export interface TicketTierSummary {
   id: string;
   name: string;
   price: string;
   quantity_total: number;
   quantity_sold: number;
+  ticket_type: TicketType;
+  description: string | null;
+  min_per_order: number;
+  max_per_order: number;
+  requires_approval: boolean;
+  group_name: string | null;
+  sale_status: TicketSaleStatus;
+  sort_order: number;
 }
 
 export interface EventSummary {
@@ -36,6 +57,16 @@ export interface EventSummary {
   event_date: string;
   price_from: string | null;
   sold_out: boolean;
+  event_time?: string | null;
+  venue_name?: string | null;
+  banner_image_url?: string | null;
+  location_type?: LocationType;
+}
+
+export interface OrganiserPublicSummary {
+  id: string;
+  org_name: string;
+  logo_url: string | null;
 }
 
 export interface EventDetail extends EventSummary {
@@ -46,6 +77,34 @@ export interface EventDetail extends EventSummary {
   banner_image_url: string | null;
   gallery_images: string[];
   ticket_tiers: TicketTierSummary[];
+  end_date: string | null;
+  end_time: string | null;
+  timezone: string;
+  schedule_type: ScheduleType;
+  recurrence: Recurrence | null;
+  allow_discussions: boolean;
+  promo_video_url: string | null;
+  tags: string[];
+  organiser: OrganiserPublicSummary | null;
+}
+
+export interface FeaturedEvent extends EventSummary {
+  headline: string;
+  description: string;
+  organiser_name: string | null;
+}
+
+export interface OrganiserPublicPage {
+  id: string;
+  org_name: string;
+  bio: string | null;
+  logo_url: string | null;
+  cover_url: string | null;
+  website_url: string | null;
+  instagram_url: string | null;
+  city: string | null;
+  member_since: string;
+  events: EventSummary[];
 }
 
 // --- Registration form builder ---
@@ -132,6 +191,8 @@ export interface HomepageResolvedSection {
 export interface HomepageContent {
   hero: HomepageHero;
   banner: HomepageBanner;
+  /** Super-admin pinned hero slides (1 = single hero, 2+ = carousel). */
+  featured?: FeaturedEvent[];
   sections: HomepageResolvedSection[];
 }
 
@@ -237,9 +298,20 @@ export interface SitePageUpsertRequest {
 
 // --- Public: checkout / orders / refunds ---
 
+export interface AttendeeInput {
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  form_responses: FormResponseInput[];
+}
+
 export interface CheckoutItemInput {
   ticket_tier_id: string;
   quantity: number;
+  /** Donation tickets: chosen amount per ticket. */
+  amount?: string;
+  /** One entry per ticket -- each participant gets their own ticket id. */
+  attendees?: AttendeeInput[];
 }
 
 export interface CheckoutRequest {
@@ -248,6 +320,7 @@ export interface CheckoutRequest {
   buyer_phone: string;
   items: CheckoutItemInput[];
   form_responses?: FormResponseInput[];
+  occurrence_date?: string;
 }
 
 export interface CheckoutResponse {
@@ -255,14 +328,26 @@ export interface CheckoutResponse {
   payment_status: PaymentStatus;
 }
 
+export interface TicketAnswer {
+  field_id?: string;
+  field_label: string;
+  answer: string | string[];
+}
+
 export interface OrderTicket {
   id: string;
+  ticket_code: string;
   qr_code_token: string;
   checked_in: boolean;
+  attendee_name: string | null;
+  attendee_email: string | null;
+  attendee_answers: TicketAnswer[];
+  approval_status: 'approved' | 'pending' | 'rejected';
 }
 
 export interface OrderItemDetail {
   ticket_tier_id: string;
+  ticket_tier_code: string;
   ticket_tier_name: string | null;
   quantity: number;
   unit_price: string;
@@ -271,8 +356,17 @@ export interface OrderItemDetail {
 
 export interface OrderDetail {
   order_id: string;
+  order_code: string;
   event_id: string;
   event_title: string | null;
+  event_date: string | null;
+  event_time: string | null;
+  venue_name: string | null;
+  city: string | null;
+  banner_image_url: string | null;
+  online_url: string | null;
+  occurrence_date: string | null;
+  payment_ref: string | null;
   buyer_name: string;
   buyer_email: string;
   buyer_phone: string;
@@ -326,13 +420,26 @@ export interface EventCreateRequest {
   description: string;
   event_date: string;
   event_time: string;
-  venue_name: string;
-  venue_address: string;
+  end_date?: string | null;
+  end_time?: string | null;
+  timezone?: string;
+  location_type?: LocationType;
+  online_url?: string | null;
+  venue_name?: string | null;
+  venue_address?: string | null;
   city: string;
-  capacity: number;
+  capacity?: number;
+  schedule_type?: ScheduleType;
+  recurrence?: Recurrence | null;
+  listing_type?: ListingType;
+  allow_discussions?: boolean;
+  promo_video_url?: string | null;
+  tags?: string[];
+  /** Admin only: host organiser (null = platform-hosted). */
+  organiser_id?: string | null;
 }
 
-export type EventUpdateRequest = Partial<EventCreateRequest> & { banner_image_url?: string };
+export type EventUpdateRequest = Partial<EventCreateRequest> & { banner_image_url?: string | null };
 
 export interface EventActionResponse {
   event_id: string;
@@ -349,18 +456,23 @@ export interface OrganiserEventSummary {
   tickets_sold: number;
   tickets_total: number;
   rejection_reason: string | null;
+  event_time?: string;
+  banner_image_url?: string | null;
+  is_featured?: boolean;
+  featured_order?: number;
+  featured_headline?: string | null;
+  listing_type?: ListingType;
 }
 
 export interface AdminEventSummary extends OrganiserEventSummary {
   organiser_name: string | null;
 }
 
-export interface OrganiserEventTier {
-  id: string;
-  name: string;
-  price: string;
-  quantity_total: number;
-  quantity_sold: number;
+export interface OrganiserEventTier extends TicketTierSummary {
+  /** Short human-friendly ticket-type id shown in the UI. */
+  code: string;
+  sale_start: string | null;
+  sale_end: string | null;
 }
 
 export interface OrganiserEventDetail extends OrganiserEventSummary {
@@ -372,8 +484,21 @@ export interface OrganiserEventDetail extends OrganiserEventSummary {
   banner_image_url: string | null;
   gallery_images: string[];
   category_id: string;
+  organiser_id: string | null;
+  organiser_name: string | null;
   ticket_tiers: OrganiserEventTier[];
   form_fields: FormField[];
+  location_type: LocationType;
+  online_url: string | null;
+  end_date: string | null;
+  end_time: string | null;
+  timezone: string;
+  schedule_type: ScheduleType;
+  recurrence: Recurrence | null;
+  listing_type: ListingType;
+  allow_discussions: boolean;
+  promo_video_url: string | null;
+  tags: string[];
 }
 
 export interface OrganiserEventListResponse {
@@ -390,14 +515,27 @@ export interface AdminEventListResponse {
 
 export interface TicketTierCreateInput {
   name: string;
+  ticket_type: TicketType;
   price: string;
   quantity_total: number;
-  sale_start?: string;
-  sale_end?: string;
+  description?: string | null;
+  min_per_order?: number;
+  max_per_order?: number;
+  requires_approval?: boolean;
+  group_name?: string | null;
+  sale_status?: TicketSaleStatus;
+  sale_start?: string | null;
+  sale_end?: string | null;
 }
 
 export interface TicketTiersCreateResponse {
-  ticket_tiers: { id: string; name: string }[];
+  ticket_tiers: OrganiserEventTier[];
+}
+
+export interface FeatureEventRequest {
+  is_featured: boolean;
+  featured_order?: number;
+  featured_headline?: string | null;
 }
 
 export interface BannerUploadUrlResponse {
@@ -407,12 +545,48 @@ export interface BannerUploadUrlResponse {
 
 export interface Attendee {
   ticket_id: string;
+  ticket_code: string;
   order_id: string;
+  order_code: string;
   buyer_name: string;
   buyer_email: string;
+  buyer_phone: string;
+  attendee_name: string;
+  attendee_email: string | null;
+  attendee_phone: string | null;
+  attendee_answers: TicketAnswer[];
   ticket_tier: string | null;
+  ticket_tier_id: string;
+  unit_price: string;
   checked_in: boolean;
+  approval_status: 'approved' | 'pending' | 'rejected';
+  occurrence_date: string | null;
+  purchased_at: string;
 }
+
+// --- Organiser: own account / public page ---
+
+export interface OrganiserProfile {
+  id: string;
+  org_name: string;
+  contact_name: string;
+  email: string;
+  status: OrganiserStatus;
+  status_reason: string | null;
+  email_verified: boolean;
+  approved_at: string | null;
+  bio: string | null;
+  logo_url: string | null;
+  cover_url: string | null;
+  website_url: string | null;
+  instagram_url: string | null;
+  phone: string | null;
+  city: string | null;
+  created_at: string;
+}
+
+export type OrganiserProfileUpdate = Partial<Pick<OrganiserProfile,
+  'org_name' | 'contact_name' | 'bio' | 'logo_url' | 'cover_url' | 'website_url' | 'instagram_url' | 'phone' | 'city'>>;
 
 export interface AttendeeListResponse {
   attendees: Attendee[];
@@ -444,6 +618,13 @@ export interface OrganiserSummary {
   email: string;
   status: OrganiserStatus;
   created_at: string;
+  email_verified: boolean;
+  status_reason: string | null;
+  approved_at: string | null;
+  city: string | null;
+  phone: string | null;
+  logo_url: string | null;
+  events_count: number;
 }
 
 export interface OrganiserListResponse {

@@ -63,6 +63,11 @@ def _fake_event(**overrides):
 
 def _fake_tier(**overrides):
     defaults = dict(
+        ticket_type="paid",
+        sale_status="on_sale",
+        min_per_order=1,
+        max_per_order=10,
+        requires_approval=False,
         id=uuid.uuid4(),
         event_id=uuid.uuid4(),
         name="General",

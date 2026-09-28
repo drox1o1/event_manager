@@ -44,3 +44,20 @@ jobs:
 
       - name: Deploy
         run: make deploy-prod SAM_ARTIFACTS_BUCKET=${{ vars.SAM_ARTIFACTS_BUCKET }}
+
+      # Bring prod's schema up to the revision this deploy just shipped
+      # (the migration runner Lambda now bundles the new migrations). No
+      # "schema" in the payload = prod's default public schema.
+      - name: Migrate prod schema to head
+        run: |
+          aws lambda invoke \
+            --function-name cyrokx-migration-runner-prod \
+            --payload '{"mode":"upgrade"}' \
+            --cli-binary-format raw-in-base64-out \
+            --cli-read-timeout 120 \
+            response.json > invoke.json
+          cat invoke.json response.json
+          if grep -q FunctionError invoke.json; then
+            echo "::error::Migration failed -- see response.json above"
+            exit 1
+          fi

@@ -23,6 +23,11 @@ function badgeStatus(status: string): BadgeStatus {
   return (allowed as string[]).includes(status) ? (status as BadgeStatus) : 'draft';
 }
 
+// Drafts open straight into the step-by-step editor to finish them.
+function openHref(r: OrganiserEventSummary): string {
+  return r.status === 'draft' ? `/events/${r.event_id}/manage/basic` : `/events/${r.event_id}`;
+}
+
 function MyEventsInner() {
   const token = useRequireAuth();
   const router = useRouter();
@@ -96,9 +101,9 @@ function MyEventsInner() {
                 key: 'title',
                 label: 'Event',
                 render: (r) => (
-                  <div onClick={() => router.push(`/events/${r.event_id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
-                    <div style={{ width: 44, height: 44, borderRadius: 8, background: 'linear-gradient(135deg, #EFEAE4, #E4DED6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-subtle)', flexShrink: 0 }}>
-                      <Icon name="image" size={16} />
+                  <div onClick={() => router.push(openHref(r))} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                    <div style={{ width: 64, height: 44, borderRadius: 8, background: r.banner_image_url ? `center/cover no-repeat url(${r.banner_image_url})` : 'var(--gradient-poster)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-subtle)', flexShrink: 0 }}>
+                      {!r.banner_image_url && <Icon name="image" size={16} />}
                     </div>
                     <div>
                       <div style={{ fontWeight: 700, color: 'var(--text-heading)' }}>{r.title}</div>
@@ -107,11 +112,11 @@ function MyEventsInner() {
                   </div>
                 ),
               },
-              { key: 'status', label: 'Status', render: (r) => <Badge status={badgeStatus(r.status)} /> },
+              { key: 'status', label: 'Status', render: (r) => r.status === 'draft' ? <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><Badge status="draft" /><span style={{ fontSize: 12.5, color: 'var(--text-link)', fontWeight: 600 }}>Continue →</span></span> : <Badge status={badgeStatus(r.status)} /> },
               { key: 'tickets_sold', label: 'Registrations', render: (r) => `${r.tickets_sold} / ${r.tickets_total}` },
             ]}
             rows={rows.map((r) => ({ ...r, id: r.event_id }))}
-            actions={{ onClick: (r) => router.push(`/events/${r.event_id}`) }}
+            actions={{ onClick: (r) => router.push(openHref(r)) }}
           />
         )}
       </div>

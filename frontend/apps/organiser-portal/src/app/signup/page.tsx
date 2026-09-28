@@ -43,6 +43,9 @@ export default function SignupPage() {
           <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 24, lineHeight: 1.5 }}>
             We sent a verification link to <strong style={{ color: 'var(--text-body)' }}>{form.email}</strong>. Confirm it, then log in to your organiser account.
           </div>
+          <div style={{ fontSize: 13.5, color: 'var(--text-body)', background: 'var(--status-warning-bg)', borderRadius: 'var(--radius-control)', padding: '12px 14px', marginBottom: 24, lineHeight: 1.5, textAlign: 'left' }}>
+            <strong>What happens next:</strong> the Showtik team reviews every new organiser (usually within one business day). You can log in and set up your organiser page right away — creating events unlocks once you&apos;re approved.
+          </div>
           <Link href="/login"><Button fullWidth size="lg">Go to login</Button></Link>
         </div>
       </AuthShell>
