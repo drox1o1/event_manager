@@ -93,6 +93,12 @@ Resources:
           Resource:
             - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/cyrokx-app-*/*
             - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/cyrokx-frontend-*/*
+        # SAM templates use the AWS::Serverless transform; creating a change
+        # set for them is also authorized against the transform's own ARN.
+        - Sid: UseServerlessTransform
+          Effect: Allow
+          Action: cloudformation:CreateChangeSet
+          Resource: !Sub arn:aws:cloudformation:${AWS::Region}:aws:transform/Serverless-2016-10-31
         - Sid: ReadNetworkDataStackOutputs
           Effect: Allow
           Action:
