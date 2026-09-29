@@ -152,6 +152,20 @@ Resources:
             - ec2:DescribeSubnets
             - ec2:DescribeVpcs
           Resource: "*"
+        # EmailSenderFunction/TicketGeneratorFunction consume EmailQueue/
+        # OrderCompletedQueue via SQS event source mappings (AWS::Serverless::
+        # Function's Events: Type: SQS). Mapping ARNs are auto-generated
+        # UUIDs, not tied to the function name, so this can't be scoped
+        # tighter than the mapping ARN pattern.
+        - Sid: SqsEventSourceMappings
+          Effect: Allow
+          Action:
+            - lambda:CreateEventSourceMapping
+            - lambda:UpdateEventSourceMapping
+            - lambda:DeleteEventSourceMapping
+            - lambda:GetEventSourceMapping
+          Resource:
+            - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:event-source-mapping:*
         - Sid: ApiGateway
           Effect: Allow
           # API Gateway ARNs don't include the account ID, and a
