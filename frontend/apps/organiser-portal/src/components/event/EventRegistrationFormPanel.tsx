@@ -22,7 +22,7 @@ const TYPE_OPTIONS = [
   { value: 'multi_choice', label: 'Multiple choice' },
   { value: 'date', label: 'Date (calendar)' },
   { value: 'dob', label: 'Date of birth (age check)' },
-  { value: 'phone', label: 'Contact number (digits only)' },
+  { value: 'phone', label: 'Mobile number (+91, 10 digits)' },
 ];
 
 const TYPE_LABEL: Record<FormFieldType, string> = {
@@ -31,7 +31,7 @@ const TYPE_LABEL: Record<FormFieldType, string> = {
   multi_choice: 'Multiple choice',
   date: 'Date (calendar)',
   dob: 'Date of birth (age check)',
-  phone: 'Contact number (digits only)',
+  phone: 'Mobile number (+91, 10 digits)',
 };
 
 const TYPE_ICON: Record<FormFieldType, string> = {

@@ -1,6 +1,7 @@
 """Pydantic request/response models for the representative-slice endpoints."""
 
 import datetime as dt
+import re
 import uuid
 from decimal import Decimal
 from typing import Literal
@@ -251,6 +252,18 @@ class CategoriesReplaceRequest(BaseModel):
 
 # --- Checkout (public, test-mode -- see public_api/handler.py::checkout) ---
 
+_INDIAN_MOBILE_RE = re.compile(r"(?:\+?91)?([6-9]\d{9})")
+
+
+def normalize_indian_mobile(value: str) -> str | None:
+    """'+91 98765-43210' / '919876543210' / '9876543210' -> '+919876543210'.
+    None unless it is exactly a 10-digit Indian mobile number (starting 6-9),
+    optionally prefixed with the 91 country code. Letters are never accepted."""
+    compact = re.sub(r"[\s-]", "", value or "")
+    m = _INDIAN_MOBILE_RE.fullmatch(compact)
+    return f"+91{m.group(1)}" if m else None
+
+
 
 class FormResponseInput(BaseModel):
     field_id: uuid.UUID
@@ -265,6 +278,16 @@ class AttendeeInput(BaseModel):
     email: EmailStr | None = None
     phone: str | None = Field(default=None, max_length=20)
     form_responses: list[FormResponseInput] = []
+
+    @field_validator("phone")
+    @classmethod
+    def _mobile(cls, v: str | None) -> str | None:
+        if v is None or not v.strip():
+            return None
+        normalized = normalize_indian_mobile(v)
+        if normalized is None:
+            raise ValueError("must be a 10-digit mobile number")
+        return normalized
 
 
 class CheckoutItem(BaseModel):
@@ -283,6 +306,14 @@ class CheckoutRequest(BaseModel):
     items: list[CheckoutItem] = Field(min_length=1, max_length=20)
     form_responses: list[FormResponseInput] = []
     occurrence_date: dt.date | None = None
+
+    @field_validator("buyer_phone")
+    @classmethod
+    def _buyer_mobile(cls, v: str) -> str:
+        normalized = normalize_indian_mobile(v)
+        if normalized is None:
+            raise ValueError("must be a 10-digit mobile number")
+        return normalized
 
 
 class RefundRequestCreate(BaseModel):

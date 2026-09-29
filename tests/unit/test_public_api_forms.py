@@ -220,4 +220,23 @@ def test_checkout_requires_dob_for_age_limited_ticket(monkeypatch):
 def test_checkout_rejects_non_numeric_contact_number(monkeypatch):
     response, _ = _aged_checkout(monkeypatch, dob="1990-04-24", phone="98765-abc")
     assert response["statusCode"] == 400
-    assert "digits" in json.loads(response["body"])["message"]
+    assert "10-digit mobile" in json.loads(response["body"])["message"]
+
+
+def test_checkout_rejects_contact_number_not_10_digits(monkeypatch):
+    for phone in ("987654321", "98765432101"):
+        response, _ = _aged_checkout(monkeypatch, dob="1990-04-24", phone=phone)
+        assert response["statusCode"] == 400, phone
+
+
+def test_checkout_rejects_invalid_buyer_mobile(monkeypatch):
+    event = _fake_event()
+    get_session, _ = _fake_session(get_return=event, execute_all=[])
+    monkeypatch.setattr("public_api.handler.get_session", get_session)
+    from public_api.handler import handler as api_handler
+
+    body = _checkout_body([])
+    body["buyer_phone"] = "12345"
+    body["items"] = [{"ticket_tier_id": str(event.id), "quantity": 1}]
+    response = api_handler(_api_event("POST", f"/events/{event.id}/checkout", body=body), MagicMock())
+    assert response["statusCode"] == 400

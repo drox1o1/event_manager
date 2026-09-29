@@ -64,6 +64,7 @@ from common.schemas import (
     RefundRequestCreate,
     SitePageResponse,
     TicketTierSummary,
+    normalize_indian_mobile,
 )
 from sqlalchemy import or_, select
 from sqlalchemy.orm import selectinload
@@ -670,7 +671,6 @@ def _answer_is_empty(answer) -> bool:
     return not str(answer).strip()
 
 
-_PHONE_RE = re.compile(r"\d{7,15}")
 
 
 def _parse_date(value) -> dt.date | None:
@@ -731,9 +731,10 @@ def _validated_answers(fields, responses, who: str) -> list[dict]:
             if any(c not in field.options for c in chosen):
                 raise BadRequestError(f"Invalid choice for '{field.label}'")
         elif kind == "phone":
-            if not isinstance(answer, str) or not _PHONE_RE.fullmatch(answer.strip()):
-                raise BadRequestError(f"'{field.label}' must be a number with 7-15 digits for {who}")
-            answer = answer.strip()
+            normalized = normalize_indian_mobile(answer) if isinstance(answer, str) else None
+            if normalized is None:
+                raise BadRequestError(f"'{field.label}' must be a 10-digit mobile number for {who}")
+            answer = normalized
         elif kind in ("date", "dob"):
             parsed = _parse_date(answer)
             if parsed is None:

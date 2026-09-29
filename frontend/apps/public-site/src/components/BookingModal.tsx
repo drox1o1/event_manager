@@ -2,14 +2,13 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Icon, Input, Button, Radio, Checkbox, useIsMobile } from '@showtik/ui';
+import { Icon, Input, Button, Radio, Checkbox, PhoneInput, DateInput, INDIAN_MOBILE_RE, useIsMobile } from '@showtik/ui';
 import { publicApi, formatINR, formatEventDate, ApiError } from '@showtik/api-client';
 import type { EventDetail, FormField, TicketTierSummary } from '@showtik/api-client';
 
 const HOLD_SECONDS = 10 * 60;
 // Money amounts in the booking UI: ₹0 rather than formatINR's "Free".
 const money = (n: number) => (n === 0 ? '₹0' : formatINR(n));
-const DIGITS_RE = /^\d{7,15}$/;
 const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 /** Whole years between a date of birth and the event date (both YYYY-MM-DD). */
@@ -26,22 +25,32 @@ function ageRule(t: TicketTierSummary): string | null {
   return null;
 }
 
-const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-const PHONE_RE = /^\+?[\d\s-]{8,16}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MOBILE_ERROR = 'Enter a 10-digit mobile number';
 
-type Step = 'select' | 'attendees' | 'buyer';
+// "Name", "Full name", "Participant's name", "Participants Name", "Runner name"
+// -- but not e.g. "Emergency contact name".
+const PARTICIPANT_NAME_LABEL_RE = /^((participant|attendee|runner|player)['’]?s?\s+)?(full\s+)?name$/i;
+
+/** The organiser's own "participant name" question, if the form has one; it
+ *  then replaces the built-in name box so the name isn't asked twice. */
+function participantNameField(fields: FormField[]): FormField | undefined {
+  return fields.find((f) => f.field_type === 'text' && PARTICIPANT_NAME_LABEL_RE.test(f.label.trim()));
+}
+
+// Buyer details once per order, then one card per participant/ticket.
+type Step = 'select' | 'buyer' | 'attendees';
 
 interface Participant {
   name: string;
-  email: string;
-  phone: string;
   answers: Record<string, string | string[]>;
 }
 
-type ParticipantErrors = Record<string, string>; // key: field name or form field id
+type ParticipantErrors = Record<string, string>; // key: 'name' or form field id
 
 function emptyParticipant(): Participant {
-  return { name: '', email: '', phone: '', answers: {} };
+  return { name: '', answers: {} };
 }
 
 function saleState(t: TicketTierSummary): { available: boolean; reason?: string; remaining: number } {
@@ -82,7 +91,7 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
   const [people, setPeople] = React.useState<Record<string, Participant[]>>({});
   const [errors, setErrors] = React.useState<Record<string, ParticipantErrors>>({});
   const [buyer, setBuyer] = React.useState({ name: '', email: '', phone: '' });
-  const [sameAsFirst, setSameAsFirst] = React.useState(true);
+  const [buyerIsParticipant, setBuyerIsParticipant] = React.useState(true);
   const [buyerErrors, setBuyerErrors] = React.useState<Record<string, string>>({});
   const [agree, setAgree] = React.useState(false);
   const [holdLeft, setHoldLeft] = React.useState(HOLD_SECONDS);
@@ -155,7 +164,7 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
     });
     setErrors({});
     setHoldLeft(HOLD_SECONDS);
-    setStep('attendees');
+    setStep('buyer');
     bodyRef.current?.scrollTo({ top: 0 });
   };
 
@@ -179,21 +188,21 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
   // Ages are measured on the event day (or the chosen session for recurring events).
   const eventDay = session || event.event_date;
   const dobField = fields.find((f) => f.field_type === 'dob');
+  const nameField = participantNameField(fields);
+  const nameOf = (p: Participant) => (nameField ? String(p.answers[nameField.id] ?? '') : p.name).trim();
 
   const validateAttendees = (): boolean => {
     const next: Record<string, ParticipantErrors> = {};
     for (const t of selected) {
       (people[t.id] ?? []).forEach((p, i) => {
         const e: ParticipantErrors = {};
-        if (!p.name.trim()) e.name = 'Enter the participant’s full name';
-        if (p.email && !EMAIL_RE.test(p.email)) e.email = 'Enter a valid email';
-        if (p.phone && !PHONE_RE.test(p.phone)) e.phone = 'Enter a valid phone number';
+        if (!nameField && !p.name.trim()) e.name = 'Enter the participant’s full name';
         for (const f of fields) {
           const v = p.answers[f.id];
-          if (f.required && empty(v)) { e[f.id] = ['single_choice', 'multi_choice'].includes(f.field_type) ? 'Please make a selection' : 'This field is required'; continue; }
+          if ((f.required || f === nameField) && empty(v)) { e[f.id] = ['single_choice', 'multi_choice'].includes(f.field_type) ? 'Please make a selection' : 'This field is required'; continue; }
           if (empty(v) || typeof v !== 'string') continue;
-          if (f.field_type === 'phone' && !DIGITS_RE.test(v)) e[f.id] = 'Enter 7–15 digits (numbers only)';
-          if ((f.field_type === 'date' || f.field_type === 'dob') && !/^\d{4}-\d{2}-\d{2}$/.test(v)) e[f.id] = 'Choose a valid date';
+          if (f.field_type === 'phone' && !INDIAN_MOBILE_RE.test(v)) e[f.id] = MOBILE_ERROR;
+          if ((f.field_type === 'date' || f.field_type === 'dob') && !ISO_DATE_RE.test(v)) e[f.id] = 'Enter a valid date as DD-MM-YYYY';
           if (f.field_type === 'dob' && !e[f.id]) {
             if (v > todayIso()) e[f.id] = 'Date of birth can’t be in the future';
             else {
@@ -215,42 +224,56 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
     return true;
   };
 
-  const firstPerson = selected.length ? people[selected[0].id]?.[0] : undefined;
-  React.useEffect(() => {
-    if (step === 'buyer' && sameAsFirst && firstPerson) {
-      setBuyer((b) => ({ name: firstPerson.name || b.name, email: firstPerson.email || b.email, phone: firstPerson.phone || b.phone }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, sameAsFirst]);
-
   const validateBuyer = () => {
     const e: Record<string, string> = {};
     if (!buyer.name.trim()) e.name = 'Enter your name';
-    if (!EMAIL_RE.test(buyer.email)) e.email = 'Enter a valid email — tickets are sent here';
-    if (!PHONE_RE.test(buyer.phone)) e.phone = 'Enter a valid phone number';
-    if (!agree) e.agree = 'Please accept the terms to continue';
+    if (!INDIAN_MOBILE_RE.test(buyer.phone)) e.phone = MOBILE_ERROR;
+    if (!EMAIL_RE.test(buyer.email.trim())) e.email = 'Enter a valid email address, e.g. name@example.com — your tickets are sent here';
     setBuyerErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const pay = async () => {
+  const proceedFromBuyer = () => {
     if (!validateBuyer()) return;
+    // "I am also a participant": start participant 1 with the buyer's name.
+    const first = selected[0];
+    if (buyerIsParticipant && first) {
+      setPeople((prev) => {
+        const list = prev[first.id] ?? [];
+        if (!list[0]) return prev;
+        const p0 = list[0];
+        const filled = nameField
+          ? { ...p0, answers: empty(p0.answers[nameField.id]) ? { ...p0.answers, [nameField.id]: buyer.name.trim() } : p0.answers }
+          : { ...p0, name: p0.name.trim() ? p0.name : buyer.name.trim() };
+        return { ...prev, [first.id]: [filled, ...list.slice(1)] };
+      });
+    }
+    setStep('attendees');
+    bodyRef.current?.scrollTo({ top: 0 });
+  };
+
+  const pay = async () => {
+    if (!validateAttendees()) return;
+    if (!agree) { setBuyerErrors((b) => ({ ...b, agree: 'Please accept the terms to continue' })); return; }
     setSubmitting(true); setApiError(null);
     try {
       const { order_id } = await publicApi.checkout(event.id, {
         buyer_name: buyer.name.trim(),
         buyer_email: buyer.email.trim(),
-        buyer_phone: buyer.phone.trim(),
+        buyer_phone: `+91${buyer.phone}`,
         occurrence_date: session || undefined,
         items: selected.map((t) => ({
           ticket_tier_id: t.id,
           quantity: qty[t.id],
           amount: t.ticket_type === 'donation' ? String(unitPrice(t)) : undefined,
           attendees: people[t.id].map((p) => ({
-            name: p.name.trim(),
-            email: p.email.trim() || null,
-            phone: p.phone.trim() || null,
-            form_responses: fields.filter((f) => !empty(p.answers[f.id])).map((f) => ({ field_id: f.id, answer: p.answers[f.id] })),
+            name: nameOf(p),
+            email: null,
+            phone: null,
+            form_responses: fields.filter((f) => !empty(p.answers[f.id])).map((f) => ({
+              field_id: f.id,
+              answer: f.field_type === 'phone' ? `+91${p.answers[f.id]}` : p.answers[f.id],
+            })),
           })),
         })),
       });
@@ -263,7 +286,7 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
 
   const mm = String(Math.max(0, Math.floor(holdLeft / 60))).padStart(2, '0');
   const ss = String(Math.max(0, holdLeft % 60)).padStart(2, '0');
-  const title = step === 'select' ? 'Select Tickets' : step === 'attendees' ? 'Attendee Details' : 'Confirm & pay';
+  const title = step === 'select' ? 'Select Tickets' : step === 'buyer' ? 'Buyer Details' : 'Participant Details';
 
   return (
     <div role="dialog" aria-modal="true" aria-label={title} style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', fontFamily: 'var(--font-sans)' }}>
@@ -271,14 +294,14 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
       <div style={{ position: 'relative', width: isMobile ? '100%' : 'min(760px, 94vw)', maxHeight: isMobile ? '94dvh' : '88vh', background: 'var(--surface-card)', borderRadius: isMobile ? '20px 20px 0 0' : 20, display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 30px 80px rgba(0,0,0,0.35)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '18px 22px', borderBottom: '1px solid var(--border-default)' }}>
           {step !== 'select' && (
-            <button type="button" aria-label="Back" onClick={() => setStep(step === 'buyer' ? 'attendees' : 'select')} style={{ border: 'none', background: 'none', cursor: 'pointer', display: 'flex', color: 'var(--text-heading)' }}><Icon name="chevron-left" size={22} /></button>
+            <button type="button" aria-label="Back" onClick={() => setStep(step === 'attendees' ? 'buyer' : 'select')} style={{ border: 'none', background: 'none', cursor: 'pointer', display: 'flex', color: 'var(--text-heading)' }}><Icon name="chevron-left" size={22} /></button>
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800, color: 'var(--text-heading)' }}>{title}</div>
             <div style={{ fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.title}</div>
           </div>
           <div style={{ display: 'flex', gap: 6 }} aria-hidden>
-            {(['select', 'attendees', 'buyer'] as Step[]).map((s) => <span key={s} style={{ width: s === step ? 22 : 8, height: 8, borderRadius: 8, background: s === step ? 'var(--color-accent)' : 'var(--border-default)', transition: 'width .2s ease' }} />)}
+            {(['select', 'buyer', 'attendees'] as Step[]).map((s) => <span key={s} style={{ width: s === step ? 22 : 8, height: 8, borderRadius: 8, background: s === step ? 'var(--color-accent)' : 'var(--border-default)', transition: 'width .2s ease' }} />)}
           </div>
           <button type="button" aria-label="Close" onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><Icon name="x" size={22} /></button>
         </div>
@@ -350,88 +373,93 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
             </div>
           )}
 
-          {step === 'attendees' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-              <div style={{ fontSize: 13.5, color: 'var(--text-muted)' }}>Each participant gets their own ticket. Enter details exactly as they should appear on the ticket.</div>
-              {selected.map((t) => (people[t.id] ?? []).map((p, i) => {
-                const k = `${t.id}:${i}`;
-                const e = errors[k] ?? {};
-                const hasErr = Object.keys(e).length > 0;
-                return (
-                  <div key={k} data-has-error={hasErr ? 'true' : undefined} style={{ border: `1px solid ${hasErr ? 'var(--color-error)' : 'var(--border-default)'}`, borderTop: `3px solid ${hasErr ? 'var(--color-error)' : 'var(--color-accent-secondary)'}`, borderRadius: 14, padding: '16px 18px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginBottom: 14 }}>
-                      <div style={{ fontWeight: 700, color: 'var(--text-heading)' }}>{t.name}</div>
-                      <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Participant {i + 1} of {qty[t.id]}</div>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 14 }}>
-                      <div style={{ gridColumn: isMobile ? undefined : '1 / -1' }}>
-                        <Input label="Name *" placeholder="Full name" value={p.name} error={e.name} onChange={(ev) => patchPerson(t.id, i, { name: ev.target.value })} />
-                      </div>
-                      <Input label="Email" type="email" placeholder="participant@email.com" value={p.email} error={e.email} onChange={(ev) => patchPerson(t.id, i, { email: ev.target.value })} />
-                      <Input label="Phone" type="tel" placeholder="+91 98765 43210" value={p.phone} error={e.phone} onChange={(ev) => patchPerson(t.id, i, { phone: ev.target.value })} />
-                    </div>
-                    {fields.length > 0 && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 14 }}>
-                        {fields.map((f) => f.field_type === 'text' ? (
-                          <Input key={f.id} label={f.required ? `${f.label} *` : f.label} value={(p.answers[f.id] as string) ?? ''} error={e[f.id]} onChange={(ev) => setAnswer(t.id, i, f.id, ev.target.value)} />
-                        ) : f.field_type === 'phone' ? (
-                          <Input key={f.id} type="tel" inputMode="numeric" maxLength={15} placeholder="Digits only, e.g. 9876543210" label={f.required ? `${f.label} *` : f.label} value={(p.answers[f.id] as string) ?? ''} error={e[f.id]} onChange={(ev) => setAnswer(t.id, i, f.id, ev.target.value.replace(/\D/g, ''))} />
-                        ) : f.field_type === 'date' || f.field_type === 'dob' ? (
-                          <div key={f.id}>
-                            <Input type="date" max={f.field_type === 'dob' ? todayIso() : undefined} label={f.required || (f.field_type === 'dob' && ageRule(t)) ? `${f.label} *` : f.label} value={(p.answers[f.id] as string) ?? ''} error={e[f.id]} onChange={(ev) => setAnswer(t.id, i, f.id, ev.target.value)} />
-                            {f.field_type === 'dob' && ageRule(t) && !e[f.id] && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--color-accent)', fontWeight: 600, marginTop: 6 }}>
-                                <Icon name="info" size={13} />{ageRule(t)} (on {formatEventDate(eventDay)})
-                                {typeof p.answers[f.id] === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(p.answers[f.id] as string) && <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · age on event day: {ageOn(p.answers[f.id] as string, eventDay)}</span>}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div key={f.id}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-heading)', marginBottom: 8 }}>{f.label}{f.required && ' *'}</div>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 18px' }}>
-                              {(f.options ?? []).map((opt) => f.field_type === 'single_choice' ? (
-                                <Radio key={opt} name={`${k}-${f.id}`} label={opt} checked={p.answers[f.id] === opt} onChange={() => setAnswer(t.id, i, f.id, opt)} />
-                              ) : (
-                                <Checkbox key={opt} label={opt} checked={Array.isArray(p.answers[f.id]) && (p.answers[f.id] as string[]).includes(opt)} onChange={(ev) => {
-                                  const cur = Array.isArray(p.answers[f.id]) ? (p.answers[f.id] as string[]) : [];
-                                  setAnswer(t.id, i, f.id, ev.target.checked ? [...cur, opt] : cur.filter((o) => o !== opt));
-                                }} />
-                              ))}
-                            </div>
-                            {e[f.id] && <div style={{ fontSize: 12.5, color: 'var(--color-error)', marginTop: 6 }}>{e[f.id]}</div>}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              }))}
+          {step === 'buyer' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 520 }}>
+              <div style={{ fontSize: 13.5, color: 'var(--text-muted)' }}>The person paying for this order. Asked once — the confirmation and all tickets are sent to this email.</div>
+              <Input label="Full name *" autoComplete="name" value={buyer.name} error={buyerErrors.name} onChange={(ev) => { setBuyer({ ...buyer, name: ev.target.value }); setBuyerErrors((b) => ({ ...b, name: '' })); }} />
+              <PhoneInput label="Mobile number *" value={buyer.phone} error={buyerErrors.phone} onChange={(digits) => { setBuyer({ ...buyer, phone: digits }); setBuyerErrors((b) => ({ ...b, phone: '' })); }} />
+              <Input
+                label="Email *"
+                type="email"
+                autoComplete="email"
+                placeholder="name@example.com"
+                value={buyer.email}
+                error={buyerErrors.email}
+                onChange={(ev) => { setBuyer({ ...buyer, email: ev.target.value }); setBuyerErrors((b) => ({ ...b, email: '' })); }}
+                onBlur={() => { if (buyer.email && !EMAIL_RE.test(buyer.email.trim())) setBuyerErrors((b) => ({ ...b, email: 'Enter a valid email address, e.g. name@example.com' })); }}
+              />
+              <Checkbox label="I am also a participant (fill in my name as participant 1)" checked={buyerIsParticipant} onChange={(ev) => setBuyerIsParticipant(ev.target.checked)} />
             </div>
           )}
 
-          {step === 'buyer' && (
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr', gap: 24 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div style={{ fontWeight: 700, color: 'var(--text-heading)' }}>Your contact details</div>
-                <Checkbox label="Same as participant 1" checked={sameAsFirst} onChange={(ev) => setSameAsFirst(ev.target.checked)} />
-                <Input label="Full name *" value={buyer.name} error={buyerErrors.name} onChange={(ev) => setBuyer({ ...buyer, name: ev.target.value })} />
-                <Input label="Email *" type="email" value={buyer.email} error={buyerErrors.email} onChange={(ev) => setBuyer({ ...buyer, email: ev.target.value })} />
-                <Input label="Phone *" type="tel" value={buyer.phone} error={buyerErrors.phone} onChange={(ev) => setBuyer({ ...buyer, phone: ev.target.value })} />
-                <div>
-                  <Checkbox label="I confirm the participant details are correct and agree to the event’s terms and Showtik’s refund policy." checked={agree} onChange={(ev) => { setAgree(ev.target.checked); setBuyerErrors((b) => ({ ...b, agree: '' })); }} />
-                  {buyerErrors.agree && <div style={{ fontSize: 12.5, color: 'var(--color-error)', marginTop: 6 }}>{buyerErrors.agree}</div>}
-                </div>
-              </div>
-              <div style={{ background: 'var(--color-off-white)', borderRadius: 14, padding: 18, alignSelf: 'start' }}>
+          {step === 'attendees' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              <div style={{ fontSize: 13.5, color: 'var(--text-muted)' }}>Each participant gets their own ticket. Enter details exactly as they should appear on the ticket.</div>
+              {selected.map((t) => (
+                <section key={t.id} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, paddingBottom: 6, borderBottom: '1px solid var(--border-default)' }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 800, color: 'var(--text-heading)' }}>{t.name}</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{qty[t.id]} {qty[t.id] === 1 ? 'participant' : 'participants'}</div>
+                  </div>
+                  {(people[t.id] ?? []).map((p, i) => {
+                    const k = `${t.id}:${i}`;
+                    const e = errors[k] ?? {};
+                    const hasErr = Object.keys(e).length > 0;
+                    const label = (f: FormField) => (f.required || f === nameField || (f.field_type === 'dob' && ageRule(t)) ? `${f.label} *` : f.label);
+                    return (
+                      <div key={k} data-has-error={hasErr ? 'true' : undefined} style={{ border: `1px solid ${hasErr ? 'var(--color-error)' : 'var(--border-default)'}`, borderTop: `3px solid ${hasErr ? 'var(--color-error)' : 'var(--color-accent-secondary)'}`, borderRadius: 14, padding: '16px 18px' }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 12 }}>Participant {i + 1} of {qty[t.id]}</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                          {!nameField && (
+                            <Input label="Participant name *" placeholder="Full name" value={p.name} error={e.name} onChange={(ev) => patchPerson(t.id, i, { name: ev.target.value })} />
+                          )}
+                          {fields.map((f) => f.field_type === 'text' ? (
+                            <Input key={f.id} label={label(f)} value={(p.answers[f.id] as string) ?? ''} error={e[f.id]} onChange={(ev) => setAnswer(t.id, i, f.id, ev.target.value)} />
+                          ) : f.field_type === 'phone' ? (
+                            <PhoneInput key={f.id} label={label(f)} value={(p.answers[f.id] as string) ?? ''} error={e[f.id]} onChange={(digits) => setAnswer(t.id, i, f.id, digits)} />
+                          ) : f.field_type === 'date' || f.field_type === 'dob' ? (
+                            <div key={f.id}>
+                              <DateInput max={f.field_type === 'dob' ? todayIso() : undefined} label={label(f)} value={(p.answers[f.id] as string) ?? ''} error={e[f.id]} onChange={(v) => setAnswer(t.id, i, f.id, v)} />
+                              {f.field_type === 'dob' && ageRule(t) && !e[f.id] && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--color-accent)', fontWeight: 600, marginTop: 6, flexWrap: 'wrap' }}>
+                                  <Icon name="info" size={13} />{ageRule(t)} (on {formatEventDate(eventDay)})
+                                  {typeof p.answers[f.id] === 'string' && ISO_DATE_RE.test(p.answers[f.id] as string) && <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · age on event day: {ageOn(p.answers[f.id] as string, eventDay)}</span>}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div key={f.id}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-heading)', marginBottom: 8 }}>{f.label}{f.required && ' *'}</div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 18px' }}>
+                                {(f.options ?? []).map((opt) => f.field_type === 'single_choice' ? (
+                                  <Radio key={opt} name={`${k}-${f.id}`} label={opt} checked={p.answers[f.id] === opt} onChange={() => setAnswer(t.id, i, f.id, opt)} />
+                                ) : (
+                                  <Checkbox key={opt} label={opt} checked={Array.isArray(p.answers[f.id]) && (p.answers[f.id] as string[]).includes(opt)} onChange={(ev) => {
+                                    const cur = Array.isArray(p.answers[f.id]) ? (p.answers[f.id] as string[]) : [];
+                                    setAnswer(t.id, i, f.id, ev.target.checked ? [...cur, opt] : cur.filter((o) => o !== opt));
+                                  }} />
+                                ))}
+                              </div>
+                              {e[f.id] && <div style={{ fontSize: 12.5, color: 'var(--color-error)', marginTop: 6 }}>{e[f.id]}</div>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </section>
+              ))}
+
+              <div style={{ background: 'var(--color-off-white)', borderRadius: 14, padding: 18 }}>
                 <div style={{ fontWeight: 700, color: 'var(--text-heading)', marginBottom: 12 }}>Order summary</div>
+                <div style={{ fontSize: 13.5, color: 'var(--text-muted)', marginBottom: 10 }}>Booked by <strong>{buyer.name}</strong> · +91 {buyer.phone} · {buyer.email}</div>
                 {session && <div style={{ fontSize: 13.5, color: 'var(--text-muted)', marginBottom: 10 }}>Date: <strong>{formatEventDate(session)}</strong></div>}
                 {selected.map((t) => (
                   <div key={t.id} style={{ marginBottom: 12 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, fontWeight: 600, color: 'var(--text-heading)' }}>
                       <span>{t.name} × {qty[t.id]}</span><span>{formatINR(qty[t.id] * unitPrice(t))}</span>
                     </div>
-                    <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 3 }}>{(people[t.id] ?? []).map((p) => p.name).join(', ')}</div>
+                    <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 3 }}>{(people[t.id] ?? []).map(nameOf).filter(Boolean).join(', ')}</div>
                   </div>
                 ))}
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13.5, color: 'var(--text-muted)', paddingTop: 10, borderTop: '1px solid var(--border-default)' }}><span>Booking fee</span><span>₹0</span></div>
@@ -441,7 +469,11 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-subtle)', marginTop: 10, lineHeight: 1.45 }}>One payment for the whole order. Each participant receives a separate ticket ID.</div>
               </div>
-              {apiError && <div role="alert" style={{ gridColumn: '1 / -1', color: 'var(--color-error)', fontSize: 14, fontWeight: 600 }}>{apiError}</div>}
+              <div>
+                <Checkbox label="I confirm the participant details are correct and agree to the event’s terms." checked={agree} onChange={(ev) => { setAgree(ev.target.checked); setBuyerErrors((b) => ({ ...b, agree: '' })); }} />
+                {buyerErrors.agree && <div style={{ fontSize: 12.5, color: 'var(--color-error)', marginTop: 6 }}>{buyerErrors.agree}</div>}
+              </div>
+              {apiError && <div role="alert" style={{ color: 'var(--color-error)', fontSize: 14, fontWeight: 600 }}>{apiError}</div>}
             </div>
           )}
         </div>
@@ -451,8 +483,8 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
           <div style={{ fontSize: 15, color: 'var(--text-muted)' }}>Total : <strong style={{ color: 'var(--color-accent-secondary)', fontSize: 17 }}>{money(total)}</strong></div>
           <span style={{ flex: 1 }} />
           {step === 'select' && <Button onClick={proceedFromSelect} disabled={totalQty === 0} style={{ minWidth: isMobile ? 120 : 180 }}>Proceed <Icon name="chevron-right" size={16} /></Button>}
-          {step === 'attendees' && <Button onClick={() => { if (validateAttendees()) { setStep('buyer'); bodyRef.current?.scrollTo({ top: 0 }); } }} style={{ minWidth: isMobile ? 120 : 180 }}>Continue <Icon name="chevron-right" size={16} /></Button>}
-          {step === 'buyer' && <Button onClick={pay} loading={submitting} style={{ minWidth: isMobile ? 120 : 200 }}>{total > 0 ? `Pay ${formatINR(total)}` : 'Confirm registration'}</Button>}
+          {step === 'buyer' && <Button onClick={proceedFromBuyer} style={{ minWidth: isMobile ? 120 : 180 }}>Continue <Icon name="chevron-right" size={16} /></Button>}
+          {step === 'attendees' && <Button onClick={pay} loading={submitting} style={{ minWidth: isMobile ? 120 : 200 }}>{total > 0 ? `Pay ${formatINR(total)}` : 'Confirm registration'}</Button>}
         </div>
       </div>
     </div>

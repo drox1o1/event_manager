@@ -116,7 +116,7 @@ export interface OrganiserPublicPage {
 
 // --- Registration form builder ---
 
-/** date = calendar picker; dob = date of birth (drives ticket age limits); phone = digits only. */
+/** date = calendar picker; dob = date of birth (drives ticket age limits); phone = 10-digit Indian mobile, stored as +91XXXXXXXXXX. */
 export type FormFieldType = 'text' | 'single_choice' | 'multi_choice' | 'date' | 'dob' | 'phone';
 
 /** A field as stored/returned by the API (has a server id). */
