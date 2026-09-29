@@ -288,7 +288,7 @@ class AttendeeInput(BaseModel):
             return None
         normalized = normalize_indian_mobile(v)
         if normalized is None:
-            raise ValueError("must be a 10-digit mobile number")
+            raise ValueError("must be a 10-digit number")
         return normalized
 
 
@@ -314,7 +314,7 @@ class CheckoutRequest(BaseModel):
     def _buyer_mobile(cls, v: str) -> str:
         normalized = normalize_indian_mobile(v)
         if normalized is None:
-            raise ValueError("must be a 10-digit mobile number")
+            raise ValueError("must be a 10-digit number")
         return normalized
 
 

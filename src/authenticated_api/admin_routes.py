@@ -9,7 +9,7 @@ from app import app
 from app import parse_request_body as _parse_body
 from aws_lambda_powertools.event_handler.exceptions import BadRequestError, NotFoundError
 from common.db import get_session
-from common.helpers import ConflictError, parse_pagination, parse_uuid, short_code, utcnow
+from common.helpers import ConflictError, parse_pagination, parse_uuid, short_code, utcnow, validation_message
 from common.models import (
     ActivityLog,
     Event,
@@ -446,7 +446,7 @@ def _decision_reason() -> str | None:
     try:
         return OrganiserDecisionRequest.model_validate(raw).reason
     except ValidationError as exc:
-        raise BadRequestError(str(exc)) from exc
+        raise BadRequestError(validation_message(exc)) from exc
 
 
 @app.post("/admin/organisers/<organiser_id>/approve")

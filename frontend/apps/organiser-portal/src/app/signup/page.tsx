@@ -12,17 +12,33 @@ export default function SignupPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
 
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
+  const [fieldErrors, setFieldErrors] = React.useState<Partial<Record<keyof typeof form, string>>>({});
+
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm({ ...form, [k]: e.target.value });
+    setFieldErrors((fe) => ({ ...fe, [k]: undefined }));
+  };
+
+  const validate = () => {
+    const fe: Partial<Record<keyof typeof form, string>> = {};
+    if (!form.name.trim()) fe.name = 'Enter your full name';
+    if (!form.org.trim()) fe.org = 'Enter your organisation name';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(form.email.trim())) fe.email = 'Enter a valid email address';
+    if (form.password.length < 8) fe.password = 'Password must be at least 8 characters';
+    setFieldErrors(fe);
+    return Object.keys(fe).length === 0;
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
     setSubmitting(true);
     setError(null);
     try {
       await organiserApi.signup({
-        contact_name: form.name,
-        org_name: form.org,
-        email: form.email,
+        contact_name: form.name.trim(),
+        org_name: form.org.trim(),
+        email: form.email.trim(),
         password: form.password,
       });
       setDone(true);
@@ -56,12 +72,15 @@ export default function SignupPage() {
     <AuthShell>
       <div style={{ fontFamily: 'var(--font-display)', fontSize: 21, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 4 }}>Create your organiser account</div>
       <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 24 }}>Start selling tickets in minutes.</div>
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <Input label="Full name" placeholder="Aditi Rao" value={form.name} onChange={set('name')} />
-        <Input label="Organisation" placeholder="Terrace Live Events" value={form.org} onChange={set('org')} />
-        <Input label="Email" type="email" placeholder="you@organisation.com" value={form.email} onChange={set('email')} />
-        <Input label="Password" type="password" placeholder="At least 8 characters" value={form.password} onChange={set('password')} />
-        {error && <div style={{ fontSize: 13, color: 'var(--color-error)' }}>{error}</div>}
+      <form onSubmit={submit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <Input label="Full name" placeholder="Aditi Rao" autoComplete="name" value={form.name} error={fieldErrors.name} onChange={set('name')} />
+        <Input label="Organisation" placeholder="Terrace Live Events" autoComplete="organization" value={form.org} error={fieldErrors.org} onChange={set('org')} />
+        <Input label="Email" type="email" placeholder="you@organisation.com" autoComplete="email" value={form.email} error={fieldErrors.email} onChange={set('email')} />
+        <div>
+          <Input label="Password" type="password" placeholder="At least 8 characters" autoComplete="new-password" value={form.password} error={fieldErrors.password} onChange={set('password')} />
+          {!fieldErrors.password && <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 6 }}>Use at least 8 characters.</div>}
+        </div>
+        {error && <div role="alert" style={{ fontSize: 13, color: 'var(--color-error)' }}>{error}</div>}
         <Button type="submit" fullWidth size="lg" loading={submitting}>Create account</Button>
       </form>
       <div style={{ textAlign: 'center', fontSize: 14, color: 'var(--text-muted)', marginTop: 24 }}>
