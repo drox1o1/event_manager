@@ -12,7 +12,6 @@ pipeline. Swap this out once real Razorpay integration lands.
 from __future__ import annotations
 
 import datetime as dt
-import re
 import secrets
 from decimal import Decimal
 

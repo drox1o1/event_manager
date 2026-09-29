@@ -66,7 +66,7 @@ def _fake_session(execute_results=None, assign_ids=False):
                 if getattr(obj, "id", None) is None:
                     obj.id = uuid.uuid4()
                 if hasattr(obj, "updated_at") and obj.updated_at is None:
-                    obj.updated_at = dt.datetime.now(dt.timezone.utc)
+                    obj.updated_at = dt.datetime.now(dt.UTC)
 
         session.flush.side_effect = _flush
 
@@ -158,7 +158,7 @@ def test_replace_categories_requires_admin(monkeypatch, mock_jwt_secret):
 def test_list_site_pages(monkeypatch, mock_jwt_secret):
     import datetime as dt
 
-    pages = [SitePage(id=uuid.uuid4(), slug="about", title="About", body="x", updated_at=dt.datetime.now(dt.timezone.utc))]
+    pages = [SitePage(id=uuid.uuid4(), slug="about", title="About", body="x", updated_at=dt.datetime.now(dt.UTC))]
     get_session, _ = _fake_session(execute_results=[_scalars_all(pages)])
     monkeypatch.setattr("admin_content_routes.get_session", get_session)
 
@@ -278,7 +278,7 @@ def test_public_get_site_page_404(monkeypatch):
 def test_public_get_site_page_found(monkeypatch):
     import datetime as dt
 
-    page = SitePage(id=uuid.uuid4(), slug="about", title="About", body="Hello.", updated_at=dt.datetime.now(dt.timezone.utc))
+    page = SitePage(id=uuid.uuid4(), slug="about", title="About", body="Hello.", updated_at=dt.datetime.now(dt.UTC))
     get_session, _ = _fake_session(execute_results=[_scalar_one(page)])
     monkeypatch.setattr("public_api.handler.get_session", get_session)
 
