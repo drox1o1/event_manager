@@ -24,7 +24,39 @@ MESSAGES = [
     },
     {"type": "ticket_approved", "to": "c@x.com", "attendee_name": "Asha", "event_title": "Run", "ticket_code": "22222222", "order_id": "o1"},
     {"type": "ticket_rejected", "to": "c@x.com", "attendee_name": "Asha", "event_title": "Run", "ticket_code": "22222222", "order_id": "o1"},
+    {"type": "email_verified", "to": "a@x.com", "name": "Ravi"},
+    {"type": "password_reset", "to": "a@x.com", "reset_token": "rtok", "expires_minutes": 30},
+    {"type": "password_changed", "to": "a@x.com", "changed_at": "2026-09-28 10:00 IST", "audience": "admin"},
+    {"type": "admin_organiser_pending", "to": "ops@x.com", "org_name": "Run Club", "contact_name": "Ravi",
+     "organiser_email": "a@x.com", "organiser_id": "org1"},
+    {"type": "event_submitted", "to": "a@x.com", "event_title": "Run", "event_id": "e1"},
+    {"type": "admin_event_pending", "to": "ops@x.com", "event_title": "Run", "event_id": "e1", "org_name": "Run Club"},
+    {"type": "new_booking", "to": "a@x.com", "event_title": "Run", "event_id": "e1", "buyer_name": "Priya",
+     "ticket_count": 2, "total": "₹1,000", "tickets_sold": 40, "capacity": 500},
+    {"type": "payout_processed", "to": "a@x.com", "amount": "₹25,000", "payout_reference": "PO123", "account_last4": "4321"},
+    {"type": "payment_failed", "to": "b@x.com", "event_title": "Run", "event_id": "e1", "order_code": "AB12CD34", "total": "₹500"},
+    {"type": "refund_issued", "to": "b@x.com", "event_title": "Run", "order_code": "AB12CD34", "amount": "₹500", "reason": "Event cancelled"},
+    {"type": "event_reminder", "to": "b@x.com", "event_title": "Run", "event_date": "2026-11-22", "event_time": "5:00 AM",
+     "venue": "Stadium", "order_id": "o1", "map_url": "https://maps.example/x"},
+    {"type": "event_updated", "to": "b@x.com", "event_title": "Run", "event_id": "e1",
+     "changes": [{"field": "Venue", "old": "Stadium", "new": "Park"}], "note": "Parking at gate 2"},
+    {"type": "event_cancelled", "to": "b@x.com", "event_title": "Run", "reason": "Weather", "refund_amount": "₹500"},
 ]
+
+
+def test_every_template_has_a_test_message():
+    from email_sender.handler import TEMPLATES
+
+    assert set(TEMPLATES) == {m["type"] for m in MESSAGES}
+
+
+def test_password_reset_links_to_the_right_app(monkeypatch):
+    from email_sender.handler import _render
+
+    monkeypatch.setenv("ADMIN_PANEL_URL", "https://admin.example")
+    _, html_body, text_body = _render({"type": "password_reset", "to": "a@x.com", "reset_token": "t1", "audience": "admin"})
+    assert "https://admin.example/reset-password?token=t1" in text_body
+    assert "30 minutes" in html_body
 
 
 @pytest.mark.parametrize("msg", MESSAGES, ids=[m["type"] for m in MESSAGES])
