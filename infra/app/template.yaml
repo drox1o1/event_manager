@@ -401,6 +401,30 @@ Resources:
             Method: post
             Auth:
               Authorizer: JwtAuthorizer
+        AdminGetOrganiser:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/organisers/{organiser_id}
+            Method: get
+            Auth:
+              Authorizer: JwtAuthorizer
+        AdminUpdateOrganiser:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/organisers/{organiser_id}
+            Method: patch
+            Auth:
+              Authorizer: JwtAuthorizer
+        AdminOrganiserImageUploadUrl:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/organisers/{organiser_id}/image-upload-url
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
         GetOrganiserMe:
           Type: Api
           Properties:

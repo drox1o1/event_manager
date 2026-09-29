@@ -33,6 +33,8 @@ import type {
   RefundListResponse,
   RefundResolveRequest,
   OrderQuerySummary,
+  OrganiserProfileUpdate,
+  OrganiserProfile,
   SitePage,
   SitePageListItem,
   SitePageUpsertRequest,
@@ -95,6 +97,19 @@ export function listTransactions(token: string, params: { page?: number; pageSiz
     token,
     query: { page: params.page, page_size: params.pageSize },
   });
+}
+
+export function getOrganiser(token: string, organiserId: string): Promise<OrganiserProfile> {
+  return apiFetch<OrganiserProfile>(`/admin/organisers/${organiserId}`, { token });
+}
+
+/** Super admin edits an organiser's details / public page on their behalf. */
+export function updateOrganiser(token: string, organiserId: string, body: OrganiserProfileUpdate): Promise<OrganiserProfile> {
+  return apiFetch<OrganiserProfile>(`/admin/organisers/${organiserId}`, { method: 'PATCH', body, token });
+}
+
+export function createOrganiserImageUploadUrl(token: string, organiserId: string, kind: 'logo' | 'cover', contentType?: string): Promise<ImageUploadUrlResponse> {
+  return apiFetch<ImageUploadUrlResponse>(`/admin/organisers/${organiserId}/image-upload-url`, { method: 'POST', token, query: { kind, content_type: contentType } });
 }
 
 export function listOrderQueries(token: string, status: 'open' | 'resolved' | 'all' = 'open'): Promise<{ queries: OrderQuerySummary[] }> {

@@ -131,6 +131,8 @@ export interface FormField {
 
 /** A field as sent to the API on save (no id -- replace-all semantics). */
 export interface FormFieldInput {
+  /** Existing field's id when editing it, so past answers stay linked. */
+  id?: string | null;
   label: string;
   field_type: FormFieldType;
   options?: string[] | null;

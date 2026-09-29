@@ -30,6 +30,7 @@ from common.schemas import (
     FormFieldsReplaceRequest,
     ModerationRejectRequest,
     OrganiserDecisionRequest,
+    OrganiserProfileUpdate,
     OrganiserSummary,
     RefundResolveRequest,
     TicketTiersCreateRequest,
@@ -503,6 +504,42 @@ def list_transactions():
         ]
 
     return {"transactions": results, "page": page, "page_size": page_size}
+
+
+@app.get("/admin/organisers/<organiser_id>")
+def admin_get_organiser(organiser_id: str):
+    require_admin_id()
+    with get_session() as session:
+        organiser = session.get(Organiser, parse_uuid(organiser_id))
+        if organiser is None:
+            raise NotFoundError("Organiser not found")
+        return svc.organiser_profile_dict(organiser)
+
+
+@app.patch("/admin/organisers/<organiser_id>")
+def admin_update_organiser(organiser_id: str):
+    """Super admin edits an organiser's name, contact and public page (logo,
+    cover, bio, links) on their behalf."""
+    require_admin_id()
+    body = _parse_body(OrganiserProfileUpdate)
+    with get_session() as session:
+        organiser = session.get(Organiser, parse_uuid(organiser_id))
+        if organiser is None:
+            raise NotFoundError("Organiser not found")
+        svc.apply_organiser_profile(session, organiser, body)
+        return svc.organiser_profile_dict(organiser)
+
+
+@app.post("/admin/organisers/<organiser_id>/image-upload-url")
+def admin_organiser_image_upload_url(organiser_id: str):
+    """Presigned PUT for an organiser's logo or cover (?kind=logo|cover)."""
+    require_admin_id()
+    organiser_uuid = parse_uuid(organiser_id)
+    kind = (app.current_event.query_string_parameters or {}).get("kind", "logo")
+    if kind not in ("logo", "cover"):
+        raise BadRequestError("kind must be logo or cover")
+    put_url, image_url = upload_url(organiser_uuid, f"organiser-{kind}/")
+    return {"upload_url": put_url, "image_url": image_url}
 
 
 # --- Admin: transaction queries raised by buyers (0009) ---

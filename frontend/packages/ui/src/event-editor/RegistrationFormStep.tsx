@@ -12,6 +12,8 @@ import type { EventEditorApi } from './types';
 
 interface FieldDraft {
   key: string;
+  /** Saved field's id (absent for fields added in this session). */
+  id?: string;
   label: string;
   field_type: FormFieldType;
   options: string[];
@@ -52,7 +54,7 @@ interface StepProps {
  *  per ticket at checkout (e.g. each runner's DOB and T-shirt size). */
 export function RegistrationFormStep({ api, token, event, readOnly, onSaved, onDirtyChange }: StepProps) {
   const [fields, setFields] = React.useState<FieldDraft[]>(() =>
-    event.form_fields.map((f) => ({ key: f.id, label: f.label, field_type: f.field_type, options: f.options ?? [], required: f.required }))
+    event.form_fields.map((f) => ({ key: f.id, id: f.id, label: f.label, field_type: f.field_type, options: f.options ?? [], required: f.required }))
   );
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [saving, setSaving] = React.useState(false);
@@ -96,6 +98,7 @@ export function RegistrationFormStep({ api, token, event, readOnly, onSaved, onD
     setSaving(true); setApiError(null);
     try {
       await api.replaceFormFields(token, event.event_id, fields.map((f, i) => ({
+        id: f.id ?? null,
         label: f.label.trim(),
         field_type: f.field_type,
         options: isChoice(f.field_type) ? f.options.map((o) => o.trim()).filter(Boolean) : null,

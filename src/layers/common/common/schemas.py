@@ -101,6 +101,8 @@ class EventDetail(EventSummary):
 class FormFieldInput(BaseModel):
     """One field in an organiser's registration form (builder payload)."""
 
+    # Existing field's id when editing it (keeps past answers linked); omit for new.
+    id: uuid.UUID | None = None
     label: str = Field(min_length=1, max_length=200)
     field_type: FormFieldTypeStr
     options: list[str] | None = None

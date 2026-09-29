@@ -10,6 +10,8 @@ import { PanelHead } from './PanelHead';
  *  client-only `key` so React rows survive reorders before a save assigns ids. */
 interface DraftField {
   key: string;
+  /** Saved field's id (absent for fields added in this session). */
+  id?: string;
   label: string;
   field_type: FormFieldType;
   options: string[];
@@ -58,7 +60,7 @@ function newKey() {
 }
 
 function toDraft(f: FormField): DraftField {
-  return { key: newKey(), label: f.label, field_type: f.field_type, options: f.options ?? [], required: f.required };
+  return { key: newKey(), id: f.id, label: f.label, field_type: f.field_type, options: f.options ?? [], required: f.required };
 }
 
 function isChoice(t: FormFieldType) {
@@ -150,6 +152,7 @@ export function EventRegistrationFormPanel({ eventId, token }: Props) {
     setSaving(true);
     setError(null);
     const payload: FormFieldInput[] = fields.map((f, i) => ({
+      id: f.id ?? null,
       label: f.label.trim(),
       field_type: f.field_type,
       options: isChoice(f.field_type) ? f.options.map((o) => o.trim()).filter(Boolean) : null,

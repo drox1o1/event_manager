@@ -26,27 +26,6 @@ from sqlalchemy.orm import selectinload
 from uploads import upload_url
 
 
-def _organiser_profile_dict(o: Organiser) -> dict:
-    return {
-        "id": str(o.id),
-        "org_name": o.org_name,
-        "contact_name": o.contact_name,
-        "email": o.email,
-        "status": o.status.value,
-        "status_reason": o.status_reason,
-        "email_verified": o.email_verified,
-        "approved_at": o.approved_at.isoformat() if o.approved_at else None,
-        "bio": o.bio,
-        "logo_url": o.logo_url,
-        "cover_url": o.cover_url,
-        "website_url": o.website_url,
-        "instagram_url": o.instagram_url,
-        "phone": o.phone,
-        "city": o.city,
-        "created_at": o.created_at.isoformat(),
-    }
-
-
 # --- Organiser: account + public profile ---
 
 
@@ -57,7 +36,7 @@ def get_organiser_me():
         organiser = session.get(Organiser, organiser_id)
         if organiser is None:
             raise NotFoundError("Organiser not found")
-        return _organiser_profile_dict(organiser)
+        return svc.organiser_profile_dict(organiser)
 
 
 @app.patch("/organiser/me")
@@ -68,17 +47,8 @@ def update_organiser_me():
         organiser = session.get(Organiser, organiser_id)
         if organiser is None:
             raise NotFoundError("Organiser not found")
-        changes = body.model_dump(exclude_unset=True)
-        if changes.get("city"):
-            changes["city"] = svc.resolve_city(session, changes["city"])
-        for url_field in ("website_url", "instagram_url"):
-            v = changes.get(url_field)
-            if v and not v.startswith(("http://", "https://")):
-                raise BadRequestError(f"{url_field.replace('_url', '').title()} must start with https://")
-        for field, value in changes.items():
-            setattr(organiser, field, value)
-        session.flush()
-        return _organiser_profile_dict(organiser)
+        svc.apply_organiser_profile(session, organiser, body)
+        return svc.organiser_profile_dict(organiser)
 
 
 @app.post("/organiser/me/image-upload-url")

@@ -43,6 +43,7 @@ from common.schemas import (
     EventUpdateRequest,
     FormFieldResponse,
     FormFieldsReplaceRequest,
+    OrganiserProfileUpdate,
     TicketTiersCreateRequest,
     TicketTierUpdate,
     check_event_shape,
@@ -82,6 +83,42 @@ def load_event_for(session, event_uuid: uuid.UUID, organiser_id: uuid.UUID | Non
 def assert_editable(event: Event, organiser_id: uuid.UUID | None) -> None:
     if organiser_id is not None and event.status in ORGANISER_LOCKED:
         raise ConflictError("This event was unpublished by the Showtik team. Contact support to make changes.")
+
+
+def organiser_profile_dict(o: Organiser) -> dict:
+    return {
+        "id": str(o.id),
+        "org_name": o.org_name,
+        "contact_name": o.contact_name,
+        "email": o.email,
+        "status": o.status.value,
+        "status_reason": o.status_reason,
+        "email_verified": o.email_verified,
+        "approved_at": o.approved_at.isoformat() if o.approved_at else None,
+        "bio": o.bio,
+        "logo_url": o.logo_url,
+        "cover_url": o.cover_url,
+        "website_url": o.website_url,
+        "instagram_url": o.instagram_url,
+        "phone": o.phone,
+        "city": o.city,
+        "created_at": o.created_at.isoformat() if o.created_at else None,
+    }
+
+
+def apply_organiser_profile(session, organiser: Organiser, body: OrganiserProfileUpdate) -> None:
+    """Organiser page profile edit -- by the organiser (PATCH /organiser/me)
+    or by a super admin on their behalf (PATCH /admin/organisers/{id})."""
+    changes = body.model_dump(exclude_unset=True)
+    if changes.get("city"):
+        changes["city"] = resolve_city(session, changes["city"])
+    for url_field in ("website_url", "instagram_url"):
+        v = changes.get(url_field)
+        if v and not v.startswith(("http://", "https://")):
+            raise BadRequestError(f"{url_field.replace('_url', '').title()} must start with https://")
+    for field, value in changes.items():
+        setattr(organiser, field, value)
+    session.flush()
 
 
 def resolve_city(session, city: str) -> str:
@@ -276,8 +313,7 @@ def update_event_impl(event_id: str, body: EventUpdateRequest, organiser_id: uui
 def create_tiers_impl(event_id: str, body: TicketTiersCreateRequest, organiser_id: uuid.UUID | None, session) -> list:
     event_uuid = parse_uuid(event_id)
     event = load_event_for(session, event_uuid, organiser_id, (selectinload(Event.ticket_tiers),))
-    if event.status == EventStatus.DEACTIVATED:
-        raise ConflictError("This event is deactivated")
+    assert_editable(event, organiser_id)
     next_order = max((t.sort_order for t in event.ticket_tiers), default=-1) + 1
     created = []
     for i, tier_in in enumerate(body.tiers):
@@ -290,13 +326,15 @@ def create_tiers_impl(event_id: str, body: TicketTiersCreateRequest, organiser_i
 
 def update_tier_impl(event_id: str, tier_id: str, body: TicketTierUpdate, organiser_id: uuid.UUID | None, session) -> dict:
     event_uuid = parse_uuid(event_id)
-    load_event_for(session, event_uuid, organiser_id)
+    assert_editable(load_event_for(session, event_uuid, organiser_id), organiser_id)
     tier = session.get(TicketTier, parse_uuid(tier_id))
     if tier is None or tier.event_id != event_uuid:
         raise NotFoundError("Ticket not found")
     if tier.quantity_sold > 0:
-        if body.price != tier.price or body.ticket_type != tier.ticket_type:
-            raise ConflictError("Price and ticket type can't change after tickets have been sold")
+        # A super admin may correct price/type after sales (already-issued
+        # tickets keep the price they were bought at, on their order item).
+        if organiser_id is not None and (body.price != tier.price or body.ticket_type != tier.ticket_type):
+            raise ConflictError("Price and ticket type can't change after tickets have been sold -- contact Showtik support")
         if body.quantity_total < tier.quantity_sold:
             raise ConflictError(f"Quantity can't go below the {tier.quantity_sold} already sold")
     for field, value in body.model_dump().items():
@@ -307,7 +345,7 @@ def update_tier_impl(event_id: str, tier_id: str, body: TicketTierUpdate, organi
 
 def delete_tier_impl(event_id: str, tier_id: str, organiser_id: uuid.UUID | None, session) -> dict:
     event_uuid = parse_uuid(event_id)
-    load_event_for(session, event_uuid, organiser_id)
+    assert_editable(load_event_for(session, event_uuid, organiser_id), organiser_id)
     tier = session.get(TicketTier, parse_uuid(tier_id))
     if tier is None or tier.event_id != event_uuid:
         raise NotFoundError("Ticket not found")
@@ -337,28 +375,37 @@ def list_form_fields_impl(event_id: str, organiser_id: uuid.UUID | None) -> dict
 
 
 def replace_form_fields_impl(event_id: str, body: FormFieldsReplaceRequest, organiser_id: uuid.UUID | None, session) -> dict:
+    """Replace-all save of the registration form. Fields sent with their
+    existing `id` are updated in place (so answers already given, and the
+    export columns built from them, stay linked); new fields are inserted and
+    fields left out are deleted (past answers keep their label snapshot)."""
     event_uuid = parse_uuid(event_id)
-    load_event_for(session, event_uuid, organiser_id)
-    session.execute(EventFormField.__table__.delete().where(EventFormField.event_id == event_uuid))
-    created = []
+    assert_editable(load_event_for(session, event_uuid, organiser_id), organiser_id)
+    existing = {
+        f.id: f
+        for f in session.execute(select(EventFormField).where(EventFormField.event_id == event_uuid)).scalars().all()
+    }
+    kept = []
     for idx, field_in in enumerate(body.fields):
-        field = EventFormField(
-            event_id=event_uuid,
-            label=field_in.label,
-            field_type=FormFieldType(field_in.field_type),
-            options=field_in.options,
-            required=field_in.required,
-            sort_order=field_in.sort_order if field_in.sort_order else idx,
-        )
-        session.add(field)
-        created.append(field)
+        field = existing.pop(field_in.id, None) if field_in.id else None
+        if field is None:
+            field = EventFormField(id=uuid.uuid4(), event_id=event_uuid)
+            session.add(field)
+        field.label = field_in.label
+        field.field_type = FormFieldType(field_in.field_type)
+        field.options = field_in.options
+        field.required = field_in.required
+        field.sort_order = field_in.sort_order if field_in.sort_order else idx
+        kept.append(field)
+    for stale in existing.values():
+        session.delete(stale)
     session.flush()
-    return {"fields": [form_field_dict(f) for f in sorted(created, key=lambda f: f.sort_order)]}
+    return {"fields": [form_field_dict(f) for f in sorted(kept, key=lambda f: f.sort_order)]}
 
 
 def replace_images_impl(event_id: str, body: EventImagesReplaceRequest, organiser_id: uuid.UUID | None, session) -> dict:
     event_uuid = parse_uuid(event_id)
-    load_event_for(session, event_uuid, organiser_id)
+    assert_editable(load_event_for(session, event_uuid, organiser_id), organiser_id)
     session.execute(EventImage.__table__.delete().where(EventImage.event_id == event_uuid))
     for idx, img_in in enumerate(body.images):
         session.add(

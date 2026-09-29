@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { Icon, Input, Avatar, Button, DataTable, EmptyState, Modal, Textarea, PageHeading } from '@showtik/ui';
 import { adminApi, formatTimestamp, ApiError } from '@showtik/api-client';
-import type { OrganiserSummary } from '@showtik/api-client';
+import type { OrganiserSummary, OrganiserProfile } from '@showtik/api-client';
 import { AdminShell } from '@/components/AdminShell';
 import { useRequireAuth } from '@/lib/auth';
 
@@ -27,6 +27,90 @@ function StatusPill({ status }: { status: string }) {
 
 type Dialog = { kind: 'reject' | 'suspend'; organiser: OrganiserSummary } | null;
 
+type ProfileDraft = Pick<OrganiserProfile, 'org_name' | 'contact_name' | 'phone' | 'city' | 'website_url' | 'instagram_url' | 'bio' | 'logo_url'>;
+
+/** Super-admin edit of an organiser's details and public page (logo, bio,
+ *  links) -- the same fields the organiser edits in their own portal. */
+function EditOrganiserModal({ token, organiserId, onClose, onSaved }: { token: string; organiserId: string; onClose: () => void; onSaved: () => void }) {
+  const [draft, setDraft] = React.useState<ProfileDraft | null>(null);
+  const [email, setEmail] = React.useState('');
+  const [saving, setSaving] = React.useState(false);
+  const [uploading, setUploading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    adminApi.getOrganiser(token, organiserId).then((p) => {
+      setEmail(p.email);
+      setDraft({ org_name: p.org_name, contact_name: p.contact_name, phone: p.phone, city: p.city, website_url: p.website_url, instagram_url: p.instagram_url, bio: p.bio, logo_url: p.logo_url });
+    }).catch(() => setError('Could not load this organiser.'));
+  }, [token, organiserId]);
+
+  const set = <K extends keyof ProfileDraft>(k: K, v: ProfileDraft[K]) => setDraft((d) => (d ? { ...d, [k]: v } : d));
+
+  const uploadLogo = async (file: File) => {
+    setUploading(true); setError(null);
+    try {
+      const { upload_url, image_url } = await adminApi.createOrganiserImageUploadUrl(token, organiserId, 'logo', file.type || 'image/png');
+      await adminApi.uploadFile(upload_url, file);
+      set('logo_url', image_url);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not upload the logo.');
+    } finally { setUploading(false); }
+  };
+
+  const save = async () => {
+    if (!draft) return;
+    setSaving(true); setError(null);
+    try {
+      const clean = (v: string | null) => (v && v.trim() ? v.trim() : null);
+      await adminApi.updateOrganiser(token, organiserId, {
+        org_name: draft.org_name.trim(), contact_name: draft.contact_name.trim(),
+        phone: clean(draft.phone), city: clean(draft.city), website_url: clean(draft.website_url),
+        instagram_url: clean(draft.instagram_url), bio: clean(draft.bio), logo_url: draft.logo_url,
+      });
+      onSaved();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not save changes.');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <Modal
+      open
+      title="Edit organiser"
+      onClose={onClose}
+      width={560}
+      footer={<><Button variant="ghost" onClick={onClose}>Cancel</Button><Button loading={saving} disabled={!draft || uploading || !draft.org_name.trim()} onClick={save}>Save changes</Button></>}
+    >
+      {!draft ? (
+        <div style={{ color: 'var(--text-muted)' }}>{error ?? 'Loading…'}</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <Avatar name={draft.org_name} src={draft.logo_url ?? undefined} size={56} />
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13.5, fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer' }}>
+              <Icon name="upload" size={14} />{uploading ? 'Uploading…' : draft.logo_url ? 'Replace logo' : 'Upload logo'}
+              <input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadLogo(f); e.target.value = ''; }} />
+            </label>
+            {draft.logo_url && <Button size="sm" variant="ghost" onClick={() => set('logo_url', null)}>Remove</Button>}
+          </div>
+          <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: -6 }}>The logo shows on every event page ("by …") and on the organiser page. Login email: {email}</div>
+          <Input label="Organisation name *" value={draft.org_name} onChange={(e) => set('org_name', e.target.value)} />
+          <Input label="Contact person" value={draft.contact_name} onChange={(e) => set('contact_name', e.target.value)} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Input label="Phone" value={draft.phone ?? ''} onChange={(e) => set('phone', e.target.value)} />
+            <Input label="City" value={draft.city ?? ''} onChange={(e) => set('city', e.target.value)} />
+          </div>
+          <Input label="Website" placeholder="https://" value={draft.website_url ?? ''} onChange={(e) => set('website_url', e.target.value)} />
+          <Input label="Instagram" placeholder="https://instagram.com/…" value={draft.instagram_url ?? ''} onChange={(e) => set('instagram_url', e.target.value)} />
+          <Textarea label="About" rows={3} value={draft.bio ?? ''} onChange={(e) => set('bio', e.target.value)} />
+          {error && <div style={{ color: 'var(--color-error)', fontSize: 13.5 }}>{error}</div>}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 function OrganisersInner() {
   const token = useRequireAuth();
   const [organisers, setOrganisers] = React.useState<OrganiserSummary[] | null>(null);
@@ -38,6 +122,7 @@ function OrganisersInner() {
   const [dialog, setDialog] = React.useState<Dialog>(null);
   const [reason, setReason] = React.useState('');
   const [reasonError, setReasonError] = React.useState<string | null>(null);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
 
   const load = React.useCallback(() => {
     if (!token) return;
@@ -153,6 +238,7 @@ function OrganisersInner() {
                 label: '',
                 render: (r) => (
                   <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <Button size="sm" variant="ghost" onClick={() => setEditingId(r.id)}><Icon name="pencil" size={14} />Edit</Button>
                     {r.status === 'pending' && (
                       <>
                         <Button size="sm" loading={busyId === r.id} onClick={() => act(r, 'approve')}><Icon name="check" size={14} />Approve</Button>
@@ -192,6 +278,15 @@ function OrganisersInner() {
         </div>
         <Textarea label={dialog?.kind === 'reject' ? 'Reason *' : 'Reason (optional)'} rows={3} value={reason} error={reasonError ?? undefined} onChange={(e) => { setReason(e.target.value); setReasonError(null); }} />
       </Modal>
+
+      {editingId && token && (
+        <EditOrganiserModal
+          token={token}
+          organiserId={editingId}
+          onClose={() => setEditingId(null)}
+          onSaved={() => { setEditingId(null); setNotice('Organiser details saved.'); load(); }}
+        />
+      )}
     </div>
   );
 }
