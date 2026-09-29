@@ -84,6 +84,7 @@ Resources:
             - cloudformation:DescribeStackResource
             - cloudformation:DescribeStackResources
             - cloudformation:GetTemplate
+            - cloudformation:GetTemplateSummary
             - cloudformation:CreateChangeSet
             - cloudformation:ExecuteChangeSet
             - cloudformation:DescribeChangeSet
