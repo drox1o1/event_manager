@@ -53,6 +53,8 @@ function withEventDefaults(e: EventDetail): EventDetail {
       description: t.description ?? null,
       min_per_order: t.min_per_order ?? 1,
       max_per_order: t.max_per_order ?? 10,
+      min_age: t.min_age ?? null,
+      max_age: t.max_age ?? null,
       requires_approval: t.requires_approval ?? false,
       group_name: t.group_name ?? null,
       sale_status: t.sale_status ?? 'on_sale',

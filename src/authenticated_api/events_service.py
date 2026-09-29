@@ -47,7 +47,10 @@ from context import require_organiser_id
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-ORGANISER_EDITABLE = (EventStatus.DRAFT, EventStatus.REJECTED)
+# Organisers keep editing their own events through every stage (draft, in
+# review, approved, live) so details can be corrected and tickets managed
+# after submission. Only an event the super admin has unpublished is locked.
+ORGANISER_LOCKED = (EventStatus.DEACTIVATED,)
 
 
 def require_approved_organiser(session) -> uuid.UUID:
@@ -73,10 +76,8 @@ def load_event_for(session, event_uuid: uuid.UUID, organiser_id: uuid.UUID | Non
 
 
 def assert_editable(event: Event, organiser_id: uuid.UUID | None) -> None:
-    if organiser_id is not None and event.status not in ORGANISER_EDITABLE:
-        raise ConflictError(
-            f"This event is {event.status.value} and can no longer be edited. Contact the Showtik team for changes."
-        )
+    if organiser_id is not None and event.status in ORGANISER_LOCKED:
+        raise ConflictError("This event was unpublished by the Showtik team. Contact support to make changes.")
 
 
 def resolve_city(session, city: str) -> str:
@@ -107,6 +108,8 @@ def tier_dict(t: TicketTier) -> dict:
         "description": t.description,
         "min_per_order": t.min_per_order,
         "max_per_order": t.max_per_order,
+        "min_age": t.min_age,
+        "max_age": t.max_age,
         "requires_approval": t.requires_approval,
         "group_name": t.group_name,
         "sale_status": t.sale_status,
@@ -456,6 +459,12 @@ def publish_blockers(event: Event) -> list[str]:
         problems.append("Add at least one ticket type")
     elif all(t.sale_status != "on_sale" for t in event.ticket_tiers):
         problems.append("At least one ticket type must be on sale")
+    aged = [t.name for t in event.ticket_tiers if t.min_age is not None or t.max_age is not None]
+    if aged and not any(f.field_type.value == "dob" for f in event.form_fields):
+        problems.append(
+            f"{', '.join(aged)} {'has' if len(aged) == 1 else 'have'} an age limit -- "
+            "add a Date of birth question to the registration form"
+        )
     try:
         check_event_shape(event)
     except ValueError as exc:

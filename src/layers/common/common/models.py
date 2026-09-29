@@ -92,6 +92,11 @@ class FormFieldType(str, enum.Enum):
     TEXT = "text"
     SINGLE_CHOICE = "single_choice"
     MULTI_CHOICE = "multi_choice"
+    # 0008: typed inputs. DATE = any date (calendar picker); DOB = date of
+    # birth, used for per-ticket age limits; PHONE = contact number, digits only.
+    DATE = "date"
+    DOB = "dob"
+    PHONE = "phone"
 
 
 class Organiser(Base):
@@ -227,6 +232,10 @@ class TicketTier(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     min_per_order: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     max_per_order: Mapped[int] = mapped_column(Integer, nullable=False, default=10)
+    # 0008: age limits, checked against each participant's date of birth on
+    # the event date (e.g. Full Marathon 18+). NULL = no limit.
+    min_age: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_age: Mapped[int | None] = mapped_column(Integer, nullable=True)
     requires_approval: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     group_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     sale_status: Mapped[str] = mapped_column(String(20), nullable=False, default="on_sale")  # on_sale|paused

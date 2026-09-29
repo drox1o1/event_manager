@@ -3,6 +3,7 @@ required fields and captures answers, and GET /events/{id}/form-fields is
 gated to LIVE events. get_session is mocked to a fake in-memory session.
 """
 
+import datetime as dt
 import json
 import uuid
 from contextlib import contextmanager
@@ -177,3 +178,46 @@ def test_get_form_fields_404_when_not_live(monkeypatch):
     api_event = _api_event("GET", f"/events/{event.id}/form-fields")
     response = api_handler(api_event, MagicMock())
     assert response["statusCode"] == 404
+
+
+def _aged_checkout(monkeypatch, dob: str | None, phone: str = "9876543210"):
+    dob_field = _field("Date of birth", FormFieldType.DOB, required=True)
+    phone_field = _field("Emergency contact", FormFieldType.PHONE, required=True)
+    event = _fake_event(form_fields=[dob_field, phone_field], event_date=dt.date(2026, 11, 22))
+    tier = _fake_tier(event.id, name="Full Marathon", min_age=18)
+    get_session, session = _fake_session(get_return=event, execute_all=[tier])
+    monkeypatch.setattr("public_api.handler.get_session", get_session)
+
+    from public_api.handler import handler as api_handler
+
+    responses = [{"field_id": str(phone_field.id), "answer": phone}]
+    if dob is not None:
+        responses.append({"field_id": str(dob_field.id), "answer": dob})
+    body = _checkout_body([{
+        "ticket_tier_id": str(tier.id), "quantity": 1,
+        "attendees": [{"name": "Brijesh Kumar", "form_responses": responses}],
+    }])
+    return api_handler(_api_event("POST", f"/events/{event.id}/checkout", body=body), MagicMock()), session
+
+
+def test_checkout_rejects_participant_under_min_age(monkeypatch):
+    # Turns 18 on 23 Nov 2026 -- one day after the event, so still 17.
+    response, _ = _aged_checkout(monkeypatch, dob="2008-11-23")
+    assert response["statusCode"] == 400
+    assert "minimum age" in json.loads(response["body"])["message"]
+
+
+def test_checkout_accepts_participant_meeting_min_age_on_event_date(monkeypatch):
+    response, _ = _aged_checkout(monkeypatch, dob="2008-11-22")
+    assert response["statusCode"] == 201
+
+
+def test_checkout_requires_dob_for_age_limited_ticket(monkeypatch):
+    response, _ = _aged_checkout(monkeypatch, dob=None)
+    assert response["statusCode"] == 400
+
+
+def test_checkout_rejects_non_numeric_contact_number(monkeypatch):
+    response, _ = _aged_checkout(monkeypatch, dob="1990-04-24", phone="98765-abc")
+    assert response["statusCode"] == 400
+    assert "digits" in json.loads(response["body"])["message"]

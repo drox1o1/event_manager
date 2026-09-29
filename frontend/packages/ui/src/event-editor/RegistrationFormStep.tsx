@@ -22,14 +22,17 @@ const TYPE_OPTIONS = [
   { value: 'text', label: 'Short answer' },
   { value: 'single_choice', label: 'Single selection' },
   { value: 'multi_choice', label: 'Multiple choice' },
+  { value: 'date', label: 'Date (calendar)' },
+  { value: 'dob', label: 'Date of birth (age check)' },
+  { value: 'phone', label: 'Contact number (digits only)' },
 ];
 
 const PRESETS: { label: string; field_type: FormFieldType; options?: string[]; required?: boolean }[] = [
-  { label: 'Date of birth (DD/MM/YYYY)', field_type: 'text', required: true },
+  { label: 'Date of birth', field_type: 'dob', required: true },
   { label: 'Gender', field_type: 'single_choice', options: ['Male', 'Female', 'Other'], required: true },
   { label: 'T-shirt size', field_type: 'single_choice', options: ['XS', 'S', 'M', 'L', 'XL', 'XXL'], required: true },
   { label: 'Blood group', field_type: 'single_choice', options: ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'] },
-  { label: 'Emergency contact number', field_type: 'text', required: true },
+  { label: 'Emergency contact number', field_type: 'phone', required: true },
   { label: 'ID proof number (Aadhaar / PAN)', field_type: 'text' },
 ];
 
@@ -57,6 +60,7 @@ export function RegistrationFormStep({ api, token, event, readOnly, onSaved, onD
   const [dirty, setDirty] = React.useState(false);
 
   React.useEffect(() => { onDirtyChange(dirty); }, [dirty, onDirtyChange]);
+  const agedTiers = event.ticket_tiers.filter((t) => t.min_age != null || t.max_age != null).map((t) => t.name);
 
   const mutate = (fn: (fs: FieldDraft[]) => FieldDraft[]) => { setFields(fn); setDirty(true); };
   const patch = (key: string, u: Partial<FieldDraft>) => mutate((fs) => fs.map((f) => (f.key === key ? { ...f, ...u } : f)));
@@ -81,6 +85,8 @@ export function RegistrationFormStep({ api, token, event, readOnly, onSaved, onD
       else if (isChoice(f.field_type) && f.options.map((o) => o.trim()).filter(Boolean).length < 2) e[f.key] = 'Add at least two options.';
       seen.add(label.toLowerCase());
     }
+    const dobs = fields.filter((f) => f.field_type === 'dob');
+    dobs.slice(1).forEach((f) => { e[f.key] = 'Only one Date of birth question is allowed — ticket age limits use it.'; });
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -107,6 +113,13 @@ export function RegistrationFormStep({ api, token, event, readOnly, onSaved, onD
     <div>
       <SectionTitle title="Registration form" description="Name, email and phone are always collected. Add anything else you need from each participant — it's asked once per ticket." />
       {apiError && <div style={{ marginBottom: 16 }}><Notice tone="error">{apiError}</Notice></div>}
+      {agedTiers.length > 0 && !fields.some((f) => f.field_type === 'dob') && (
+        <div style={{ marginBottom: 16 }}>
+          <Notice tone="warning">
+            <strong>{agedTiers.join(', ')}</strong> {agedTiers.length === 1 ? 'has' : 'have'} an age limit. Add a <strong>Date of birth</strong> question so each participant&apos;s age can be checked — publishing is blocked until you do.
+          </Notice>
+        </div>
+      )}
 
       {!readOnly && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 22 }}>

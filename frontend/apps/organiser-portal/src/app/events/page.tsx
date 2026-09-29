@@ -24,6 +24,8 @@ function badgeStatus(status: string): BadgeStatus {
 }
 
 // Drafts open straight into the step-by-step editor to finish them.
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://showtik.in';
+
 function openHref(r: OrganiserEventSummary): string {
   return r.status === 'draft' ? `/events/${r.event_id}/manage/basic` : `/events/${r.event_id}`;
 }
@@ -114,6 +116,20 @@ function MyEventsInner() {
               },
               { key: 'status', label: 'Status', render: (r) => r.status === 'draft' ? <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}><Badge status="draft" /><span style={{ fontSize: 12.5, color: 'var(--text-link)', fontWeight: 600 }}>Continue →</span></span> : <Badge status={badgeStatus(r.status)} /> },
               { key: 'tickets_sold', label: 'Registrations', render: (r) => `${r.tickets_sold} / ${r.tickets_total}` },
+              {
+                key: 'manage',
+                label: '',
+                render: (r) => (
+                  <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                    <Button size="sm" variant="secondary" onClick={() => router.push(`/events/${r.event_id}`)}><Icon name="layout-dashboard" size={14} />Dashboard</Button>
+                    <Button size="sm" variant="ghost" disabled={r.status === 'deactivated'} onClick={() => router.push(`/events/${r.event_id}/manage/basic`)}><Icon name="pencil" size={14} />Edit</Button>
+                    <Button size="sm" variant="ghost" onClick={() => router.push(`/events/${r.event_id}/attendees`)}><Icon name="users" size={14} />Registrations</Button>
+                    {(r.status === 'live' || r.status === 'soldout') && (
+                      <a href={`${SITE_URL.replace(/\/+$/, '')}/events/${r.event_id}`} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}><Button size="sm" variant="ghost"><Icon name="external-link" size={14} />View</Button></a>
+                    )}
+                  </div>
+                ),
+              },
             ]}
             rows={rows.map((r) => ({ ...r, id: r.event_id }))}
             actions={{ onClick: (r) => router.push(openHref(r)) }}

@@ -12,6 +12,7 @@ pipeline. Swap this out once real Razorpay integration lands.
 from __future__ import annotations
 
 import datetime as dt
+import re
 import secrets
 from decimal import Decimal
 
@@ -558,11 +559,9 @@ def checkout(event_id: str):
             tier.quantity_sold += item.quantity
             for idx in range(item.quantity):
                 attendee = item.attendees[idx] if item.attendees else None
-                answers = (
-                    _validated_answers(fields, attendee.form_responses, f"{tier.name} #{idx + 1} ({attendee.name})")
-                    if attendee
-                    else None
-                )
+                who = f"{tier.name} #{idx + 1} ({attendee.name})" if attendee else f"{tier.name} #{idx + 1}"
+                answers = _validated_answers(fields, attendee.form_responses, who) if attendee else None
+                _check_age(tier, fields, answers, order.occurrence_date or event.event_date, who)
                 ticket = Ticket(
                         order_item_id=order_item.id,
                         qr_code_token=secrets.token_urlsafe(24),
@@ -649,6 +648,45 @@ def _answer_is_empty(answer) -> bool:
     return not str(answer).strip()
 
 
+_PHONE_RE = re.compile(r"\d{7,15}")
+
+
+def _parse_date(value) -> dt.date | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        return dt.date.fromisoformat(value.strip()[:10])
+    except ValueError:
+        return None
+
+
+def _age_on(dob: dt.date, on: dt.date) -> int:
+    return on.year - dob.year - ((on.month, on.day) < (dob.month, dob.day))
+
+
+def _check_age(tier: TicketTier, fields, answers: list[dict] | None, on: dt.date, who: str) -> None:
+    """Enforce the ticket's age limits against the participant's date of
+    birth, measured on the event (or chosen session) date."""
+    if tier.min_age is None and tier.max_age is None:
+        return
+    dob_field = next((f for f in fields if f.field_type.value == "dob"), None)
+    if dob_field is None:
+        raise BadRequestError(f"'{tier.name}' has an age limit but this event doesn't ask for a date of birth")
+    dob_answer = next((a["answer"] for a in (answers or []) if a["field_id"] == str(dob_field.id)), None)
+    dob = _parse_date(dob_answer)
+    if dob is None:
+        raise BadRequestError(f"Date of birth is required for {who} (age-limited ticket)")
+    age = _age_on(dob, on)
+    if tier.min_age is not None and age < tier.min_age:
+        raise BadRequestError(
+            f"{who}: minimum age for '{tier.name}' is {tier.min_age} years on {on:%d %b %Y} (participant will be {age})"
+        )
+    if tier.max_age is not None and age > tier.max_age:
+        raise BadRequestError(
+            f"{who}: maximum age for '{tier.name}' is {tier.max_age} years on {on:%d %b %Y} (participant will be {age})"
+        )
+
+
 def _validated_answers(fields, responses, who: str) -> list[dict]:
     """Checks one participant's answers against the registration form and
     returns them as [{field_id, field_label, answer}] for the ticket row."""
@@ -665,10 +703,22 @@ def _validated_answers(fields, responses, who: str) -> list[dict]:
             raise BadRequestError(f"Unknown form field {field_id}")
         if _answer_is_empty(answer):
             continue
-        if field.options and field.field_type.value != "text":
+        kind = field.field_type.value
+        if field.options and kind in ("single_choice", "multi_choice"):
             chosen = answer if isinstance(answer, list) else [answer]
             if any(c not in field.options for c in chosen):
                 raise BadRequestError(f"Invalid choice for '{field.label}'")
+        elif kind == "phone":
+            if not isinstance(answer, str) or not _PHONE_RE.fullmatch(answer.strip()):
+                raise BadRequestError(f"'{field.label}' must be a number with 7-15 digits for {who}")
+            answer = answer.strip()
+        elif kind in ("date", "dob"):
+            parsed = _parse_date(answer)
+            if parsed is None:
+                raise BadRequestError(f"'{field.label}' must be a valid date for {who}")
+            if kind == "dob" and parsed > dt.date.today():
+                raise BadRequestError(f"'{field.label}' can't be in the future for {who}")
+            answer = parsed.isoformat()
         out.append({"field_id": str(field.id), "field_label": field.label, "answer": answer})
     return out
 

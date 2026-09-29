@@ -97,12 +97,18 @@ export function EventEditor(props: EventEditorProps) {
   if (loadError) return <div style={{ padding: 40 }}><Notice tone="error">{loadError}</Notice></div>;
   if (!event) return <PageLoader variant="inline" />;
 
-  const editable = mode === 'admin' || event.status === 'draft' || event.status === 'rejected';
+  // Organisers can keep editing through review and after going live; only an
+  // event the super admin unpublished is locked.
+  const editable = mode === 'admin' || event.status !== 'deactivated';
   const hasTickets = event.ticket_tiers.length > 0;
   const published = !['draft', 'rejected'].includes(event.status);
   const blockers: string[] = [];
   if (!hasTickets) blockers.push('Add at least one ticket type');
   else if (event.ticket_tiers.every((t) => t.sale_status !== 'on_sale')) blockers.push('At least one ticket type must be on sale');
+  const agedTiers = event.ticket_tiers.filter((t) => t.min_age != null || t.max_age != null);
+  if (agedTiers.length > 0 && !event.form_fields.some((f) => f.field_type === 'dob')) {
+    blockers.push(`${agedTiers.map((t) => t.name).join(', ')} ${agedTiers.length === 1 ? 'has' : 'have'} an age limit — add a Date of birth question to the Registration form`);
+  }
 
   const done: Record<EditorSection, boolean> = {
     basic: true,
@@ -235,7 +241,7 @@ export function EventEditor(props: EventEditorProps) {
                   onManageHost={onManageHost}
                   submitLabel="Save & continue"
                   disabled={!editable}
-                  disabledReason={!editable ? 'This event has been submitted, so its details are locked. Contact the Showtik team to request changes.' : undefined}
+                  disabledReason={!editable ? 'This event was unpublished by the Showtik team, so it can’t be edited. Contact support to make changes.' : undefined}
                   onDirtyChange={onDirtyChange}
                   onSubmit={async (body) => {
                     const { organiser_id, ...rest } = body;

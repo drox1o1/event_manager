@@ -20,18 +20,27 @@ const TYPE_OPTIONS = [
   { value: 'text', label: 'Textual response' },
   { value: 'single_choice', label: 'Single selection' },
   { value: 'multi_choice', label: 'Multiple choice' },
+  { value: 'date', label: 'Date (calendar)' },
+  { value: 'dob', label: 'Date of birth (age check)' },
+  { value: 'phone', label: 'Contact number (digits only)' },
 ];
 
 const TYPE_LABEL: Record<FormFieldType, string> = {
   text: 'Textual response',
   single_choice: 'Single selection',
   multi_choice: 'Multiple choice',
+  date: 'Date (calendar)',
+  dob: 'Date of birth (age check)',
+  phone: 'Contact number (digits only)',
 };
 
 const TYPE_ICON: Record<FormFieldType, string> = {
   text: 'align-left',
   single_choice: 'circle-dot',
   multi_choice: 'check-square',
+  date: 'calendar',
+  dob: 'cake',
+  phone: 'phone',
 };
 
 // Handy starting points an organiser can drop in and rename. These are just
@@ -40,7 +49,8 @@ const PRESETS: { label: string; field_type: FormFieldType; options?: string[] }[
   { label: 'Full name', field_type: 'text' },
   { label: 'T-shirt size', field_type: 'single_choice', options: ['XS', 'S', 'M', 'L', 'XL', 'XXL'] },
   { label: 'Blood group', field_type: 'single_choice', options: ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'] },
-  { label: 'Emergency contact number', field_type: 'text' },
+  { label: 'Date of birth', field_type: 'dob' },
+  { label: 'Emergency contact number', field_type: 'phone' },
 ];
 
 function newKey() {

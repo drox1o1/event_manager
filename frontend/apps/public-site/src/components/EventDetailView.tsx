@@ -43,7 +43,6 @@ export function EventDetailView({ event, autoBook }: EventDetailViewProps) {
   const isMobile = useIsMobile();
   const [booking, setBooking] = React.useState(false);
   const [shared, setShared] = React.useState(false);
-  const [openFaq, setOpenFaq] = React.useState<number | null>(null);
   const [lightboxIndex, setLightboxIndex] = React.useState<number | null>(null);
 
   React.useEffect(() => {
@@ -83,13 +82,6 @@ export function EventDetailView({ event, autoBook }: EventDetailViewProps) {
       else { await navigator.clipboard.writeText(url); setShared(true); setTimeout(() => setShared(false), 1800); }
     } catch { /* dismissed */ }
   };
-
-  const faqs = [
-    { q: `When and where is ${event.title} being held?`, a: `${when}${recurText ? ` (${recurText.toLowerCase()})` : ''} — ${event.location_type === 'venue' ? `${event.venue_name}, ${event.venue_address}` : where}.` },
-    { q: `Who is organizing ${event.title}?`, a: event.organiser ? `${event.organiser.org_name}, a verified organiser on Showtik.` : 'This event is hosted by Showtik.' },
-    { q: `Where can I buy ${event.title} tickets?`, a: 'Right here — tap “Book Tickets”. No account needed; tickets arrive instantly on your order page.' },
-    { q: `What types of tickets are available for ${event.title}?`, a: event.ticket_tiers.length ? event.ticket_tiers.map((t) => `${t.name} (${t.ticket_type === 'free' ? 'Free' : t.ticket_type === 'donation' ? 'pay what you want' : formatINR(t.price)})`).join(', ') + '.' : 'Tickets will be announced soon.' },
-  ];
 
   const hostCard = (
     <div style={{ background: 'var(--surface-card)', borderRadius: 18, border: '1px solid var(--border-default)', padding: 20 }}>
@@ -136,7 +128,12 @@ export function EventDetailView({ event, autoBook }: EventDetailViewProps) {
             </div>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(30px, 4.6vw, 52px)', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.025em', color: 'var(--text-heading)', margin: '0 0 14px' }}>{event.title}</h1>
             <div onClick={() => event.organiser && router.push(`/organisers/${event.organiser.id}`)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 15, color: 'var(--text-muted)', cursor: event.organiser ? 'pointer' : 'default', marginBottom: 22 }}>
-              by <strong style={{ color: 'var(--text-heading)' }}>{event.organiser?.org_name ?? 'Showtik'}</strong>
+              by
+              <span aria-hidden style={{ width: 28, height: 28, borderRadius: 8, flex: 'none', background: event.organiser?.logo_url ? `center/cover no-repeat url(${event.organiser.logo_url})` : 'var(--gradient-brand)', color: '#fff', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                {!event.organiser?.logo_url && (event.organiser?.org_name ?? 'S').charAt(0).toUpperCase()}
+              </span>
+              <strong style={{ color: 'var(--text-heading)' }}>{event.organiser?.org_name ?? 'Showtik'}</strong>
+              {event.organiser && <Icon name="badge-check" size={15} color="var(--color-accent-secondary)" />}
             </div>
 
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 36 }}>
@@ -214,7 +211,9 @@ export function EventDetailView({ event, autoBook }: EventDetailViewProps) {
                   <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14, border: '1px solid var(--border-default)', background: 'var(--surface-card)' }}>
                     <Icon name="ticket" size={18} color="var(--color-accent)" />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, color: 'var(--text-heading)' }}>{t.name}{t.group_name && <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}> · {t.group_name}</span>}</div>
+                      <div style={{ fontWeight: 700, color: 'var(--text-heading)' }}>{t.name}{t.group_name && <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}> · {t.group_name}</span>}
+                        {(t.min_age != null || t.max_age != null) && <span style={{ marginLeft: 8, fontSize: 11.5, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--color-accent-tint)', color: 'var(--color-accent)', verticalAlign: 'middle' }}>{t.min_age != null && t.max_age != null ? `Age ${t.min_age}–${t.max_age}` : t.min_age != null ? `${t.min_age}+ years` : `Up to ${t.max_age} years`}</span>}
+                      </div>
                       {t.description && <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>{t.description}</div>}
                     </div>
                     <div style={{ textAlign: 'right' }}>
@@ -227,19 +226,6 @@ export function EventDetailView({ event, autoBook }: EventDetailViewProps) {
             </div>
             {canBook && <button type="button" onClick={() => setBooking(true)} style={bookBtn(false)}><Icon name="zap" size={16} />Book Tickets</button>}
 
-            <div style={{ marginTop: 44 }}>
-              <Heading>Frequently Asked Questions</Heading>
-              <div style={{ borderTop: '1px solid var(--border-default)' }}>
-                {faqs.map((f, i) => (
-                  <div key={f.q} style={{ borderBottom: '1px solid var(--border-default)' }}>
-                    <button type="button" aria-expanded={openFaq === i} onClick={() => setOpenFaq(openFaq === i ? null : i)} style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '16px 2px', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontSize: 15, fontWeight: 600, color: 'var(--text-heading)' }}>
-                      {f.q}<Icon name={openFaq === i ? 'chevron-up' : 'chevron-down'} size={18} />
-                    </button>
-                    {openFaq === i && <div style={{ padding: '0 2px 16px', fontSize: 14.5, color: 'var(--text-body)', lineHeight: 1.6 }}>{f.a}</div>}
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
 
           <div>

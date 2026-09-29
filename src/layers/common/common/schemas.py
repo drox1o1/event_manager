@@ -7,7 +7,7 @@ from typing import Literal
 
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
-FormFieldTypeStr = Literal["text", "single_choice", "multi_choice"]
+FormFieldTypeStr = Literal["text", "single_choice", "multi_choice", "date", "dob", "phone"]
 
 # --- Auth ---
 
@@ -43,6 +43,8 @@ class TicketTierSummary(BaseModel):
     description: str | None = None
     min_per_order: int = 1
     max_per_order: int = 10
+    min_age: int | None = None
+    max_age: int | None = None
     requires_approval: bool = False
     group_name: str | None = None
     sale_status: str = "on_sale"
@@ -126,6 +128,13 @@ class FormFieldsReplaceRequest(BaseModel):
     """Replace-all payload: the full ordered list of fields for an event."""
 
     fields: list[FormFieldInput] = Field(max_length=50)
+
+    @model_validator(mode="after")
+    def _single_dob(self) -> "FormFieldsReplaceRequest":
+        # Ticket age limits read the one date-of-birth answer per participant.
+        if sum(1 for f in self.fields if f.field_type == "dob") > 1:
+            raise ValueError("A form can only have one Date of birth question")
+        return self
 
 
 class FormFieldResponse(BaseModel):
@@ -359,6 +368,8 @@ class TicketTierCreate(BaseModel):
     description: str | None = Field(default=None, max_length=500)
     min_per_order: int = Field(default=1, ge=1, le=100)
     max_per_order: int = Field(default=10, ge=1, le=100)
+    min_age: int | None = Field(default=None, ge=1, le=120)
+    max_age: int | None = Field(default=None, ge=1, le=120)
     requires_approval: bool = False
     group_name: str | None = Field(default=None, max_length=100)
     sale_status: Literal["on_sale", "paused"] = "on_sale"
@@ -371,6 +382,8 @@ class TicketTierCreate(BaseModel):
             self.price = Decimal("0")
         elif self.ticket_type == "paid" and self.price <= 0:
             raise ValueError("A paid ticket needs a price above 0")
+        if self.min_age is not None and self.max_age is not None and self.min_age > self.max_age:
+            raise ValueError("Minimum age can't be higher than the maximum age")
         if self.min_per_order > self.max_per_order:
             raise ValueError("Minimum per order can't exceed the maximum")
         if self.sale_start and self.sale_end and self.sale_end <= self.sale_start:

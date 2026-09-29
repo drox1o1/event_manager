@@ -9,6 +9,23 @@ import type { EventDetail, FormField, TicketTierSummary } from '@showtik/api-cli
 const HOLD_SECONDS = 10 * 60;
 // Money amounts in the booking UI: ₹0 rather than formatINR's "Free".
 const money = (n: number) => (n === 0 ? '₹0' : formatINR(n));
+const DIGITS_RE = /^\d{7,15}$/;
+const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+
+/** Whole years between a date of birth and the event date (both YYYY-MM-DD). */
+export function ageOn(dobIso: string, onIso: string): number {
+  const [by, bm, bd] = dobIso.split('-').map(Number);
+  const [y, m, d] = onIso.split('-').map(Number);
+  return y - by - (m < bm || (m === bm && d < bd) ? 1 : 0);
+}
+
+function ageRule(t: TicketTierSummary): string | null {
+  if (t.min_age != null && t.max_age != null) return `Age ${t.min_age}–${t.max_age} years for ${t.name}`;
+  if (t.min_age != null) return `Minimum age ${t.min_age} years for ${t.name}`;
+  if (t.max_age != null) return `Maximum age ${t.max_age} years for ${t.name}`;
+  return null;
+}
+
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const PHONE_RE = /^\+?[\d\s-]{8,16}$/;
 
@@ -159,6 +176,10 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
 
   const empty = (v: string | string[] | undefined) => v === undefined || (Array.isArray(v) ? v.length === 0 : !v.trim());
 
+  // Ages are measured on the event day (or the chosen session for recurring events).
+  const eventDay = session || event.event_date;
+  const dobField = fields.find((f) => f.field_type === 'dob');
+
   const validateAttendees = (): boolean => {
     const next: Record<string, ParticipantErrors> = {};
     for (const t of selected) {
@@ -167,7 +188,22 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
         if (!p.name.trim()) e.name = 'Enter the participant’s full name';
         if (p.email && !EMAIL_RE.test(p.email)) e.email = 'Enter a valid email';
         if (p.phone && !PHONE_RE.test(p.phone)) e.phone = 'Enter a valid phone number';
-        for (const f of fields) if (f.required && empty(p.answers[f.id])) e[f.id] = f.field_type === 'text' ? 'This field is required' : 'Please make a selection';
+        for (const f of fields) {
+          const v = p.answers[f.id];
+          if (f.required && empty(v)) { e[f.id] = ['single_choice', 'multi_choice'].includes(f.field_type) ? 'Please make a selection' : 'This field is required'; continue; }
+          if (empty(v) || typeof v !== 'string') continue;
+          if (f.field_type === 'phone' && !DIGITS_RE.test(v)) e[f.id] = 'Enter 7–15 digits (numbers only)';
+          if ((f.field_type === 'date' || f.field_type === 'dob') && !/^\d{4}-\d{2}-\d{2}$/.test(v)) e[f.id] = 'Choose a valid date';
+          if (f.field_type === 'dob' && !e[f.id]) {
+            if (v > todayIso()) e[f.id] = 'Date of birth can’t be in the future';
+            else {
+              const age = ageOn(v, eventDay);
+              if (t.min_age != null && age < t.min_age) e[f.id] = `Must be at least ${t.min_age} years old on ${formatEventDate(eventDay)} for ${t.name} (will be ${age})`;
+              else if (t.max_age != null && age > t.max_age) e[f.id] = `Must be at most ${t.max_age} years old on ${formatEventDate(eventDay)} for ${t.name} (will be ${age})`;
+            }
+          }
+        }
+        if ((t.min_age != null || t.max_age != null) && dobField && empty(p.answers[dobField.id])) e[dobField.id] = 'Date of birth is required for this ticket';
         if (Object.keys(e).length) next[`${t.id}:${i}`] = e;
       });
     }
@@ -338,6 +374,18 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 14 }}>
                         {fields.map((f) => f.field_type === 'text' ? (
                           <Input key={f.id} label={f.required ? `${f.label} *` : f.label} value={(p.answers[f.id] as string) ?? ''} error={e[f.id]} onChange={(ev) => setAnswer(t.id, i, f.id, ev.target.value)} />
+                        ) : f.field_type === 'phone' ? (
+                          <Input key={f.id} type="tel" inputMode="numeric" maxLength={15} placeholder="Digits only, e.g. 9876543210" label={f.required ? `${f.label} *` : f.label} value={(p.answers[f.id] as string) ?? ''} error={e[f.id]} onChange={(ev) => setAnswer(t.id, i, f.id, ev.target.value.replace(/\D/g, ''))} />
+                        ) : f.field_type === 'date' || f.field_type === 'dob' ? (
+                          <div key={f.id}>
+                            <Input type="date" max={f.field_type === 'dob' ? todayIso() : undefined} label={f.required || (f.field_type === 'dob' && ageRule(t)) ? `${f.label} *` : f.label} value={(p.answers[f.id] as string) ?? ''} error={e[f.id]} onChange={(ev) => setAnswer(t.id, i, f.id, ev.target.value)} />
+                            {f.field_type === 'dob' && ageRule(t) && !e[f.id] && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--color-accent)', fontWeight: 600, marginTop: 6 }}>
+                                <Icon name="info" size={13} />{ageRule(t)} (on {formatEventDate(eventDay)})
+                                {typeof p.answers[f.id] === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(p.answers[f.id] as string) && <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · age on event day: {ageOn(p.answers[f.id] as string, eventDay)}</span>}
+                              </div>
+                            )}
+                          </div>
                         ) : (
                           <div key={f.id}>
                             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-heading)', marginBottom: 8 }}>{f.label}{f.required && ' *'}</div>

@@ -112,7 +112,8 @@ function EventWorkspace() {
   if (!event) return <div style={{ color: 'var(--text-muted)' }}>Loading…</div>;
 
   const canSubmit = event.status === 'draft' || event.status === 'rejected';
-  const canEdit = canSubmit;
+  // Organisers can edit at every stage except after an admin unpublishes it.
+  const canEdit = event.status !== 'deactivated';
   const overflowItem = OVERFLOW.find((o) => o.key === tab);
   const moreSelected = !!overflowItem && !overflowItem.route;
 
@@ -136,10 +137,12 @@ function EventWorkspace() {
         </div>
         <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
           <Button variant="secondary" size="sm" onClick={copyLink}><Icon name="link" size={15} />{copied ? 'Link copied' : 'Copy registration link'}</Button>
-          <Button size="sm" variant={canEdit ? 'primary' : 'secondary'} onClick={() => router.push(`/events/${eventId}/manage/${canEdit ? 'basic' : 'tickets'}`)}><Icon name="pencil" size={15} />{canEdit ? 'Edit event' : 'Manage tickets'}</Button>
+          {canEdit && <Button size="sm" variant={canSubmit ? 'primary' : 'secondary'} onClick={() => router.push(`/events/${eventId}/manage/basic`)}><Icon name="pencil" size={15} />Edit event</Button>}
           {canSubmit && <Button size="sm" onClick={submitForReview} loading={busy}>Submit for review</Button>}
         </div>
       </div>
+
+      <StatusTracker status={event.status} />
 
       {event.status === 'rejected' && event.rejection_reason && (
         <div style={{ background: 'var(--status-error-bg)', color: 'var(--status-error-text)', borderRadius: 'var(--radius-control)', padding: 14, marginBottom: 24, fontSize: 14 }}>
@@ -193,5 +196,43 @@ export default function EventDetailPage() {
     <PortalShell>
       <EventWorkspace />
     </PortalShell>
+  );
+}
+
+const TRACK: { key: string; label: string; hint: string }[] = [
+  { key: 'draft', label: 'Draft', hint: 'Finish details, media and tickets' },
+  { key: 'review', label: 'In review', hint: 'Showtik team is reviewing (usually < 24h)' },
+  { key: 'approved', label: 'Approved', hint: 'Going live shortly' },
+  { key: 'live', label: 'Live', hint: 'Anyone can find it and book' },
+];
+
+/** Where the event is in its lifecycle -- so organisers can track it after submitting. */
+function StatusTracker({ status }: { status: string }) {
+  if (status === 'deactivated') {
+    return (
+      <div style={{ marginBottom: 24, padding: '12px 16px', borderRadius: 'var(--radius-card)', background: 'var(--status-muted-bg)', color: 'var(--text-body)', fontSize: 14 }}>
+        <strong>Unpublished.</strong> The Showtik team has taken this event off the site. Contact support to make changes.
+      </div>
+    );
+  }
+  const current = status === 'rejected' ? 0 : status === 'soldout' ? 3 : Math.max(0, TRACK.findIndex((t) => t.key === status));
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 24, background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-card)', padding: '14px 16px' }}>
+      {TRACK.map((t, i) => {
+        const done = i < current;
+        const active = i === current;
+        const color = status === 'rejected' && i === 0 ? 'var(--color-error)' : done || active ? (i === 3 ? 'var(--color-success)' : 'var(--color-accent-secondary)') : 'var(--border-default)';
+        return (
+          <div key={t.key} style={{ minWidth: 0 }}>
+            <div style={{ height: 4, borderRadius: 4, background: color, marginBottom: 10 }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5, fontWeight: active ? 800 : 600, color: done || active ? 'var(--text-heading)' : 'var(--text-subtle)' }}>
+              {done ? <Icon name="circle-check" size={15} color="var(--color-success)" /> : <Icon name={active ? 'circle-dot' : 'circle'} size={15} color={active ? color : 'var(--text-subtle)'} />}
+              {status === 'rejected' && i === 0 ? 'Changes requested' : status === 'soldout' && i === 3 ? 'Live · Sold out' : t.label}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.4 }}>{active ? (status === 'rejected' ? 'Update the event and resubmit' : t.hint) : ''}</div>
+          </div>
+        );
+      })}
+    </div>
   );
 }

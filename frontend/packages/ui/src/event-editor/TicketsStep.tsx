@@ -25,12 +25,14 @@ interface TicketDraft {
   max_per_order: string;
   sale_start: string;
   sale_end: string;
+  min_age: string;
+  max_age: string;
 }
 type DraftErrors = Partial<Record<keyof TicketDraft, string>>;
 
 const EMPTY: TicketDraft = {
   ticket_type: '', name: '', quantity: '', price: '', description: '', grouped: false, group_name: '',
-  requires_approval: false, min_per_order: '1', max_per_order: '10', sale_start: '', sale_end: '',
+  requires_approval: false, min_per_order: '1', max_per_order: '10', sale_start: '', sale_end: '', min_age: '', max_age: '',
 };
 
 function toLocalInput(iso: string | null): string {
@@ -46,6 +48,7 @@ function fromTier(t: OrganiserEventTier): TicketDraft {
     ticket_type: t.ticket_type, name: t.name, quantity: String(t.quantity_total), price: t.ticket_type === 'free' ? '' : String(Number(t.price)),
     description: t.description ?? '', grouped: !!t.group_name, group_name: t.group_name ?? '', requires_approval: t.requires_approval,
     min_per_order: String(t.min_per_order), max_per_order: String(t.max_per_order), sale_start: toLocalInput(t.sale_start), sale_end: toLocalInput(t.sale_end),
+    min_age: t.min_age != null ? String(t.min_age) : '', max_age: t.max_age != null ? String(t.max_age) : '',
   };
 }
 
@@ -70,6 +73,10 @@ function validate(d: TicketDraft, sold: number): DraftErrors {
   else if (mn > mx) e.max_per_order = 'Must be ≥ the minimum.';
   if (d.grouped && !d.group_name.trim()) e.group_name = 'Enter a group name.';
   if (d.sale_start && d.sale_end && d.sale_end <= d.sale_start) e.sale_end = 'Sale end must be after sale start.';
+  const ageOk = (v: string) => v === '' || (Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= 120);
+  if (!ageOk(d.min_age)) e.min_age = 'Enter an age between 1 and 120.';
+  if (!ageOk(d.max_age)) e.max_age = 'Enter an age between 1 and 120.';
+  if (!e.min_age && !e.max_age && d.min_age && d.max_age && Number(d.min_age) > Number(d.max_age)) e.max_age = 'Must be ≥ the minimum age.';
   return e;
 }
 
@@ -87,7 +94,15 @@ function toInput(d: TicketDraft, saleStatus: 'on_sale' | 'paused'): TicketTierCr
     sale_status: saleStatus,
     sale_start: d.sale_start ? new Date(d.sale_start).toISOString() : null,
     sale_end: d.sale_end ? new Date(d.sale_end).toISOString() : null,
+    min_age: d.min_age ? Number(d.min_age) : null,
+    max_age: d.max_age ? Number(d.max_age) : null,
   };
+}
+
+export function ageLabel(min: number | null | undefined, max: number | null | undefined): string {
+  if (min != null && max != null) return `Age ${min}–${max}`;
+  if (min != null) return `${min}+ years`;
+  return `Up to ${max} years`;
 }
 
 const TYPE_LABEL: Record<TicketType, string> = { paid: 'Paid', free: 'Free', donation: 'Donation' };
@@ -161,6 +176,7 @@ export function TicketsStep({ api, token, event, readOnly, onChanged, onContinue
                   <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-heading)' }}>{t.name}</span>
                   <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 'var(--radius-pill)', border: '1px solid var(--border-default)', color: 'var(--text-muted)' }}>{TYPE_LABEL[t.ticket_type]}</span>
                   {t.group_name && <span style={{ fontSize: 11.5, padding: '3px 8px', borderRadius: 'var(--radius-pill)', background: 'var(--surface-accent-secondary-tint)', color: 'var(--color-accent-secondary)', fontWeight: 600 }}>{t.group_name}</span>}
+                  {(t.min_age != null || t.max_age != null) && <span style={{ fontSize: 11.5, padding: '3px 8px', borderRadius: 'var(--radius-pill)', background: 'var(--surface-accent-tint)', color: 'var(--color-accent)', fontWeight: 700 }}>{ageLabel(t.min_age, t.max_age)}</span>}
                   {t.requires_approval && <span style={{ fontSize: 11.5, padding: '3px 8px', borderRadius: 'var(--radius-pill)', background: 'var(--status-warning-bg)', color: 'var(--status-warning-text)', fontWeight: 600 }}>Needs approval</span>}
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4, fontFamily: 'ui-monospace, monospace' }}>ID: {t.code}</div>
@@ -319,6 +335,14 @@ function TicketDrawer({ tier, onClose, onSave }: { tier: OrganiserEventTier | nu
               <div>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 14, fontWeight: 600, color: 'var(--text-heading)' }}>Requires approval <Switch checked={d.requires_approval} onChange={(e) => set('requires_approval', e.target.checked)} /></label>
                 <div style={{ fontSize: 13.5, color: 'var(--text-muted)', marginTop: 6 }}>Attendees will only be able to join your event if you approve their registration.</div>
+              </div>
+              <div>
+                <FieldLabel>Age limit <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span></FieldLabel>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <Input type="number" min={1} max={120} placeholder="Minimum age, e.g. 18" value={d.min_age} error={errors.min_age} onChange={(e) => set('min_age', e.target.value)} />
+                  <Input type="number" min={1} max={120} placeholder="Maximum age" value={d.max_age} error={errors.max_age} onChange={(e) => set('max_age', e.target.value)} />
+                </div>
+                <div style={{ fontSize: 13.5, color: 'var(--text-muted)', marginTop: 6 }}>Checked against each participant&apos;s date of birth on the event date. Needs a <strong>Date of birth</strong> question in the registration form.</div>
               </div>
               <button type="button" onClick={() => setAdvanced((a) => !a)} style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', padding: 0, fontWeight: 700, color: 'var(--text-heading)', cursor: 'pointer', fontSize: 14.5 }}>
                 Advanced settings <Icon name={advanced ? 'chevron-up' : 'chevron-down'} size={16} />

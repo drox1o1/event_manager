@@ -106,8 +106,26 @@ def test_get_organiser_event_succeeds_for_owner(monkeypatch, mock_jwt_secret):
     assert body["status"] == "draft"
 
 
-def test_update_event_rejects_when_not_draft_or_rejected(monkeypatch, mock_jwt_secret):
-    fake_event = _fake_event(status=EventStatus.REVIEW)
+def test_update_event_allowed_after_submission(monkeypatch, mock_jwt_secret):
+    """Organisers keep editing their events after submitting / going live."""
+    fake_event = _fake_event(status=EventStatus.LIVE)
+    monkeypatch.setattr("organiser_routes.get_session", _fake_get_session(fake_event))
+
+    from authenticated_api.handler import handler as api_handler
+
+    event = _api_event(
+        "PATCH",
+        f"/organiser/events/{fake_event.id}",
+        body={"title": "Updated title"},
+        authorizer={"role": "organiser", "organiser_id": str(fake_event.organiser_id)},
+    )
+    response = api_handler(event, MagicMock())
+    assert response["statusCode"] == 200
+    assert fake_event.title == "Updated title"
+
+
+def test_update_event_rejects_when_unpublished_by_admin(monkeypatch, mock_jwt_secret):
+    fake_event = _fake_event(status=EventStatus.DEACTIVATED)
     monkeypatch.setattr("organiser_routes.get_session", _fake_get_session(fake_event))
 
     from authenticated_api.handler import handler as api_handler

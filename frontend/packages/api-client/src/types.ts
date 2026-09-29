@@ -43,6 +43,9 @@ export interface TicketTierSummary {
   description: string | null;
   min_per_order: number;
   max_per_order: number;
+  /** Age limits on the event date (null = none); needs a Date of birth question. */
+  min_age: number | null;
+  max_age: number | null;
   requires_approval: boolean;
   group_name: string | null;
   sale_status: TicketSaleStatus;
@@ -109,7 +112,8 @@ export interface OrganiserPublicPage {
 
 // --- Registration form builder ---
 
-export type FormFieldType = 'text' | 'single_choice' | 'multi_choice';
+/** date = calendar picker; dob = date of birth (drives ticket age limits); phone = digits only. */
+export type FormFieldType = 'text' | 'single_choice' | 'multi_choice' | 'date' | 'dob' | 'phone';
 
 /** A field as stored/returned by the API (has a server id). */
 export interface FormField {
@@ -523,6 +527,8 @@ export interface TicketTierCreateInput {
   description?: string | null;
   min_per_order?: number;
   max_per_order?: number;
+  min_age?: number | null;
+  max_age?: number | null;
   requires_approval?: boolean;
   group_name?: string | null;
   sale_status?: TicketSaleStatus;
