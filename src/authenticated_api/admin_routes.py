@@ -9,12 +9,13 @@ from app import app
 from app import parse_request_body as _parse_body
 from aws_lambda_powertools.event_handler.exceptions import BadRequestError, NotFoundError
 from common.db import get_session
-from common.helpers import ConflictError, parse_pagination, parse_uuid, utcnow
+from common.helpers import ConflictError, parse_pagination, parse_uuid, short_code, utcnow
 from common.models import (
     ActivityLog,
     Event,
     EventStatus,
     Order,
+    OrderQuery,
     Organiser,
     OrganiserStatus,
     PaymentStatus,
@@ -494,6 +495,7 @@ def list_transactions():
                 "buyer_name": o.buyer_name,
                 "buyer_email": o.buyer_email,
                 "total_amount": str(o.total_amount),
+                "payment_ref": o.payment_gateway_ref,
                 "payment_status": o.payment_status.value,
                 "created_at": o.created_at.isoformat(),
             }
@@ -501,6 +503,65 @@ def list_transactions():
         ]
 
     return {"transactions": results, "page": page, "page_size": page_size}
+
+
+# --- Admin: transaction queries raised by buyers (0009) ---
+
+_QUERY_LABELS = {"payment": "Payment issue", "details": "Wrong details", "cancellation": "Cancellation", "other": "Other"}
+
+
+@app.get("/admin/queries")
+def list_order_queries():
+    """Buyer queries about transactions, newest first. ?status=open|resolved|all
+    (default open)."""
+    require_admin_id()
+    params = app.current_event.query_string_parameters or {}
+    status = params.get("status") or "open"
+    if status not in ("open", "resolved", "all"):
+        raise BadRequestError("status must be open, resolved or all")
+    query = (
+        select(OrderQuery)
+        .options(selectinload(OrderQuery.order).selectinload(Order.event))
+        .order_by(OrderQuery.created_at.desc())
+        .limit(200)
+    )
+    if status != "all":
+        query = query.where(OrderQuery.status == status)
+    with get_session() as session:
+        rows = session.execute(query).scalars().all()
+        return {
+            "queries": [
+                {
+                    "id": str(q.id),
+                    "order_id": str(q.order_id),
+                    "order_code": short_code(q.order_id),
+                    "payment_ref": q.order.payment_gateway_ref if q.order else None,
+                    "event_title": q.order.event.title if q.order and q.order.event else None,
+                    "buyer_name": q.order.buyer_name if q.order else None,
+                    "buyer_email": q.order.buyer_email if q.order else None,
+                    "buyer_phone": q.order.buyer_phone if q.order else None,
+                    "category": q.category,
+                    "category_label": _QUERY_LABELS.get(q.category, q.category),
+                    "message": q.message,
+                    "status": q.status,
+                    "created_at": q.created_at.isoformat() if q.created_at else None,
+                    "resolved_at": q.resolved_at.isoformat() if q.resolved_at else None,
+                }
+                for q in rows
+            ]
+        }
+
+
+@app.post("/admin/queries/<query_id>/resolve")
+def resolve_order_query(query_id: str):
+    require_admin_id()
+    with get_session() as session:
+        q = session.get(OrderQuery, parse_uuid(query_id))
+        if q is None:
+            raise NotFoundError("Query not found")
+        q.status = "resolved"
+        q.resolved_at = utcnow()
+    return {"id": query_id, "status": "resolved"}
 
 
 # --- Admin: refunds (authenticated) ---

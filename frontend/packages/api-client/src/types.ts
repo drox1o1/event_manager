@@ -407,6 +407,31 @@ export interface RefundRequestCreatedResponse {
   status: RefundStatus;
 }
 
+/** "Raise a query related to this transaction" (replaces refund requests). */
+export type OrderQueryCategory = 'payment' | 'details' | 'cancellation' | 'other';
+
+export interface OrderQueryInput {
+  category: OrderQueryCategory;
+  message: string;
+}
+
+export interface OrderQuerySummary {
+  id: string;
+  order_id: string;
+  order_code: string;
+  payment_ref: string | null;
+  event_title: string | null;
+  buyer_name: string | null;
+  buyer_email: string | null;
+  buyer_phone: string | null;
+  category: OrderQueryCategory;
+  category_label: string;
+  message: string;
+  status: 'open' | 'resolved';
+  created_at: string | null;
+  resolved_at: string | null;
+}
+
 // --- Organiser: auth ---
 
 export interface OrganiserSignupRequest {

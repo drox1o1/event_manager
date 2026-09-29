@@ -32,6 +32,7 @@ import type {
   PlatformSettingsUpdateRequest,
   RefundListResponse,
   RefundResolveRequest,
+  OrderQuerySummary,
   SitePage,
   SitePageListItem,
   SitePageUpsertRequest,
@@ -94,6 +95,14 @@ export function listTransactions(token: string, params: { page?: number; pageSiz
     token,
     query: { page: params.page, page_size: params.pageSize },
   });
+}
+
+export function listOrderQueries(token: string, status: 'open' | 'resolved' | 'all' = 'open'): Promise<{ queries: OrderQuerySummary[] }> {
+  return apiFetch('/admin/queries', { token, query: { status } });
+}
+
+export function resolveOrderQuery(token: string, queryId: string): Promise<{ id: string; status: string }> {
+  return apiFetch(`/admin/queries/${queryId}/resolve`, { method: 'POST', token });
 }
 
 export function listRefunds(token: string): Promise<RefundListResponse> {

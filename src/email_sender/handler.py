@@ -366,9 +366,10 @@ def _order_confirmation(msg: dict) -> Rendered:
     rows = ""
     for t in msg.get("tickets", []):
         pending = '<br><span style="color:#B45309;font-size:12px">Awaiting approval</span>' if t.get("pending") else ""
+        details = "".join(f'<br><span style="color:#888;font-size:12px">{_e(d)}</span>' for d in t.get("details", []))
         rows += (
             '<tr><td style="padding:10px 0;border-top:1px solid #eee">'
-            f'<strong>{_e(t["attendee_name"])}</strong><br><span style="color:#666;font-size:13px">{_e(t["tier"])}</span></td>'
+            f'<strong>{_e(t["attendee_name"])}</strong><br><span style="color:#666;font-size:13px">{_e(t["tier"])}</span>{details}</td>'
             '<td style="padding:10px 0;border-top:1px solid #eee;text-align:right;font-family:monospace">'
             f"{_e(t['ticket_code'])}{pending}</td></tr>"
         )
@@ -382,7 +383,11 @@ def _order_confirmation(msg: dict) -> Rendered:
         + _p(_button("View tickets & QR codes", url))
         + _muted("Show the QR code on your phone at the entry gate. Each ticket can be scanned once.")
     )
-    text_rows = "\n".join(f"- {t['attendee_name']} ({t['tier']}): ticket {t['ticket_code']}" for t in msg.get("tickets", []))
+    text_rows = "\n".join(
+        f"- {t['attendee_name']} ({t['tier']}): ticket {t['ticket_code']}"
+        + "".join(f"\n    {d}" for d in t.get("details", []))
+        for t in msg.get("tickets", [])
+    )
     return (
         f"Your tickets for {msg.get('event_title')}",
         _layout("Booking confirmed", body, f"Payment received — your tickets for {msg.get('event_title')} are inside."),
@@ -481,6 +486,31 @@ def _event_cancelled(msg: dict) -> Rendered:
 
 # --- registry ---------------------------------------------------------------
 
+def _transaction_query(msg: dict) -> Rendered:
+    # To the Showtik team and the organiser: a buyer raised a query about an
+    # order. {to, query_id, order_id, order_code, payment_ref, event_title,
+    # buyer_name, buyer_email, buyer_phone, category, message}
+    url = f"{_admin()}/queries"
+    rows = [
+        ("Event", msg.get("event_title")),
+        ("Order / payment ID", msg.get("order_code")),
+        ("Transaction ID", msg.get("payment_ref")),
+        ("Buyer", msg.get("buyer_name")),
+        ("Mobile", msg.get("buyer_phone")),
+        ("Email", msg.get("buyer_email")),
+        ("Query type", msg.get("category")),
+    ]
+    return (
+        f"Transaction query: {msg.get('category')} — order {msg.get('order_code')}",
+        _layout(
+            "New transaction query",
+            _p("A buyer raised a query about their order.") + _details(rows) + _callout(_e(msg.get("message")))
+            + _p(_button("Open queries", url)) + _muted(f"Reply to the buyer at {_e(msg.get('buyer_email'))}."),
+        ),
+        f"New transaction query.\n{_text_details(rows)}\n\n{msg.get('message')}\n\nOpen: {url}",
+    )
+
+
 TEMPLATES = {
     # account & security
     "organiser_verification": _organiser_verification,
@@ -502,6 +532,7 @@ TEMPLATES = {
     "payout_processed": _payout_processed,
     # attendee
     "order_confirmation": _order_confirmation,
+    "transaction_query": _transaction_query,
     "payment_failed": _payment_failed,
     "refund_issued": _refund_issued,
     "ticket_approved": _ticket_decision,

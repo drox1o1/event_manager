@@ -4,11 +4,18 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon, Button } from '@showtik/ui';
 import { publicApi, formatINR, formatDateTime, formatEventDate, formatTimestamp, ApiError } from '@showtik/api-client';
-import type { OrderDetail } from '@showtik/api-client';
+import type { OrderDetail, OrderQueryCategory } from '@showtik/api-client';
 
 export interface OrderConfirmationViewProps {
   order: OrderDetail;
 }
+
+const QUERY_TYPES: { value: OrderQueryCategory; label: string }[] = [
+  { value: 'payment', label: 'Payment issue' },
+  { value: 'details', label: 'Wrong participant / buyer details' },
+  { value: 'cancellation', label: 'Cancellation' },
+  { value: 'other', label: 'Something else' },
+];
 
 const APPROVAL: Record<string, { label: string; bg: string; fg: string }> = {
   approved: { label: 'Confirmed', bg: 'var(--status-success-bg)', fg: 'var(--status-success-text)' },
@@ -20,24 +27,25 @@ const APPROVAL: Record<string, { label: string; bg: string; fg: string }> = {
  *  ticket ID and QR token per participant, grouped by ticket type. */
 export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
   const router = useRouter();
-  const [refundOpen, setRefundOpen] = React.useState(false);
-  const [reason, setReason] = React.useState('');
-  const [refundState, setRefundState] = React.useState<'idle' | 'submitting' | 'done'>('idle');
-  const [refundError, setRefundError] = React.useState<string | null>(null);
+  const [queryOpen, setQueryOpen] = React.useState(false);
+  const [queryType, setQueryType] = React.useState<OrderQueryCategory>('payment');
+  const [message, setMessage] = React.useState('');
+  const [queryState, setQueryState] = React.useState<'idle' | 'submitting' | 'done'>('idle');
+  const [queryError, setQueryError] = React.useState<string | null>(null);
 
   const tickets = order.items.flatMap((item) => item.tickets.map((t, idx) => ({ ...t, item, idx })));
   const pending = tickets.some((t) => t.approval_status === 'pending');
 
-  const submitRefund = async () => {
-    if (!reason.trim()) return;
-    setRefundState('submitting');
-    setRefundError(null);
+  const submitQuery = async () => {
+    if (message.trim().length < 5) { setQueryError('Please describe your query in a few words.'); return; }
+    setQueryState('submitting');
+    setQueryError(null);
     try {
-      await publicApi.requestRefund(order.order_id, { reason });
-      setRefundState('done');
+      await publicApi.raiseOrderQuery(order.order_id, { category: queryType, message: message.trim() });
+      setQueryState('done');
     } catch (err) {
-      setRefundError(err instanceof ApiError ? err.message : 'Could not submit refund request.');
-      setRefundState('idle');
+      setQueryError(err instanceof ApiError ? err.message : 'Could not send your query. Please try again.');
+      setQueryState('idle');
     }
   };
 
@@ -64,6 +72,7 @@ export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 1, background: 'var(--border-default)' }}>
           <Meta label="Order / Payment ID" value={order.order_code} mono />
           <Meta label="Booked by" value={order.buyer_name} />
+          {order.payment_ref && <Meta label="Transaction ID" value={order.payment_ref} mono />}
           <Meta label="Booked on" value={formatTimestamp(order.created_at)} />
           <Meta label="Total paid" value={formatINR(order.total_amount)} accent />
         </div>
@@ -137,32 +146,40 @@ export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
       <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 24 }}>
         <Button variant="secondary" onClick={() => window.print()}><Icon name="printer" size={16} />Print tickets</Button>
         <Button variant="secondary" onClick={() => router.push(`/events/${order.event_id}`)}>View event</Button>
-        {order.payment_status === 'success' && !refundOpen && refundState !== 'done' && (
-          <Button variant="ghost" onClick={() => setRefundOpen(true)}>Request refund</Button>
+        {!queryOpen && queryState !== 'done' && (
+          <Button variant="ghost" onClick={() => setQueryOpen(true)}><Icon name="message-circle-question" size={16} />Raise a query</Button>
         )}
       </div>
 
-      {refundState === 'done' && (
-        <div style={{ fontSize: 14, color: 'var(--color-success)', fontWeight: 600, textAlign: 'center' }}>
-          Refund request submitted — we&apos;ll review it within 24 hours.
+      {queryState === 'done' && (
+        <div role="status" style={{ fontSize: 14, color: 'var(--color-success)', fontWeight: 600, textAlign: 'center' }}>
+          Query sent. The Showtik team will reply to {order.buyer_email}.
         </div>
       )}
 
-      {refundOpen && refundState !== 'done' && (
+      {queryOpen && queryState !== 'done' && (
         <div style={{ background: 'var(--surface-card)', borderRadius: 16, border: '1px solid var(--border-default)', padding: 20 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 10 }}>Request a refund</div>
-          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10 }}>Refunds apply to the whole order ({order.order_code}).</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 4 }}>Raise a query related to this transaction</div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 14 }}>Order {order.order_code}{order.payment_ref ? ` · Transaction ${order.payment_ref}` : ''}</div>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--text-heading)', marginBottom: 12 }}>
+            What is it about?
+            <select value={queryType} onChange={(e) => setQueryType(e.target.value as OrderQueryCategory)} style={{ height: 44, padding: '0 12px', borderRadius: 'var(--radius-control)', border: '1px solid var(--border-default)', fontFamily: 'var(--font-sans)', fontSize: 15, background: 'var(--surface-card)', fontWeight: 400 }}>
+              {QUERY_TYPES.map((q) => <option key={q.value} value={q.value}>{q.label}</option>)}
+            </select>
+          </label>
           <textarea
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            rows={3}
-            placeholder="Tell us why you'd like a refund…"
+            value={message}
+            onChange={(e) => { setMessage(e.target.value); setQueryError(null); }}
+            rows={4}
+            maxLength={2000}
+            aria-label="Your query"
+            placeholder="Describe the issue — e.g. amount charged, participant name to correct…"
             style={{ width: '100%', fontFamily: 'var(--font-sans)', fontSize: 15, padding: '11px 14px', borderRadius: 'var(--radius-control)', border: '1px solid var(--border-default)', outline: 'none', resize: 'vertical', boxSizing: 'border-box', marginBottom: 12 }}
           />
-          {refundError && <div style={{ fontSize: 13, color: 'var(--color-error)', marginBottom: 10 }}>{refundError}</div>}
+          {queryError && <div role="alert" style={{ fontSize: 13, color: 'var(--color-error)', marginBottom: 10 }}>{queryError}</div>}
           <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            <Button variant="ghost" onClick={() => setRefundOpen(false)}>Cancel</Button>
-            <Button loading={refundState === 'submitting'} disabled={!reason.trim()} onClick={submitRefund}>Submit request</Button>
+            <Button variant="ghost" onClick={() => setQueryOpen(false)}>Cancel</Button>
+            <Button loading={queryState === 'submitting'} disabled={!message.trim()} onClick={submitQuery}>Send query</Button>
           </div>
         </div>
       )}

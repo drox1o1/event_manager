@@ -13,6 +13,7 @@ import type {
   OrganiserPublicPage,
   RefundRequestCreatedResponse,
   RefundRequestInput,
+  OrderQueryInput,
   SiteChrome,
   SitePage,
 } from './types';
@@ -98,6 +99,10 @@ export function checkout(eventId: string, body: CheckoutRequest): Promise<Checko
 
 export function getOrder(orderId: string): Promise<OrderDetail> {
   return apiFetch<OrderDetail>(`/orders/${orderId}`);
+}
+
+export function raiseOrderQuery(orderId: string, body: OrderQueryInput): Promise<{ query_id: string; status: string }> {
+  return apiFetch(`/orders/${orderId}/query`, { method: 'POST', body });
 }
 
 export function requestRefund(orderId: string, body: RefundRequestInput): Promise<RefundRequestCreatedResponse> {

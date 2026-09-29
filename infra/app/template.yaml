@@ -212,6 +212,14 @@ Resources:
             Method: post
             Auth:
               Authorizer: NONE
+        CreateOrderQuery:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /orders/{order_id}/query
+            Method: post
+            Auth:
+              Authorizer: NONE
         GetOrganiserPage:
           Type: Api
           Properties:
@@ -375,6 +383,22 @@ Resources:
             RestApiId: !Ref CyrokxApi
             Path: /organiser/events/{event_id}/attendees
             Method: get
+            Auth:
+              Authorizer: JwtAuthorizer
+        AdminListOrderQueries:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/queries
+            Method: get
+            Auth:
+              Authorizer: JwtAuthorizer
+        AdminResolveOrderQuery:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/queries/{query_id}/resolve
+            Method: post
             Auth:
               Authorizer: JwtAuthorizer
         GetOrganiserMe:

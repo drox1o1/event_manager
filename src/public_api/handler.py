@@ -35,6 +35,7 @@ from common.helpers import (
 )
 from common.messaging import publish
 from common.models import (
+    AdminUser,
     Category,
     Event,
     EventFormField,
@@ -46,6 +47,7 @@ from common.models import (
     Order,
     OrderFormResponse,
     OrderItem,
+    OrderQuery,
     Organiser,
     OrganiserStatus,
     PaymentStatus,
@@ -60,6 +62,7 @@ from common.schemas import (
     EventDetail,
     EventSummary,
     FormFieldResponse,
+    OrderQueryCreate,
     OrganiserPublicSummary,
     RefundRequestCreate,
     SitePageResponse,
@@ -627,12 +630,18 @@ def _order_email(event: Event, order: Order, body: CheckoutRequest, subtotal: De
         "event_time": event.event_time.strftime("%I:%M %p").lstrip("0"),
         "venue": f"{event.venue_name}, {event.city}" if event.location_type == "venue" else "Online",
         "total": "Free" if subtotal == 0 else f"Rs. {subtotal:,.2f}",
+        "buyer_phone": order.buyer_phone,
         "tickets": [
             {
                 "attendee_name": t.attendee_name,
                 "tier": tier_name,
                 "ticket_code": _short_code(t.id),
                 "pending": t.approval_status == "pending",
+                # Participant's own registration answers (DOB, T-shirt...).
+                "details": [
+                    f"{a['field_label']}: {', '.join(a['answer']) if isinstance(a['answer'], list) else a['answer']}"
+                    for a in (t.attendee_answers or [])[:8]
+                ],
             }
             for t, tier_name in issued
         ],
@@ -867,6 +876,56 @@ def create_refund_request(order_id: str):
         refund_id = refund.id
 
     return {"refund_request_id": str(refund_id), "status": "pending"}, 201
+
+
+_QUERY_LABELS = {
+    "payment": "Payment issue",
+    "details": "Wrong participant / buyer details",
+    "cancellation": "Cancellation",
+    "other": "Other",
+}
+
+
+@app.post("/orders/<order_id>/query")
+def create_order_query(order_id: str):
+    """'Raise a query related to this transaction' from the order page.
+    Saved for the super admin (Admin -> Queries) and emailed to the Showtik
+    team and the event's organiser."""
+    order_uuid = _parse_uuid(order_id)
+    body = _parse_body(OrderQueryCreate)
+
+    with get_session() as session:
+        order = session.get(Order, order_uuid, options=[selectinload(Order.event).selectinload(Event.organiser)])
+        if order is None:
+            raise NotFoundError("Order not found")
+        query = OrderQuery(order_id=order_uuid, category=body.category, message=body.message.strip())
+        session.add(query)
+        session.flush()
+        query_id = query.id
+
+        base = {
+            "type": "transaction_query",
+            "query_id": str(query_id),
+            "order_id": str(order.id),
+            "order_code": _short_code(order.id),
+            "payment_ref": order.payment_gateway_ref,
+            "event_title": order.event.title if order.event else "",
+            "buyer_name": order.buyer_name,
+            "buyer_email": order.buyer_email,
+            "buyer_phone": order.buyer_phone,
+            "category": _QUERY_LABELS[body.category],
+            "message": query.message,
+        }
+        recipients = [
+            a.email for a in session.execute(select(AdminUser)).scalars().all() if getattr(a, "email", None)
+        ][:5]
+        organiser = order.event.organiser if order.event else None
+        if organiser is not None and organiser.email:
+            recipients.append(organiser.email)
+
+    for to in dict.fromkeys(recipients):
+        _notify({**base, "to": to})
+    return {"query_id": str(query_id), "status": "open"}, 201
 
 
 @logger.inject_lambda_context

@@ -183,3 +183,45 @@ def test_list_categories_returns_them_in_order(monkeypatch):
     assert response["statusCode"] == 200
     body = json.loads(response["body"])
     assert [c["name"] for c in body["categories"]] == ["Music", "Comedy"]
+
+
+def _order_with_event():
+    from common.models import AdminUser, Order, Organiser, PaymentStatus
+
+    event = _fake_event()
+    event.organiser = Organiser(id=event.organiser_id, org_name="Racetik", contact_name="R", email="host@racetik.in", password_hash="x")
+    order = Order(
+        id=uuid.uuid4(), event_id=event.id, buyer_name="Aditi", buyer_email="aditi@example.com", buyer_phone="+919876543210",
+        subtotal=Decimal("0"), total_amount=Decimal("0"), payment_status=PaymentStatus.SUCCESS,
+    )
+    order.event = event
+    admins = [AdminUser(id=uuid.uuid4(), email="ops@showtik.in", password_hash="x")]
+    return order, admins
+
+
+def test_raise_query_saves_and_emails_admin_and_organiser(monkeypatch):
+    order, admins = _order_with_event()
+    monkeypatch.setattr("public_api.handler.get_session", _fake_session(get_return=order, execute_all=admins))
+    sent = []
+    monkeypatch.setattr("public_api.handler.publish", lambda queue, msg: sent.append(msg))
+
+    from public_api.handler import handler as api_handler
+
+    body = {"category": "payment", "message": "I was charged twice for this order."}
+    response = api_handler(_api_event("POST", f"/orders/{order.id}/query", body=body), MagicMock())
+
+    assert response["statusCode"] == 201
+    assert json.loads(response["body"])["status"] == "open"
+    assert {m["to"] for m in sent} == {"ops@showtik.in", "host@racetik.in"}
+    assert all(m["type"] == "transaction_query" and m["category"] == "Payment issue" for m in sent)
+
+
+def test_raise_query_rejects_unknown_category(monkeypatch):
+    order, admins = _order_with_event()
+    monkeypatch.setattr("public_api.handler.get_session", _fake_session(get_return=order, execute_all=admins))
+
+    from public_api.handler import handler as api_handler
+
+    body = {"category": "refund-now", "message": "Please refund me."}
+    response = api_handler(_api_event("POST", f"/orders/{order.id}/query", body=body), MagicMock())
+    assert response["statusCode"] == 400

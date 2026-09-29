@@ -320,6 +320,16 @@ class RefundRequestCreate(BaseModel):
     reason: str = Field(min_length=1, max_length=1000)
 
 
+ORDER_QUERY_CATEGORIES = ("payment", "details", "cancellation", "other")
+
+
+class OrderQueryCreate(BaseModel):
+    """Buyer's 'raise a query about this transaction' (0009)."""
+
+    category: Literal["payment", "details", "cancellation", "other"]
+    message: str = Field(min_length=5, max_length=2000)
+
+
 class RefundResolveRequest(BaseModel):
     reason: str = Field(min_length=1, max_length=1000)
 

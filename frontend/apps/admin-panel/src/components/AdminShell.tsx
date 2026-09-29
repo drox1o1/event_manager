@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { key: 'events', label: 'All events', icon: 'calendar', href: '/events' },
   { key: 'organisers', label: 'Organisers', icon: 'building-2', href: '/organisers' },
   { key: 'transactions', label: 'Transactions', icon: 'receipt', href: '/transactions' },
+  { key: 'queries', label: 'Transaction queries', icon: 'message-circle-question', href: '/queries' },
   { key: 'refunds', label: 'Refunds', icon: 'rotate-ccw', href: '/refunds' },
   { key: 'homepage', label: 'Homepage', icon: 'layout-template', href: '/homepage' },
   { key: 'categories', label: 'Categories', icon: 'tags', href: '/categories' },

@@ -18,7 +18,8 @@ MESSAGES = [
         "type": "order_confirmation", "to": "b@x.com", "buyer_name": "Priya", "order_id": "o1", "order_code": "AB12CD34",
         "event_title": "BSF Jammu Marathon <2026>", "event_date": "2026-11-22", "event_time": "5:00 AM", "venue": "Stadium, Jammu",
         "total": "Free", "tickets": [
-            {"attendee_name": "Brijesh", "tier": "Full Marathon", "ticket_code": "11111111", "pending": False},
+            {"attendee_name": "Brijesh", "tier": "Full Marathon", "ticket_code": "11111111", "pending": False,
+             "details": ["Date of birth: 1990-04-24", "T-shirt size: M"]},
             {"attendee_name": "Asha", "tier": "Half Marathon", "ticket_code": "22222222", "pending": True},
         ],
     },
@@ -41,6 +42,9 @@ MESSAGES = [
     {"type": "event_updated", "to": "b@x.com", "event_title": "Run", "event_id": "e1",
      "changes": [{"field": "Venue", "old": "Stadium", "new": "Park"}], "note": "Parking at gate 2"},
     {"type": "event_cancelled", "to": "b@x.com", "event_title": "Run", "reason": "Weather", "refund_amount": "₹500"},
+    {"type": "transaction_query", "to": "ops@x.com", "query_id": "q1", "order_id": "o1", "order_code": "AB12CD34",
+     "payment_ref": "pay_1", "event_title": "Run", "buyer_name": "Priya", "buyer_email": "b@x.com",
+     "buyer_phone": "+919876543210", "category": "Payment issue", "message": "Charged twice <b>"},
 ]
 
 
