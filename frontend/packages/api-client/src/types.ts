@@ -159,6 +159,7 @@ export interface CategorySummary {
   id: string;
   name: string;
   sort_order: number;
+  icon: string | null;
 }
 
 // --- Public: homepage CMS (resolved) ---
@@ -264,6 +265,7 @@ export interface SiteChrome {
 export interface CategoryInput {
   id?: string;
   name: string;
+  icon: string | null;
 }
 
 export interface CategoriesReplaceRequest {

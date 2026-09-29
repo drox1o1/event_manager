@@ -12,6 +12,9 @@ export interface NavbarProps {
   onSearchClick?: () => void;
   onCategoryClick?: (category: string) => void;
   onCityChange?: (city: string) => void;
+  /** Called when the logo is clicked, instead of a plain "/" navigation
+   *  (lets a Next.js host use its router rather than a full page load). */
+  onLogoClick?: () => void;
   style?: React.CSSProperties;
 }
 
@@ -25,6 +28,7 @@ export function Navbar({
   onSearchClick,
   onCategoryClick,
   onCityChange,
+  onLogoClick,
   style,
 }: NavbarProps) {
   const isMobile = useIsMobile();
@@ -59,7 +63,14 @@ export function Navbar({
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
-        <LogoFull style={{ height: isMobile ? 24 : 30 }} />
+        <a
+          href="/"
+          aria-label="Showtik home"
+          onClick={onLogoClick ? (e) => { e.preventDefault(); onLogoClick(); } : undefined}
+          style={{ display: 'flex', alignItems: 'center' }}
+        >
+          <LogoFull style={{ height: isMobile ? 24 : 30 }} />
+        </a>
         {!isMobile && (
           <nav style={{ display: 'flex', gap: 24 }}>
             {categories.map((c) => (

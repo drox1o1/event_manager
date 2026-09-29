@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Icon, Input, Textarea, Select, Switch, Button, Toast, PageHeading } from '@showtik/ui';
+import { Icon, Input, Textarea, Select, Switch, Button, Toast, PageHeading, useDirtyGuard } from '@showtik/ui';
 import { adminApi, ApiError } from '@showtik/api-client';
 import type { HomepageConfig, HomepageSection, HomepageSectionType, HomepageSectionMode, AdminEventSummary, FooterColumnItem } from '@showtik/api-client';
 import { AdminShell } from '@/components/AdminShell';
@@ -46,11 +46,17 @@ function CardHead({ icon, title, description }: { icon: string; title: string; d
   );
 }
 
+function draftSnapshot(settings: HomepageConfig['settings'] | null, sections: DraftSection[]): string {
+  return JSON.stringify({ settings, sections: sections.map(({ key: _key, ...rest }) => rest) });
+}
+
 function HomepageInner() {
   const token = useRequireAuth();
+  const { setDirty } = useDirtyGuard();
   const [config, setConfig] = React.useState<HomepageConfig | null>(null);
   const [settings, setSettings] = React.useState<HomepageConfig['settings'] | null>(null);
   const [sections, setSections] = React.useState<DraftSection[]>([]);
+  const savedSnapshot = React.useRef<string>('');
   const [liveEvents, setLiveEvents] = React.useState<AdminEventSummary[]>([]);
   const [addType, setAddType] = React.useState<HomepageSectionType>('featured_events');
   const [newCity, setNewCity] = React.useState('');
@@ -65,13 +71,20 @@ function HomepageInner() {
       .then((cfg) => {
         setConfig(cfg);
         setSettings(cfg.settings);
-        setSections(cfg.sections.map((s) => ({
+        const draftSections = cfg.sections.map((s) => ({
           key: newKey(), title: s.title, section_type: s.section_type, mode: s.mode, enabled: s.enabled, event_ids: s.event_ids,
-        })));
+        }));
+        setSections(draftSections);
+        savedSnapshot.current = draftSnapshot(cfg.settings, draftSections);
       })
       .catch(() => setError('Could not load the homepage configuration.'));
     adminApi.listAllEvents(token, { status: 'live', pageSize: 50 }).then((r) => setLiveEvents(r.events)).catch(() => setLiveEvents([]));
   }, [token]);
+
+  React.useEffect(() => {
+    if (!settings) return;
+    setDirty(draftSnapshot(settings, sections) !== savedSnapshot.current);
+  }, [settings, sections, setDirty]);
 
   const eventTitle = React.useMemo(() => {
     const m = new Map(liveEvents.map((e) => [e.event_id, e.title]));
@@ -171,6 +184,12 @@ function HomepageInner() {
         })),
       });
       setConfig(updated);
+      const draftSections = updated.sections.map((s) => ({
+        key: newKey(), title: s.title, section_type: s.section_type, mode: s.mode, enabled: s.enabled, event_ids: s.event_ids,
+      }));
+      setSections(draftSections);
+      savedSnapshot.current = draftSnapshot(updated.settings, draftSections);
+      setDirty(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err) {

@@ -1719,9 +1719,10 @@ def replace_categories():
             if cat_in.id is not None and cat_in.id in existing:
                 category = existing[cat_in.id]
                 category.name = cat_in.name
+                category.icon = cat_in.icon
                 category.sort_order = idx
             else:
-                category = Category(name=cat_in.name, sort_order=idx)
+                category = Category(name=cat_in.name, icon=cat_in.icon, sort_order=idx)
                 session.add(category)
             result.append(category)
 

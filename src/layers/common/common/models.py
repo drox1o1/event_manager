@@ -144,6 +144,9 @@ class Category(Base):
     id: Mapped[uuid.UUID] = _uuid_pk()
     name: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Lucide icon name (kebab-case, e.g. "bike", "medal") shown next to the
+    # category on the public site; null falls back to a generic tag icon.
+    icon: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     events: Mapped[list["Event"]] = relationship(back_populates="category")
 

@@ -30,6 +30,8 @@ export { SearchBar } from './components/forms/SearchBar';
 export type { SearchBarProps } from './components/forms/SearchBar';
 export { FilterControl } from './components/forms/FilterControl';
 export type { FilterControlProps } from './components/forms/FilterControl';
+export { IconPicker } from './components/forms/IconPicker';
+export type { IconPickerProps } from './components/forms/IconPicker';
 
 export { Avatar } from './components/display/Avatar';
 export type { AvatarProps } from './components/display/Avatar';
@@ -65,6 +67,9 @@ export { PageHeading } from './components/layout/PageHeading';
 export type { PageHeadingProps } from './components/layout/PageHeading';
 export { SidebarShell } from './components/layout/SidebarShell';
 export type { SidebarShellProps, SidebarNavItem } from './components/layout/SidebarShell';
+
+export { DirtyGuardProvider, useDirtyGuard } from './context/DirtyGuard';
+export type { DirtyGuardContextValue } from './context/DirtyGuard';
 
 // Event editor — shared by the organiser portal and the super-admin panel.
 export { EventEditor } from './event-editor/EventEditor';

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Icon, Input, Textarea, Button, Toast, PageHeading } from '@showtik/ui';
+import { Icon, Input, Textarea, Button, Toast, PageHeading, useDirtyGuard } from '@showtik/ui';
 import { adminApi, ApiError } from '@showtik/api-client';
 import type { SitePageListItem } from '@showtik/api-client';
 import { AdminShell } from '@/components/AdminShell';
@@ -19,16 +19,23 @@ function slugify(input: string): string {
 
 function SitePagesInner() {
   const token = useRequireAuth();
+  const { setDirty } = useDirtyGuard();
   const [pages, setPages] = React.useState<SitePageListItem[] | null>(null);
   const [mode, setMode] = React.useState<'list' | 'edit' | 'create'>('list');
   const [activeSlug, setActiveSlug] = React.useState<string | null>(null);
   const [slugDraft, setSlugDraft] = React.useState('');
   const [title, setTitle] = React.useState('');
   const [body, setBody] = React.useState('');
+  const savedSnapshot = React.useRef<string>('');
   const [loadingPage, setLoadingPage] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (mode === 'list') { setDirty(false); return; }
+    setDirty(JSON.stringify({ slugDraft, title, body }) !== savedSnapshot.current);
+  }, [mode, slugDraft, title, body, setDirty]);
 
   const refreshList = React.useCallback(() => {
     if (!token) return;
@@ -47,6 +54,7 @@ function SitePagesInner() {
       const page = await adminApi.getSitePage(token, slug);
       setTitle(page.title);
       setBody(page.body);
+      savedSnapshot.current = JSON.stringify({ slugDraft: '', title: page.title, body: page.body });
     } catch {
       setError('Could not load that page.');
     } finally {
@@ -60,10 +68,14 @@ function SitePagesInner() {
     setSlugDraft('');
     setTitle('');
     setBody('');
+    savedSnapshot.current = JSON.stringify({ slugDraft: '', title: '', body: '' });
     setError(null);
   };
 
-  const backToList = () => { setMode('list'); setActiveSlug(null); setError(null); };
+  const backToList = () => {
+    if (JSON.stringify({ slugDraft, title, body }) !== savedSnapshot.current && !window.confirm('You have unsaved changes. Leave without saving?')) return;
+    setMode('list'); setActiveSlug(null); setError(null);
+  };
 
   const save = async () => {
     if (!token) return;

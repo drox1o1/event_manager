@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Icon, Input, Button, Toast, PageHeading } from '@showtik/ui';
+import { Icon, Input, Button, Toast, PageHeading, IconPicker, useDirtyGuard } from '@showtik/ui';
 import { adminApi, ApiError } from '@showtik/api-client';
 import type { CategorySummary } from '@showtik/api-client';
 import { AdminShell } from '@/components/AdminShell';
@@ -11,6 +11,7 @@ interface Draft {
   key: string;
   id?: string;
   name: string;
+  icon: string | null;
 }
 
 const newKey = () => Math.random().toString(36).slice(2);
@@ -21,7 +22,9 @@ const card: React.CSSProperties = {
 
 function CategoriesInner() {
   const token = useRequireAuth();
+  const { setDirty } = useDirtyGuard();
   const [categories, setCategories] = React.useState<Draft[] | null>(null);
+  const savedSnapshot = React.useRef<string>('');
   const [newName, setNewName] = React.useState('');
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
@@ -31,12 +34,25 @@ function CategoriesInner() {
     if (!token) return;
     adminApi
       .listCategories(token)
-      .then((res) => setCategories(res.categories.map((c: CategorySummary) => ({ key: newKey(), id: c.id, name: c.name }))))
+      .then((res) => {
+        const drafts = res.categories.map((c: CategorySummary) => ({ key: newKey(), id: c.id, name: c.name, icon: c.icon }));
+        setCategories(drafts);
+        savedSnapshot.current = JSON.stringify(drafts.map(({ id, name, icon }) => ({ id, name, icon })));
+      })
       .catch(() => setError('Could not load categories.'));
   }, [token]);
 
+  React.useEffect(() => {
+    if (!categories) return;
+    const current = JSON.stringify(categories.map(({ id, name, icon }) => ({ id, name, icon })));
+    setDirty(current !== savedSnapshot.current);
+  }, [categories, setDirty]);
+
   const patch = (key: string, name: string) =>
     setCategories((cs) => (cs ? cs.map((c) => (c.key === key ? { ...c, name } : c)) : cs));
+
+  const patchIcon = (key: string, icon: string | null) =>
+    setCategories((cs) => (cs ? cs.map((c) => (c.key === key ? { ...c, icon } : c)) : cs));
 
   const remove = (key: string) => setCategories((cs) => (cs ? cs.filter((c) => c.key !== key) : cs));
 
@@ -54,7 +70,7 @@ function CategoriesInner() {
   const addCategory = () => {
     const name = newName.trim();
     if (!name) return;
-    setCategories((cs) => [...(cs ?? []), { key: newKey(), name }]);
+    setCategories((cs) => [...(cs ?? []), { key: newKey(), name, icon: null }]);
     setNewName('');
   };
 
@@ -68,9 +84,12 @@ function CategoriesInner() {
     setError(null);
     try {
       const res = await adminApi.replaceCategories(token, {
-        categories: categories.map((c) => ({ id: c.id, name: c.name.trim() })),
+        categories: categories.map((c) => ({ id: c.id, name: c.name.trim(), icon: c.icon })),
       });
-      setCategories(res.categories.map((c) => ({ key: newKey(), id: c.id, name: c.name })));
+      const drafts = res.categories.map((c: CategorySummary) => ({ key: newKey(), id: c.id, name: c.name, icon: c.icon }));
+      setCategories(drafts);
+      savedSnapshot.current = JSON.stringify(drafts.map(({ id, name, icon }) => ({ id, name, icon })));
+      setDirty(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err) {
@@ -112,6 +131,7 @@ function CategoriesInner() {
                   <button title="Move up" onClick={() => move(c.key, -1)} disabled={i === 0} style={reorderBtn(i === 0)}><Icon name="chevron-up" size={13} /></button>
                   <button title="Move down" onClick={() => move(c.key, 1)} disabled={i === categories.length - 1} style={reorderBtn(i === categories.length - 1)}><Icon name="chevron-down" size={13} /></button>
                 </div>
+                <IconPicker value={c.icon} onChange={(icon) => patchIcon(c.key, icon)} label={c.name} />
                 <input value={c.name} onChange={(e) => patch(c.key, e.target.value)} style={{ flex: 1, padding: '8px 11px', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-control)', fontSize: 14.5, fontFamily: 'var(--font-sans)', color: 'var(--text-heading)', background: 'var(--surface-card)' }} />
                 <button title="Delete category" onClick={() => remove(c.key)} style={{ width: 34, height: 34, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-control)', background: 'var(--surface-card)', color: 'var(--color-error)', cursor: 'pointer', flexShrink: 0 }}>
                   <Icon name="trash-2" size={15} />

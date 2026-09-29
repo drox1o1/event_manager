@@ -221,6 +221,7 @@ class CategorySummary(BaseModel):
     id: uuid.UUID
     name: str
     sort_order: int = 0
+    icon: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -232,6 +233,7 @@ class CategoryInput(BaseModel):
 
     id: uuid.UUID | None = None
     name: str = Field(min_length=1, max_length=100)
+    icon: str | None = Field(default=None, max_length=50)
 
 
 class CategoriesReplaceRequest(BaseModel):

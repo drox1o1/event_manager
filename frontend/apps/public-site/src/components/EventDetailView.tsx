@@ -44,6 +44,20 @@ export function EventDetailView({ event, autoBook }: EventDetailViewProps) {
   const [booking, setBooking] = React.useState(false);
   const [shared, setShared] = React.useState(false);
   const [openFaq, setOpenFaq] = React.useState<number | null>(null);
+  const [lightboxIndex, setLightboxIndex] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    if (lightboxIndex === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLightboxIndex(null);
+      else if (e.key === 'ArrowRight') setLightboxIndex((i) => (i === null ? i : (i + 1) % event.gallery_images.length));
+      else if (e.key === 'ArrowLeft') setLightboxIndex((i) => (i === null ? i : (i - 1 + event.gallery_images.length) % event.gallery_images.length));
+    };
+    window.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prevOverflow; };
+  }, [lightboxIndex, event.gallery_images.length]);
 
   React.useEffect(() => { if (autoBook) setBooking(true); }, [autoBook]);
 
@@ -164,8 +178,16 @@ export function EventDetailView({ event, autoBook }: EventDetailViewProps) {
             {event.gallery_images.length > 0 && (
               <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(event.gallery_images.length, 3)}, 1fr)`, gap: 12, marginBottom: 36 }}>
                 {event.gallery_images.map((src, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img key={src + i} src={src} alt={`${event.title} photo ${i + 1}`} style={{ width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', borderRadius: 14 }} />
+                  <button
+                    key={src + i}
+                    type="button"
+                    onClick={() => setLightboxIndex(i)}
+                    aria-label={`Open photo ${i + 1} of ${event.gallery_images.length}`}
+                    style={{ padding: 0, border: 'none', background: 'none', cursor: 'zoom-in', borderRadius: 14 }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={src} alt={`${event.title} photo ${i + 1}`} style={{ display: 'block', width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', borderRadius: 14 }} />
+                  </button>
                 ))}
               </div>
             )}
@@ -248,6 +270,60 @@ export function EventDetailView({ event, autoBook }: EventDetailViewProps) {
       )}
 
       {booking && <BookingModal event={event} onClose={() => setBooking(false)} />}
+
+      {lightboxIndex !== null && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${event.title} photo ${lightboxIndex + 1} of ${event.gallery_images.length}`}
+          onClick={() => setLightboxIndex(null)}
+          style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(5,10,25,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? 16 : 48 }}
+        >
+          <button
+            type="button"
+            onClick={() => setLightboxIndex(null)}
+            aria-label="Close"
+            style={{ position: 'absolute', top: isMobile ? 14 : 24, right: isMobile ? 14 : 24, width: 40, height: 40, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.12)', color: '#fff', cursor: 'pointer' }}
+          >
+            <Icon name="x" size={20} />
+          </button>
+
+          {event.gallery_images.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setLightboxIndex((i) => (i === null ? i : (i - 1 + event.gallery_images.length) % event.gallery_images.length)); }}
+                aria-label="Previous photo"
+                style={{ position: 'absolute', left: isMobile ? 8 : 20, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.12)', color: '#fff', cursor: 'pointer' }}
+              >
+                <Icon name="chevron-left" size={22} />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setLightboxIndex((i) => (i === null ? i : (i + 1) % event.gallery_images.length)); }}
+                aria-label="Next photo"
+                style={{ position: 'absolute', right: isMobile ? 8 : 20, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.12)', color: '#fff', cursor: 'pointer' }}
+              >
+                <Icon name="chevron-right" size={22} />
+              </button>
+            </>
+          )}
+
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={event.gallery_images[lightboxIndex]}
+            alt={`${event.title} photo ${lightboxIndex + 1}`}
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 8 }}
+          />
+
+          {event.gallery_images.length > 1 && (
+            <div style={{ position: 'absolute', bottom: isMobile ? 14 : 24, left: 0, right: 0, textAlign: 'center', fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
+              {lightboxIndex + 1} / {event.gallery_images.length}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

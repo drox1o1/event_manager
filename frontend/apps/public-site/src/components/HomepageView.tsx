@@ -132,7 +132,7 @@ function SectionBlock({
         <SectionHeading title={section.title} kicker="Explore" />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 14 }}>
           {categories.map((c: CategorySummary, i) => (
-            <CategoryTile key={c.id} name={c.name} index={i} onClick={() => onOpenCategory(c.name)} />
+            <CategoryTile key={c.id} name={c.name} icon={c.icon} index={i} onClick={() => onOpenCategory(c.name)} />
           ))}
         </div>
       </section>
@@ -185,7 +185,7 @@ function SectionHeading({ title, kicker, noMargin }: { title: string; kicker?: s
 
 const TILE_TINTS = ['#C4143F', '#2253F6', '#0E8A6A', '#B45309', '#7C3AED', '#0369A1', '#BE185D', '#4D7C0F'];
 
-function CategoryTile({ name, index, onClick }: { name: string; index: number; onClick: () => void }) {
+function CategoryTile({ name, icon, index, onClick }: { name: string; icon?: string | null; index: number; onClick: () => void }) {
   const [hover, setHover] = React.useState(false);
   const tint = TILE_TINTS[index % TILE_TINTS.length];
   return (
@@ -206,7 +206,7 @@ function CategoryTile({ name, index, onClick }: { name: string; index: number; o
       }}
     >
       <span style={{ width: 42, height: 42, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: hover ? 'rgba(255,255,255,0.18)' : `${tint}14`, color: hover ? '#fff' : tint, transition: 'all .2s ease' }}>
-        <Icon name={iconForCategory(name)} size={21} />
+        <Icon name={icon || iconForCategory(name)} size={21} />
       </span>
       <span style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 800, color: hover ? '#fff' : 'var(--text-heading)', marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
         {name}<Icon name="arrow-up-right" size={16} />

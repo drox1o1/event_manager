@@ -26,6 +26,7 @@ export function SiteNavbar({ categories, cities }: SiteNavbarProps) {
       onSearchClick={() => router.push('/events')}
       onCategoryClick={(category) => router.push(`/category/${encodeURIComponent(category)}`)}
       onCityChange={(city) => router.push(`/city/${encodeURIComponent(city)}`)}
+      onLogoClick={() => router.push('/')}
     />
   );
 }

@@ -32,6 +32,7 @@ export function PortalShell({ children }: { children: React.ReactNode }) {
       brandLabel="Showtik"
       navItems={NAV_ITEMS.map(({ key, label, icon }) => ({ key, label, icon }))}
       activeKey={activeKey}
+      onBrandClick={() => router.push('/dashboard')}
       onNavigate={(key) => {
         const item = NAV_ITEMS.find((n) => n.key === key);
         if (item) router.push(item.href);

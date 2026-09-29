@@ -17,18 +17,28 @@ export interface SidebarShellProps {
   navItems: SidebarNavItem[];
   activeKey?: string;
   onNavigate?: (key: string) => void;
+  /** Called when the logo/wordmark is clicked -- mirrors the public site,
+   *  where the logo always takes you home (the dashboard, here). */
+  onBrandClick?: () => void;
   footer?: React.ReactNode;
   accentColor?: string;
   children?: React.ReactNode;
 }
 
-function Wordmark({ brandLabel }: { brandLabel: string }) {
-  // Monogram mark (full-colour, shows on the navy sidebar) + white wordmark.
-  return (
+function Wordmark({ brandLabel, onClick }: { brandLabel: string; onClick?: () => void }) {
+  // Monogram mark (full-colour, shows on the navy sidebar) + white wordmark --
+  // the same brand mark used in the public-site logo, recoloured for a dark surface.
+  const content = (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
       <LogoMark style={{ height: 26 }} title={brandLabel} />
       <span style={{ fontSize: 19, fontWeight: 700, color: '#fff' }}>{brandLabel.toLowerCase()}</span>
     </span>
+  );
+  if (!onClick) return content;
+  return (
+    <button type="button" onClick={onClick} aria-label={`${brandLabel} home`} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
+      {content}
+    </button>
   );
 }
 
@@ -36,7 +46,7 @@ function Wordmark({ brandLabel }: { brandLabel: string }) {
  *  On phones the fixed sidebar collapses into a top bar with a hamburger that opens the nav as an overlay drawer.
  *  accentColor lets a surface signal its own identity (e.g. the Super Admin Panel uses the secondary
  *  brand blue) while every primary action elsewhere still uses the one confident accent. */
-export function SidebarShell({ brandLabel = 'Showtik', navItems = [], activeKey, onNavigate, footer, accentColor = 'var(--color-accent)', children }: SidebarShellProps) {
+export function SidebarShell({ brandLabel = 'Showtik', navItems = [], activeKey, onNavigate, onBrandClick, footer, accentColor = 'var(--color-accent)', children }: SidebarShellProps) {
   const isMobile = useIsMobile();
   const [drawerOpen, setDrawerOpen] = React.useState(false);
 
@@ -77,7 +87,7 @@ export function SidebarShell({ brandLabel = 'Showtik', navItems = [], activeKey,
     return (
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh', fontFamily: 'var(--font-sans)', background: 'var(--surface-page)' }}>
         <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: 'var(--color-ink)', position: 'sticky', top: 0, zIndex: 30 }}>
-          <Wordmark brandLabel={brandLabel} />
+          <Wordmark brandLabel={brandLabel} onClick={onBrandClick} />
           <button onClick={() => setDrawerOpen(true)} aria-label="Open menu" style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', padding: 4 }}>
             <Icon name="menu" size={24} />
           </button>
@@ -90,7 +100,7 @@ export function SidebarShell({ brandLabel = 'Showtik', navItems = [], activeKey,
               style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: 260, maxWidth: '82vw', background: 'var(--color-ink)', color: 'rgba(255,255,255,0.75)', display: 'flex', flexDirection: 'column', boxShadow: '2px 0 24px rgba(0,0,0,0.3)' }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px' }}>
-                <Wordmark brandLabel={brandLabel} />
+                <Wordmark brandLabel={brandLabel} onClick={onBrandClick} />
                 <button onClick={() => setDrawerOpen(false)} aria-label="Close menu" style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', display: 'flex' }}>
                   <Icon name="x" size={22} />
                 </button>
@@ -109,7 +119,7 @@ export function SidebarShell({ brandLabel = 'Showtik', navItems = [], activeKey,
   return (
     <div style={{ display: 'flex', minHeight: '100dvh', fontFamily: 'var(--font-sans)', background: 'var(--surface-page)' }}>
       <aside style={{ width: 240, background: 'var(--gradient-sidebar)', color: 'rgba(255,255,255,0.75)', display: 'flex', flexDirection: 'column', flex: 'none' }}>
-        <div style={{ padding: '22px 24px' }}><Wordmark brandLabel={brandLabel} /></div>
+        <div style={{ padding: '22px 24px' }}><Wordmark brandLabel={brandLabel} onClick={onBrandClick} /></div>
         {navList}
         {footer && <div style={{ padding: 16, borderTop: '1px solid rgba(255,255,255,0.1)' }}>{footer}</div>}
       </aside>

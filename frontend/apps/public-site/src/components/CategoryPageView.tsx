@@ -9,11 +9,14 @@ import { iconForCategory } from '@/lib/categoryIcons';
 
 export interface CategoryPageViewProps {
   category: string;
+  /** Super-admin-picked icon for this category, if set; falls back to the
+   *  name-based default. */
+  icon?: string | null;
   events: EventSummary[];
 }
 
 /** CategoryPage — category header (icon, name, count) + filtered event grid. */
-export function CategoryPageView({ category, events }: CategoryPageViewProps) {
+export function CategoryPageView({ category, icon, events }: CategoryPageViewProps) {
   const router = useRouter();
 
   return (
@@ -25,7 +28,7 @@ export function CategoryPageView({ category, events }: CategoryPageViewProps) {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 18, marginBottom: 28 }}>
         <div style={{ width: 60, height: 60, borderRadius: 'var(--radius-card)', background: 'var(--gradient-brand)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <Icon name={iconForCategory(category)} size={28} color="#fff" />
+          <Icon name={icon || iconForCategory(category)} size={28} color="#fff" />
         </div>
         <div>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 5vw, 38px)', fontWeight: 800, letterSpacing: '-0.02em', textTransform: 'uppercase', color: 'var(--text-heading)', margin: '0 0 4px' }}>{category}</h1>

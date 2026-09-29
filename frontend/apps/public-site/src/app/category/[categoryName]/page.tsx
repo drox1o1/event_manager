@@ -11,9 +11,11 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   const { categoryName } = await params;
   const category = decodeURIComponent(categoryName);
 
-  const { events } = await publicApi
-    .listEvents({ category, pageSize: 24 })
-    .catch(() => ({ events: [], page: 1, page_size: 24 }));
+  const [{ events }, { categories }] = await Promise.all([
+    publicApi.listEvents({ category, pageSize: 24 }).catch(() => ({ events: [], page: 1, page_size: 24 })),
+    publicApi.listCategories().catch(() => ({ categories: [] })),
+  ]);
+  const icon = categories.find((c) => c.name === category)?.icon ?? null;
 
-  return <CategoryPageView category={category} events={events} />;
+  return <CategoryPageView category={category} icon={icon} events={events} />;
 }

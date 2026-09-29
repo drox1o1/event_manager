@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Icon, Input, Button, Switch, Textarea, Toast, PageHeading } from '@showtik/ui';
+import { Icon, Input, Button, Switch, Textarea, Toast, PageHeading, useDirtyGuard } from '@showtik/ui';
 import { adminApi, ApiError } from '@showtik/api-client';
 import type { PlatformSettings } from '@showtik/api-client';
 import { AdminShell } from '@/components/AdminShell';
@@ -26,15 +26,22 @@ function SettingsCard({ icon, title, description, children }: { icon: string; ti
 
 function SettingsInner() {
   const token = useRequireAuth();
+  const { setDirty } = useDirtyGuard();
   const [settings, setSettings] = React.useState<PlatformSettings | null>(null);
+  const savedSnapshot = React.useRef<string>('');
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!token) return;
-    adminApi.getSettings(token).then(setSettings).catch(() => setError('Could not load platform settings.'));
+    adminApi.getSettings(token).then((s) => { setSettings(s); savedSnapshot.current = JSON.stringify(s); }).catch(() => setError('Could not load platform settings.'));
   }, [token]);
+
+  React.useEffect(() => {
+    if (!settings) return;
+    setDirty(JSON.stringify(settings) !== savedSnapshot.current);
+  }, [settings, setDirty]);
 
   const update = <K extends keyof PlatformSettings>(key: K, value: PlatformSettings[K]) =>
     setSettings((prev) => (prev ? { ...prev, [key]: value } : prev));
@@ -53,6 +60,8 @@ function SettingsInner() {
         email_footer_note: settings.email_footer_note || undefined,
       });
       setSettings(updated);
+      savedSnapshot.current = JSON.stringify(updated);
+      setDirty(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err) {
