@@ -89,7 +89,7 @@ def _fake_settings(**overrides):
 
 def test_publish_event_rejects_when_already_live(monkeypatch, mock_jwt_secret):
     fake_event = _fake_event(status=EventStatus.LIVE)
-    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_event))
+    monkeypatch.setattr("admin_routes.get_session", _fake_get_session(fake_event))
 
     from authenticated_api.handler import handler as api_handler
 
@@ -105,7 +105,7 @@ def _with_ticket(event):
 
 def test_publish_event_rejects_without_tickets(monkeypatch, mock_jwt_secret):
     fake_event = _fake_event(status=EventStatus.APPROVED)
-    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_event))
+    monkeypatch.setattr("admin_routes.get_session", _fake_get_session(fake_event))
 
     from authenticated_api.handler import handler as api_handler
 
@@ -117,7 +117,7 @@ def test_publish_event_rejects_without_tickets(monkeypatch, mock_jwt_secret):
 
 def test_admin_can_publish_straight_from_draft(monkeypatch, mock_jwt_secret):
     fake_event = _with_ticket(_fake_event(status=EventStatus.DRAFT))
-    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_event))
+    monkeypatch.setattr("admin_routes.get_session", _fake_get_session(fake_event))
 
     from authenticated_api.handler import handler as api_handler
 
@@ -129,7 +129,7 @@ def test_admin_can_publish_straight_from_draft(monkeypatch, mock_jwt_secret):
 
 def test_publish_event_succeeds_from_approved(monkeypatch, mock_jwt_secret):
     fake_event = _with_ticket(_fake_event(status=EventStatus.APPROVED))
-    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_event))
+    monkeypatch.setattr("admin_routes.get_session", _fake_get_session(fake_event))
 
     from authenticated_api.handler import handler as api_handler
 
@@ -140,7 +140,7 @@ def test_publish_event_succeeds_from_approved(monkeypatch, mock_jwt_secret):
 
 
 def test_suspend_organiser_not_found(monkeypatch, mock_jwt_secret):
-    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(None))
+    monkeypatch.setattr("admin_routes.get_session", _fake_get_session(None))
 
     from authenticated_api.handler import handler as api_handler
 
@@ -161,7 +161,7 @@ def test_reactivate_organiser_succeeds(monkeypatch, mock_jwt_secret):
         status=OrganiserStatus.SUSPENDED,
     )
     monkeypatch.setattr(
-        "authenticated_api.handler.get_session", _fake_get_session(fake_organiser)
+        "admin_routes.get_session", _fake_get_session(fake_organiser)
     )
 
     from authenticated_api.handler import handler as api_handler
@@ -181,7 +181,7 @@ def test_approve_refund_rejects_when_already_resolved(monkeypatch, mock_jwt_secr
         reason="Can't attend anymore",
         status=RefundStatus.APPROVED,
     )
-    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_refund))
+    monkeypatch.setattr("admin_routes.get_session", _fake_get_session(fake_refund))
 
     from authenticated_api.handler import handler as api_handler
 
@@ -197,7 +197,7 @@ def test_reject_refund_succeeds(monkeypatch, mock_jwt_secret):
         reason="Can't attend anymore",
         status=RefundStatus.PENDING,
     )
-    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_refund))
+    monkeypatch.setattr("admin_routes.get_session", _fake_get_session(fake_refund))
 
     from authenticated_api.handler import handler as api_handler
 
@@ -216,7 +216,7 @@ def test_reject_refund_succeeds(monkeypatch, mock_jwt_secret):
 def test_get_settings_returns_existing_row(monkeypatch, mock_jwt_secret):
     settings = _fake_settings(commission_pct=Decimal("10.00"))
     monkeypatch.setattr(
-        "authenticated_api.handler.get_session",
+        "admin_content_routes.get_session",
         _fake_get_session(execute_scalar_one=settings),
     )
 
@@ -233,7 +233,7 @@ def test_get_settings_returns_existing_row(monkeypatch, mock_jwt_secret):
 def test_update_settings_updates_existing_row(monkeypatch, mock_jwt_secret):
     settings = _fake_settings()
     monkeypatch.setattr(
-        "authenticated_api.handler.get_session",
+        "admin_content_routes.get_session",
         _fake_get_session(execute_scalar_one=settings),
     )
 
@@ -255,8 +255,8 @@ def test_approve_organiser_sets_verified(monkeypatch, mock_jwt_secret):
         id=uuid.uuid4(), org_name="New Org", contact_name="N", email="n@example.com",
         password_hash="x", status=OrganiserStatus.PENDING,
     )
-    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_organiser))
-    monkeypatch.setattr("authenticated_api.handler.publish", MagicMock())
+    monkeypatch.setattr("admin_routes.get_session", _fake_get_session(fake_organiser))
+    monkeypatch.setattr("events_service.publish", MagicMock())
 
     from authenticated_api.handler import handler as api_handler
 
@@ -272,7 +272,7 @@ def test_reject_organiser_requires_reason(monkeypatch, mock_jwt_secret):
         id=uuid.uuid4(), org_name="New Org", contact_name="N", email="n@example.com",
         password_hash="x", status=OrganiserStatus.PENDING,
     )
-    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_organiser))
+    monkeypatch.setattr("admin_routes.get_session", _fake_get_session(fake_organiser))
 
     from authenticated_api.handler import handler as api_handler
 

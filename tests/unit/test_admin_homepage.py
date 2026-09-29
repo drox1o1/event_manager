@@ -67,7 +67,7 @@ def test_get_homepage_returns_settings_and_sections(monkeypatch, mock_jwt_secret
         mode=HomepageSectionMode.AUTO, enabled=True, sort_order=0,
     )
     get_session, _ = _fake_session(scalar_one=settings, scalars_all=[section])
-    monkeypatch.setattr("authenticated_api.handler.get_session", get_session)
+    monkeypatch.setattr("admin_content_routes.get_session", get_session)
 
     from authenticated_api.handler import handler as api_handler
 
@@ -81,7 +81,7 @@ def test_get_homepage_returns_settings_and_sections(monkeypatch, mock_jwt_secret
 def test_replace_homepage_persists_and_forces_category_grid_auto(monkeypatch, mock_jwt_secret):
     settings = HomepageSettings(id=uuid.uuid4())
     get_session, session = _fake_session(scalar_one=settings, assign_ids=True)
-    monkeypatch.setattr("authenticated_api.handler.get_session", get_session)
+    monkeypatch.setattr("admin_content_routes.get_session", get_session)
 
     from authenticated_api.handler import handler as api_handler
 
@@ -111,7 +111,7 @@ def test_replace_homepage_persists_and_forces_category_grid_auto(monkeypatch, mo
 
 def test_replace_homepage_requires_admin(monkeypatch, mock_jwt_secret):
     get_session, _ = _fake_session()
-    monkeypatch.setattr("authenticated_api.handler.get_session", get_session)
+    monkeypatch.setattr("admin_content_routes.get_session", get_session)
 
     from authenticated_api.handler import handler as api_handler
 

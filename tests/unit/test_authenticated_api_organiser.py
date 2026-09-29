@@ -75,7 +75,7 @@ def _fake_event(**overrides):
 
 def test_get_organiser_event_rejects_when_not_owner(monkeypatch, mock_jwt_secret):
     fake_event = _fake_event()
-    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_event))
+    monkeypatch.setattr("events_service.get_session", _fake_get_session(fake_event))
 
     from authenticated_api.handler import handler as api_handler
 
@@ -90,7 +90,7 @@ def test_get_organiser_event_rejects_when_not_owner(monkeypatch, mock_jwt_secret
 
 def test_get_organiser_event_succeeds_for_owner(monkeypatch, mock_jwt_secret):
     fake_event = _fake_event()
-    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_event))
+    monkeypatch.setattr("events_service.get_session", _fake_get_session(fake_event))
 
     from authenticated_api.handler import handler as api_handler
 
@@ -108,7 +108,7 @@ def test_get_organiser_event_succeeds_for_owner(monkeypatch, mock_jwt_secret):
 
 def test_update_event_rejects_when_not_draft_or_rejected(monkeypatch, mock_jwt_secret):
     fake_event = _fake_event(status=EventStatus.REVIEW)
-    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_event))
+    monkeypatch.setattr("organiser_routes.get_session", _fake_get_session(fake_event))
 
     from authenticated_api.handler import handler as api_handler
 
@@ -124,7 +124,7 @@ def test_update_event_rejects_when_not_draft_or_rejected(monkeypatch, mock_jwt_s
 
 def test_update_event_succeeds_from_draft(monkeypatch, mock_jwt_secret):
     fake_event = _fake_event(status=EventStatus.DRAFT)
-    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_event))
+    monkeypatch.setattr("organiser_routes.get_session", _fake_get_session(fake_event))
 
     from authenticated_api.handler import handler as api_handler
 
@@ -141,7 +141,7 @@ def test_update_event_succeeds_from_draft(monkeypatch, mock_jwt_secret):
 
 def test_create_ticket_tiers_rejects_when_not_owner(monkeypatch, mock_jwt_secret):
     fake_event = _fake_event()
-    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_event))
+    monkeypatch.setattr("organiser_routes.get_session", _fake_get_session(fake_event))
 
     from authenticated_api.handler import handler as api_handler
 
@@ -157,13 +157,13 @@ def test_create_ticket_tiers_rejects_when_not_owner(monkeypatch, mock_jwt_secret
 
 def test_create_banner_upload_url_returns_presigned_url(monkeypatch, mock_jwt_secret):
     fake_event = _fake_event()
-    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_event))
+    monkeypatch.setattr("organiser_routes.get_session", _fake_get_session(fake_event))
     monkeypatch.setenv("BANNERS_BUCKET_NAME", "cyrokx-banners-test")
     monkeypatch.setenv("BANNERS_CDN_DOMAIN", "d123.cloudfront.net")
 
     mock_s3 = MagicMock()
     mock_s3.generate_presigned_url.return_value = "https://example.com/presigned"
-    monkeypatch.setattr("authenticated_api.handler._s3", lambda: mock_s3)
+    monkeypatch.setattr("uploads._s3", lambda: mock_s3)
 
     from authenticated_api.handler import handler as api_handler
 
@@ -184,13 +184,13 @@ def test_create_banner_upload_url_returns_presigned_url(monkeypatch, mock_jwt_se
 
 def test_create_image_upload_url_returns_presigned_url(monkeypatch, mock_jwt_secret):
     fake_event = _fake_event()
-    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_event))
+    monkeypatch.setattr("organiser_routes.get_session", _fake_get_session(fake_event))
     monkeypatch.setenv("BANNERS_BUCKET_NAME", "cyrokx-banners-test")
     monkeypatch.setenv("BANNERS_CDN_DOMAIN", "d123.cloudfront.net")
 
     mock_s3 = MagicMock()
     mock_s3.generate_presigned_url.return_value = "https://example.com/presigned"
-    monkeypatch.setattr("authenticated_api.handler._s3", lambda: mock_s3)
+    monkeypatch.setattr("uploads._s3", lambda: mock_s3)
 
     from authenticated_api.handler import handler as api_handler
 
@@ -214,13 +214,13 @@ def test_upload_url_signs_the_caller_supplied_content_type(monkeypatch, mock_jwt
     PUT sent a Content-Type the signature didn't cover, and S3 rejected it
     with SignatureDoesNotMatch (403) -- see _resolve_image_content_type."""
     fake_event = _fake_event()
-    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_event))
+    monkeypatch.setattr("organiser_routes.get_session", _fake_get_session(fake_event))
     monkeypatch.setenv("BANNERS_BUCKET_NAME", "cyrokx-banners-test")
     monkeypatch.setenv("BANNERS_CDN_DOMAIN", "d123.cloudfront.net")
 
     mock_s3 = MagicMock()
     mock_s3.generate_presigned_url.return_value = "https://example.com/presigned"
-    monkeypatch.setattr("authenticated_api.handler._s3", lambda: mock_s3)
+    monkeypatch.setattr("uploads._s3", lambda: mock_s3)
 
     from authenticated_api.handler import handler as api_handler
 
@@ -242,7 +242,7 @@ def test_upload_url_signs_the_caller_supplied_content_type(monkeypatch, mock_jwt
 
 def test_upload_url_rejects_unsupported_content_type(monkeypatch, mock_jwt_secret):
     fake_event = _fake_event()
-    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_event))
+    monkeypatch.setattr("organiser_routes.get_session", _fake_get_session(fake_event))
     monkeypatch.setenv("BANNERS_BUCKET_NAME", "cyrokx-banners-test")
     monkeypatch.setenv("BANNERS_CDN_DOMAIN", "d123.cloudfront.net")
 
@@ -260,7 +260,7 @@ def test_upload_url_rejects_unsupported_content_type(monkeypatch, mock_jwt_secre
 
 def test_attendees_rejects_when_not_owner(monkeypatch, mock_jwt_secret):
     fake_event = _fake_event()
-    monkeypatch.setattr("authenticated_api.handler.get_session", _fake_get_session(fake_event))
+    monkeypatch.setattr("events_service.get_session", _fake_get_session(fake_event))
 
     from authenticated_api.handler import handler as api_handler
 

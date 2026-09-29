@@ -83,7 +83,7 @@ def _fake_session(execute_results=None, assign_ids=False):
 def test_list_categories_admin(monkeypatch, mock_jwt_secret):
     cats = [Category(id=uuid.uuid4(), name="Sports", sort_order=0), Category(id=uuid.uuid4(), name="Music", sort_order=1)]
     get_session, _ = _fake_session(execute_results=[_scalars_all(cats)])
-    monkeypatch.setattr("authenticated_api.handler.get_session", get_session)
+    monkeypatch.setattr("admin_content_routes.get_session", get_session)
 
     from authenticated_api.handler import handler as api_handler
 
@@ -96,7 +96,7 @@ def test_list_categories_admin(monkeypatch, mock_jwt_secret):
 def test_replace_categories_creates_updates_and_reorders(monkeypatch, mock_jwt_secret):
     existing = Category(id=uuid.uuid4(), name="Sports", sort_order=0)
     get_session, session = _fake_session(execute_results=[_scalars_all([existing])], assign_ids=True)
-    monkeypatch.setattr("authenticated_api.handler.get_session", get_session)
+    monkeypatch.setattr("admin_content_routes.get_session", get_session)
 
     from authenticated_api.handler import handler as api_handler
 
@@ -111,7 +111,7 @@ def test_replace_categories_creates_updates_and_reorders(monkeypatch, mock_jwt_s
 
 def test_replace_categories_rejects_duplicate_names(monkeypatch, mock_jwt_secret):
     get_session, _ = _fake_session()
-    monkeypatch.setattr("authenticated_api.handler.get_session", get_session)
+    monkeypatch.setattr("admin_content_routes.get_session", get_session)
 
     from authenticated_api.handler import handler as api_handler
 
@@ -127,7 +127,7 @@ def test_replace_categories_blocks_delete_when_events_reference_it(monkeypatch, 
         _scalars_all([to_delete, keep]),  # existing categories
         _scalars_all(["Sports"]),  # blocked names (events still use "Sports")
     ])
-    monkeypatch.setattr("authenticated_api.handler.get_session", get_session)
+    monkeypatch.setattr("admin_content_routes.get_session", get_session)
 
     from authenticated_api.handler import handler as api_handler
 
@@ -140,7 +140,7 @@ def test_replace_categories_blocks_delete_when_events_reference_it(monkeypatch, 
 
 def test_replace_categories_requires_admin(monkeypatch, mock_jwt_secret):
     get_session, _ = _fake_session()
-    monkeypatch.setattr("authenticated_api.handler.get_session", get_session)
+    monkeypatch.setattr("admin_content_routes.get_session", get_session)
 
     from authenticated_api.handler import handler as api_handler
 
@@ -160,7 +160,7 @@ def test_list_site_pages(monkeypatch, mock_jwt_secret):
 
     pages = [SitePage(id=uuid.uuid4(), slug="about", title="About", body="x", updated_at=dt.datetime.now(dt.timezone.utc))]
     get_session, _ = _fake_session(execute_results=[_scalars_all(pages)])
-    monkeypatch.setattr("authenticated_api.handler.get_session", get_session)
+    monkeypatch.setattr("admin_content_routes.get_session", get_session)
 
     from authenticated_api.handler import handler as api_handler
 
@@ -172,7 +172,7 @@ def test_list_site_pages(monkeypatch, mock_jwt_secret):
 
 def test_get_site_page_admin_404(monkeypatch, mock_jwt_secret):
     get_session, _ = _fake_session(execute_results=[_scalar_one(None)])
-    monkeypatch.setattr("authenticated_api.handler.get_session", get_session)
+    monkeypatch.setattr("admin_content_routes.get_session", get_session)
 
     from authenticated_api.handler import handler as api_handler
 
@@ -185,7 +185,7 @@ def test_get_site_page_admin_404(monkeypatch, mock_jwt_secret):
 
 def test_upsert_site_page_creates_when_missing(monkeypatch, mock_jwt_secret):
     get_session, session = _fake_session(execute_results=[_scalar_one(None)], assign_ids=True)
-    monkeypatch.setattr("authenticated_api.handler.get_session", get_session)
+    monkeypatch.setattr("admin_content_routes.get_session", get_session)
 
     from authenticated_api.handler import handler as api_handler
 
@@ -203,7 +203,7 @@ def test_upsert_site_page_creates_when_missing(monkeypatch, mock_jwt_secret):
 
 def test_upsert_site_page_rejects_bad_slug(monkeypatch, mock_jwt_secret):
     get_session, _ = _fake_session()
-    monkeypatch.setattr("authenticated_api.handler.get_session", get_session)
+    monkeypatch.setattr("admin_content_routes.get_session", get_session)
 
     from authenticated_api.handler import handler as api_handler
 
@@ -218,7 +218,7 @@ def test_upsert_site_page_rejects_bad_slug(monkeypatch, mock_jwt_secret):
 def test_delete_site_page(monkeypatch, mock_jwt_secret):
     page = SitePage(id=uuid.uuid4(), slug="about", title="About", body="x")
     get_session, session = _fake_session(execute_results=[_scalar_one(page)])
-    monkeypatch.setattr("authenticated_api.handler.get_session", get_session)
+    monkeypatch.setattr("admin_content_routes.get_session", get_session)
 
     from authenticated_api.handler import handler as api_handler
 

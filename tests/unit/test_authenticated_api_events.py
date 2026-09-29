@@ -78,7 +78,7 @@ def _fake_event(**overrides):
 def test_submit_event_rejects_event_already_live(monkeypatch, mock_jwt_secret):
     fake_event = _fake_event(status=EventStatus.LIVE)
     monkeypatch.setattr(
-        "authenticated_api.handler.get_session", _fake_get_session(fake_event)
+        "organiser_routes.get_session", _fake_get_session(fake_event)
     )
 
     from authenticated_api.handler import handler as api_handler
@@ -98,7 +98,7 @@ def test_submit_event_succeeds_from_draft(monkeypatch, mock_jwt_secret):
         TicketTier(name="General", price=499, quantity_total=100, quantity_sold=0, sale_status="on_sale")
     ]
     monkeypatch.setattr(
-        "authenticated_api.handler.get_session", _fake_get_session(fake_event)
+        "organiser_routes.get_session", _fake_get_session(fake_event)
     )
 
     from authenticated_api.handler import handler as api_handler
@@ -116,7 +116,7 @@ def test_submit_event_succeeds_from_draft(monkeypatch, mock_jwt_secret):
 def test_submit_event_rejects_when_organiser_does_not_own_event(monkeypatch, mock_jwt_secret):
     fake_event = _fake_event(status=EventStatus.DRAFT)
     monkeypatch.setattr(
-        "authenticated_api.handler.get_session", _fake_get_session(fake_event)
+        "organiser_routes.get_session", _fake_get_session(fake_event)
     )
 
     from authenticated_api.handler import handler as api_handler
@@ -133,7 +133,7 @@ def test_submit_event_rejects_when_organiser_does_not_own_event(monkeypatch, moc
 def test_approve_event_rejects_when_not_in_review(monkeypatch, mock_jwt_secret):
     fake_event = _fake_event(status=EventStatus.DRAFT)
     monkeypatch.setattr(
-        "authenticated_api.handler.get_session", _fake_get_session(fake_event)
+        "admin_routes.get_session", _fake_get_session(fake_event)
     )
 
     from authenticated_api.handler import handler as api_handler
@@ -150,7 +150,7 @@ def test_approve_event_rejects_when_not_in_review(monkeypatch, mock_jwt_secret):
 def test_approve_event_succeeds_from_review(monkeypatch, mock_jwt_secret):
     fake_event = _fake_event(status=EventStatus.REVIEW)
     monkeypatch.setattr(
-        "authenticated_api.handler.get_session", _fake_get_session(fake_event)
+        "admin_routes.get_session", _fake_get_session(fake_event)
     )
 
     from authenticated_api.handler import handler as api_handler
@@ -168,7 +168,7 @@ def test_approve_event_succeeds_from_review(monkeypatch, mock_jwt_secret):
 def test_submit_event_rejects_without_tickets(monkeypatch, mock_jwt_secret):
     fake_event = _fake_event(status=EventStatus.DRAFT)
     monkeypatch.setattr(
-        "authenticated_api.handler.get_session", _fake_get_session(fake_event)
+        "organiser_routes.get_session", _fake_get_session(fake_event)
     )
 
     from authenticated_api.handler import handler as api_handler
@@ -195,7 +195,7 @@ def test_pending_organiser_cannot_create_event(monkeypatch, mock_jwt_secret):
     def _get_session():
         yield session
 
-    monkeypatch.setattr("authenticated_api.handler.get_session", _get_session)
+    monkeypatch.setattr("organiser_routes.get_session", _get_session)
 
     from authenticated_api.handler import handler as api_handler
 
