@@ -6,7 +6,11 @@ to end). `organiser_id=None` throughout this module means "acting as super
 admin".
 """
 
+import base64
+import csv
+import io
 import uuid
+from decimal import ROUND_HALF_UP, Decimal
 
 from app import logger
 from aws_lambda_powertools.event_handler.exceptions import (
@@ -410,6 +414,156 @@ def attendees_impl(event_id: str, organiser_id: uuid.UUID | None) -> dict:
             for ticket in oi.tickets
         ]
     return {"attendees": attendees}
+
+
+EXPORT_FORMATS = ("csv", "xlsx")
+_PAYMENT_STATUSES = {s.value for s in PaymentStatus}
+_PAISE = Decimal("0.01")
+
+
+def _share(amount, part, whole) -> Decimal:
+    """`amount` split in proportion part/whole (e.g. an order's discount or
+    total spread over its tickets by ticket price), rounded to paise."""
+    amount, part, whole = Decimal(amount or 0), Decimal(part or 0), Decimal(whole or 0)
+    if whole <= 0:
+        return Decimal("0.00")
+    return (amount * part / whole).quantize(_PAISE, rounding=ROUND_HALF_UP)
+
+
+def _answer_text(answer) -> str:
+    if isinstance(answer, list):
+        return ", ".join(str(a) for a in answer)
+    return "" if answer is None else str(answer)
+
+
+def export_attendees_impl(event_id: str, organiser_id: uuid.UUID | None, fmt: str, status: str | None) -> dict:
+    """Registration export: one row per participant with every registration
+    form field as its own column plus the transaction details. Returned as
+    base64 in JSON ({filename, content_type, data}) so it passes through API
+    Gateway without binary media-type setup; the browser turns it into a file.
+
+    status: a payment status to keep (success/pending/failed/refunded), or
+    None/"all" for every order."""
+    if fmt not in EXPORT_FORMATS:
+        raise BadRequestError("format must be csv or xlsx")
+    if status in (None, "", "all"):
+        status = None
+    elif status not in _PAYMENT_STATUSES:
+        raise BadRequestError(f"status must be one of: all, {', '.join(sorted(_PAYMENT_STATUSES))}")
+
+    event_uuid = parse_uuid(event_id)
+    with get_session() as session:
+        event = load_event_for(session, event_uuid, organiser_id, (selectinload(Event.form_fields),))
+        query = (
+            select(Order)
+            .where(Order.event_id == event_uuid)
+            .options(
+                selectinload(Order.order_items).selectinload(OrderItem.ticket_tier),
+                selectinload(Order.order_items).selectinload(OrderItem.tickets),
+                selectinload(Order.form_responses),
+            )
+            .order_by(Order.created_at.asc())
+        )
+        if status is not None:
+            query = query.where(Order.payment_status == PaymentStatus(status))
+        orders = session.execute(query).scalars().all()
+
+        # Form columns: the event's current fields in form order, then any
+        # labels only found in older answers (fields since renamed/deleted).
+        fields = sorted(event.form_fields, key=lambda f: f.sort_order)
+        columns = [f.label for f in fields]
+        label_by_id = {str(f.id): f.label for f in fields}
+
+        def answer_map(entries) -> dict:
+            out: dict = {}
+            for a in entries:
+                label = label_by_id.get(str(a.get("field_id") or "")) or a.get("field_label") or ""
+                if not label:
+                    continue
+                if label not in columns:
+                    columns.append(label)
+                out[label] = _answer_text(a.get("answer"))
+            return out
+
+        rows = []
+        for order in orders:
+            order_answers = answer_map(
+                {"field_id": str(r.field_id) if r.field_id else None, "field_label": r.field_label, "answer": r.answer}
+                for r in order.form_responses
+            )
+            for oi in order.order_items:
+                for ticket in oi.tickets:
+                    answers = {**order_answers, **answer_map(ticket.attendee_answers or [])}
+                    rows.append((order, oi, ticket, answers))
+
+        header = [
+            "Order ID", "Ticket ID", "Transaction ID", "Transaction date",
+            "Buyer name", "Buyer mobile", "Buyer email",
+            "Participant name", "Race / category", "Session date",
+            *columns,
+            "Registration amount", "Discount amount", "Promo code", "Final amount paid",
+            "Payment status", "Approval status", "Checked in",
+        ]
+        table = [header]
+        for order, oi, ticket, answers in rows:
+            table.append([
+                short_code(order.id),
+                short_code(ticket.id),
+                order.payment_gateway_ref or "",
+                order.created_at.strftime("%d-%m-%Y %H:%M") if order.created_at else "",
+                order.buyer_name,
+                order.buyer_phone,
+                order.buyer_email,
+                ticket.attendee_name or order.buyer_name,
+                oi.ticket_tier.name if oi.ticket_tier else "",
+                order.occurrence_date.strftime("%d-%m-%Y") if order.occurrence_date else "",
+                *[answers.get(c, "") for c in columns],
+                Decimal(oi.unit_price or 0).quantize(_PAISE),
+                _share(order.discount_amount, oi.unit_price, order.subtotal),
+                order.promo_code or "",
+                _share(order.total_amount, oi.unit_price, order.subtotal),
+                order.payment_status.value,
+                ticket.approval_status,
+                "Yes" if ticket.checked_in else "No",
+            ])
+        title = event.title
+
+    stem = "".join(c if c.isalnum() else "-" for c in title.lower()).strip("-")[:60] or "event"
+    filename = f"{stem}-registrations.{fmt}"
+    if fmt == "csv":
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        for row in table:
+            writer.writerow([str(v) for v in row])
+        # BOM so Excel opens UTF-8 (names in Hindi etc.) correctly.
+        data = ("\ufeff" + buf.getvalue()).encode("utf-8")
+        content_type = "text/csv"
+    else:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Registrations"
+        for row in table:
+            ws.append([float(v) if isinstance(v, Decimal) else v for v in row])
+        for cell in ws[1]:
+            cell.font = Font(bold=True)
+        ws.freeze_panes = "A2"
+        for col in ws.columns:
+            width = max(len(str(c.value or "")) for c in col)
+            ws.column_dimensions[col[0].column_letter].width = min(max(width + 2, 10), 50)
+        out = io.BytesIO()
+        wb.save(out)
+        data = out.getvalue()
+        content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+    return {
+        "filename": filename,
+        "content_type": content_type,
+        "row_count": len(table) - 1,
+        "data": base64.b64encode(data).decode("ascii"),
+    }
 
 
 def ticket_decision_impl(event_id: str, ticket_id: str, decision: str, organiser_id: uuid.UUID | None) -> dict:

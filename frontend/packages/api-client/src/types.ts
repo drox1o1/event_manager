@@ -612,6 +612,16 @@ export interface AttendeeListResponse {
   attendees: Attendee[];
 }
 
+export type RegistrationExportFormat = 'csv' | 'xlsx';
+
+/** Server-built registration export, base64-encoded (see downloadExport). */
+export interface RegistrationExport {
+  filename: string;
+  content_type: string;
+  row_count: number;
+  data: string;
+}
+
 // --- Admin: moderation ---
 
 export interface ModerationQueueItem {

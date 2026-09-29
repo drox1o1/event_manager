@@ -4,6 +4,8 @@ import { apiFetch } from './http';
 import type {
   AdminEventListResponse,
   AttendeeListResponse,
+  RegistrationExport,
+  RegistrationExportFormat,
   BannerUploadUrlResponse,
   EventCreateRequest,
   EventImageInput,
@@ -207,6 +209,11 @@ export function replaceFormFields(token: string, eventId: string, fields: FormFi
 
 export function listAttendees(token: string, eventId: string): Promise<AttendeeListResponse> {
   return apiFetch<AttendeeListResponse>(`/admin/events/${eventId}/attendees`, { token });
+}
+
+/** Registration export (every form field + transaction columns) as CSV or Excel. */
+export function exportAttendees(token: string, eventId: string, format: RegistrationExportFormat, status: string = 'all'): Promise<RegistrationExport> {
+  return apiFetch<RegistrationExport>(`/admin/events/${eventId}/attendees`, { token, query: { format, status } });
 }
 
 export function approveTicket(token: string, eventId: string, ticketId: string): Promise<{ approval_status: string }> {

@@ -5,6 +5,8 @@
 import { apiFetch } from './http';
 import type {
   AttendeeListResponse,
+  RegistrationExport,
+  RegistrationExportFormat,
   BannerUploadUrlResponse,
   EventActionResponse,
   EventCreateRequest,
@@ -83,6 +85,11 @@ export function createBannerUploadUrl(token: string, eventId: string, contentTyp
 
 export function listAttendees(token: string, eventId: string): Promise<AttendeeListResponse> {
   return apiFetch<AttendeeListResponse>(`/organiser/events/${eventId}/attendees`, { token });
+}
+
+/** Registration export (every form field + transaction columns) as CSV or Excel. */
+export function exportAttendees(token: string, eventId: string, format: RegistrationExportFormat, status: string = 'all'): Promise<RegistrationExport> {
+  return apiFetch<RegistrationExport>(`/organiser/events/${eventId}/attendees`, { token, query: { format, status } });
 }
 
 // --- Registration form builder ---

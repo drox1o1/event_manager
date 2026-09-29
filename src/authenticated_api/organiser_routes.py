@@ -239,6 +239,10 @@ def replace_event_images(event_id: str):
 
 @app.get("/organiser/events/<event_id>/attendees")
 def list_attendees(event_id: str):
+    """Registrations list, or with ?format=csv|xlsx (&status=) the export file."""
+    params = app.current_event.query_string_parameters or {}
+    if params.get("format"):
+        return svc.export_attendees_impl(event_id, require_organiser_id(), params["format"], params.get("status"))
     return svc.attendees_impl(event_id, require_organiser_id())
 
 

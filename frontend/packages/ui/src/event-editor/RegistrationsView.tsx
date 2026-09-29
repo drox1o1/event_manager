@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import type { Attendee, AttendeeListResponse } from '@showtik/api-client';
+import type { Attendee, AttendeeListResponse, RegistrationExport, RegistrationExportFormat } from '@showtik/api-client';
 import { formatINR, formatTimestamp } from '@showtik/api-client';
 import { Icon } from '../components/icons/Icon';
 import { Input } from '../components/forms/Input';
@@ -11,6 +11,7 @@ import { Notice, errMessage } from './ui';
 
 export interface RegistrationsApi {
   listAttendees(token: string, eventId: string): Promise<AttendeeListResponse>;
+  exportAttendees(token: string, eventId: string, format: RegistrationExportFormat, status?: string): Promise<RegistrationExport>;
   approveTicket(token: string, eventId: string, ticketId: string): Promise<unknown>;
   rejectTicket(token: string, eventId: string, ticketId: string): Promise<unknown>;
 }
@@ -19,15 +20,22 @@ function answerText(a: string | string[]): string {
   return Array.isArray(a) ? a.join(', ') : a;
 }
 
-function toCsv(rows: Attendee[]): string {
-  const labels = Array.from(new Set(rows.flatMap((r) => r.attendee_answers.map((x) => x.field_label))));
-  const header = ['Ticket ID', 'Order ID', 'Participant', 'Participant email', 'Participant phone', 'Ticket type', 'Price', 'Approval', 'Checked in', 'Buyer', 'Buyer email', 'Buyer phone', 'Session', 'Booked at', ...labels];
-  const body = rows.map((r) => {
-    const byLabel = Object.fromEntries(r.attendee_answers.map((x) => [x.field_label, answerText(x.answer)]));
-    return [r.ticket_code, r.order_code, r.attendee_name, r.attendee_email ?? '', r.attendee_phone ?? '', r.ticket_tier ?? '', r.unit_price, r.approval_status, r.checked_in ? 'Yes' : 'No', r.buyer_name, r.buyer_email, r.buyer_phone, r.occurrence_date ?? '', r.purchased_at, ...labels.map((l) => byLabel[l] ?? '')];
-  });
-  return [header, ...body].map((cols) => cols.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+/** Saves a server-built export (base64 in JSON) as a file. */
+function downloadExport(file: RegistrationExport) {
+  const bytes = Uint8Array.from(atob(file.data), (c) => c.charCodeAt(0));
+  const url = URL.createObjectURL(new Blob([bytes], { type: file.content_type }));
+  const a = document.createElement('a');
+  a.href = url; a.download = file.filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+const EXPORT_STATUSES = [
+  { value: 'all', label: 'All payments' },
+  { value: 'success', label: 'Paid only' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'failed', label: 'Failed' },
+  { value: 'refunded', label: 'Refunded' },
+];
 
 const APPROVAL: Record<string, { bg: string; fg: string; label: string }> = {
   approved: { bg: 'var(--status-success-bg)', fg: 'var(--status-success-text)', label: 'Confirmed' },
@@ -37,7 +45,7 @@ const APPROVAL: Record<string, { bg: string; fg: string; label: string }> = {
 
 /** Registrations — one row per ticket/participant, grouped by the order
  *  (one payment) they were bought in. Approve/reject tickets that require it,
- *  filter by ticket type, and export everything including form answers. */
+ *  filter by ticket type, and export everything (server-built CSV / Excel). */
 export function RegistrationsView({ api, token, eventId }: { api: RegistrationsApi; token: string; eventId: string }) {
   const [rows, setRows] = React.useState<Attendee[] | null>(null);
   const [query, setQuery] = React.useState('');
@@ -46,6 +54,25 @@ export function RegistrationsView({ api, token, eventId }: { api: RegistrationsA
   const [open, setOpen] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [exportOpen, setExportOpen] = React.useState(false);
+  const [exportStatus, setExportStatus] = React.useState('all');
+  const [exporting, setExporting] = React.useState<RegistrationExportFormat | null>(null);
+  const exportRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!exportOpen) return;
+    const onDoc = (e: MouseEvent) => { if (exportRef.current && !exportRef.current.contains(e.target as Node)) setExportOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [exportOpen]);
+
+  const runExport = async (format: RegistrationExportFormat) => {
+    setExporting(format); setError(null);
+    try {
+      downloadExport(await api.exportAttendees(token, eventId, format, exportStatus));
+      setExportOpen(false);
+    } catch (err) { setError(errMessage(err, 'Could not export registrations.')); } finally { setExporting(null); }
+  };
 
   const load = React.useCallback(() => {
     api.listAttendees(token, eventId).then((r) => setRows(r.attendees)).catch((err) => setError(errMessage(err, 'Could not load registrations.')));
@@ -72,14 +99,6 @@ export function RegistrationsView({ api, token, eventId }: { api: RegistrationsA
   );
   const pending = all.filter((r) => r.approval_status === 'pending').length;
   const orders = new Set(all.map((r) => r.order_id)).size;
-
-  const exportCsv = () => {
-    const blob = new Blob([toCsv(filtered)], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `registrations-${eventId.slice(0, 8)}.csv`; a.click();
-    URL.revokeObjectURL(url);
-  };
 
   return (
     <div>
@@ -108,7 +127,21 @@ export function RegistrationsView({ api, token, eventId }: { api: RegistrationsA
         {pending > 0 && (
           <button type="button" onClick={() => setOnlyPending((v) => !v)} style={{ height: 44, padding: '0 14px', borderRadius: 'var(--radius-pill)', border: `1px solid ${onlyPending ? 'var(--status-warning-text)' : 'var(--border-default)'}`, background: onlyPending ? 'var(--status-warning-bg)' : 'var(--surface-card)', fontWeight: 600, cursor: 'pointer' }}>Needs approval ({pending})</button>
         )}
-        <Button variant="secondary" onClick={exportCsv} disabled={filtered.length === 0}><Icon name="download" size={15} />Export CSV</Button>
+        <div ref={exportRef} style={{ position: 'relative' }}>
+          <Button variant="secondary" onClick={() => setExportOpen((o) => !o)} disabled={all.length === 0} aria-haspopup="menu" aria-expanded={exportOpen}>
+            <Icon name="download" size={15} />Export<Icon name={exportOpen ? 'chevron-up' : 'chevron-down'} size={14} />
+          </Button>
+          {exportOpen && (
+            <div role="menu" style={{ position: 'absolute', right: 0, top: 'calc(100% + 8px)', zIndex: 20, width: 260, background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-modal)', padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.45 }}>Every participant with all registration-form fields, transaction ID and date, amounts, discount, promo code and payment status.</div>
+              <select value={exportStatus} onChange={(e) => setExportStatus(e.target.value)} aria-label="Payments to include" style={{ height: 38, padding: '0 10px', borderRadius: 'var(--radius-control)', border: '1px solid var(--border-default)', fontFamily: 'var(--font-sans)', fontSize: 13.5, background: 'var(--surface-card)' }}>
+                {EXPORT_STATUSES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              <Button size="sm" loading={exporting === 'xlsx'} disabled={!!exporting} onClick={() => runExport('xlsx')}><Icon name="file-spreadsheet" size={14} />Excel (.xlsx)</Button>
+              <Button size="sm" variant="secondary" loading={exporting === 'csv'} disabled={!!exporting} onClick={() => runExport('csv')}><Icon name="file-text" size={14} />CSV</Button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)', overflow: 'hidden' }}>
