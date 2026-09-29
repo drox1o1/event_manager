@@ -65,7 +65,7 @@ deploy-branch: sam-build
 		--s3-bucket "$(SAM_ARTIFACTS_BUCKET)" \
 		--region "$(REGION)" \
 		--capabilities CAPABILITY_IAM \
-		--parameter-overrides "Stage=$(STAGE) DbSchema=$(STAGE)" \
+		--parameter-overrides "Stage=$(STAGE) DbSchema=$(STAGE) BucketStage=$(subst _,-,$(STAGE))" \
 		--no-confirm-changeset \
 		--no-fail-on-empty-changeset
 

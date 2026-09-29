@@ -18,6 +18,17 @@ Parameters:
       Empty for prod (uses Postgres's default "public" schema). Set to the
       same sanitized branch name as Stage for PR-branch stacks, which share
       one RDS instance but get their own Postgres schema each.
+  BucketStage:
+    Type: String
+    Default: ""
+    Description: >
+      Hyphen-safe version of Stage, used only for BannersBucket's name --
+      S3 bucket names disallow underscores, but Stage's value for PR-branch
+      stacks is underscore-based (it doubles as DbSchema, a Postgres
+      identifier, where hyphens aren't safe unquoted). Empty for prod/dev,
+      where Stage is already a single hyphen-safe token and this falls back
+      to it; PR-branch deploys pass this explicitly (see Makefile's
+      deploy-branch target).
 
   EmailFromAddress:
     Type: String
@@ -35,6 +46,7 @@ Parameters:
 
 Conditions:
   HasDbSchema: !Not [!Equals [!Ref DbSchema, ""]]
+  HasBucketStage: !Not [!Equals [!Ref BucketStage, ""]]
 
 Globals:
   Function:
@@ -1019,7 +1031,9 @@ Resources:
   BannersBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub cyrokx-banners-${Stage}-${AWS::AccountId}
+      BucketName: !Sub
+        - cyrokx-banners-${ResolvedStage}-${AWS::AccountId}
+        - ResolvedStage: !If [HasBucketStage, !Ref BucketStage, !Ref Stage]
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
         BlockPublicPolicy: true
