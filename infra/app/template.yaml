@@ -281,14 +281,6 @@ Resources:
             Method: post
             Auth:
               Authorizer: NONE
-        AdminLogin:
-          Type: Api
-          Properties:
-            RestApiId: !Ref CyrokxApi
-            Path: /admin/auth/login
-            Method: post
-            Auth:
-              Authorizer: NONE
         CreateEvent:
           Type: Api
           Properties:
@@ -385,6 +377,121 @@ Resources:
             Method: get
             Auth:
               Authorizer: JwtAuthorizer
+        GetOrganiserMe:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/me
+            Method: get
+            Auth:
+              Authorizer: JwtAuthorizer
+        UpdateOrganiserMe:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/me
+            Method: patch
+            Auth:
+              Authorizer: JwtAuthorizer
+        OrganiserImageUploadUrl:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/me/image-upload-url
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        DeleteDraftEvent:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/events/{event_id}
+            Method: delete
+            Auth:
+              Authorizer: JwtAuthorizer
+        UpdateTicketTier:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/events/{event_id}/ticket-tiers/{tier_id}
+            Method: put
+            Auth:
+              Authorizer: JwtAuthorizer
+        DeleteTicketTier:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/events/{event_id}/ticket-tiers/{tier_id}
+            Method: delete
+            Auth:
+              Authorizer: JwtAuthorizer
+        ApproveTicket:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/events/{event_id}/tickets/{ticket_id}/approve
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+        RejectTicket:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/events/{event_id}/tickets/{ticket_id}/reject
+            Method: post
+            Auth:
+              Authorizer: JwtAuthorizer
+
+  # Same code/handler/env as AuthenticatedApiFunction above -- authenticated_api's
+  # Powertools resolver dispatches on path+method internally regardless of which
+  # physical Lambda receives the invocation, so this is a pure infra-level split,
+  # not a second copy of the application logic. Exists because API Gateway wires
+  # each Api event as its own AWS::Lambda::Permission statement on the target
+  # function's resource policy, which AWS caps at 20480 bytes -- one Lambda
+  # fielding all of authenticated_api's ~64 routes exceeded that cap. Admin-facing
+  # routes moved here; organiser-facing + shared auth routes stay above.
+  AdminApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub cyrokx-admin-api-${Stage}
+      CodeUri: ../../src/authenticated_api/
+      Handler: handler.handler
+      Layers:
+        - !Ref CommonLayer
+      VpcConfig:
+        SubnetIds: !Split [',', !ImportValue cyrokx-network-data-PrivateSubnetIds]
+        SecurityGroupIds:
+          - !ImportValue cyrokx-network-data-LambdaSecurityGroupId
+      Environment:
+        Variables:
+          DB_SECRET_ARN: !ImportValue cyrokx-network-data-AppDbSecretArn
+          DB_PROXY_HOST: !ImportValue cyrokx-network-data-DbProxyEndpoint
+          DB_NAME: !ImportValue cyrokx-network-data-DbName
+          DB_SCHEMA: !If [HasDbSchema, !Ref DbSchema, !Ref AWS::NoValue]
+          JWT_SECRET_ARN: !ImportValue cyrokx-network-data-JwtSigningSecretArn
+          EMAIL_QUEUE_URL: !Ref EmailQueue
+          BANNERS_BUCKET_NAME: !Ref BannersBucket
+          BANNERS_CDN_DOMAIN: !GetAtt BannersDistribution.DomainName
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource:
+                - !ImportValue cyrokx-network-data-AppDbSecretArn
+                - !ImportValue cyrokx-network-data-JwtSigningSecretArn
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt EmailQueue.QueueName
+        - S3CrudPolicy:
+            BucketName: !Ref BannersBucket
+      Events:
+        AdminLogin:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/auth/login
+            Method: post
+            Auth:
+              Authorizer: NONE
         ModerationQueue:
           Type: Api
           Properties:
@@ -559,70 +666,6 @@ Resources:
             RestApiId: !Ref CyrokxApi
             Path: /admin/site-pages/{slug}
             Method: delete
-            Auth:
-              Authorizer: JwtAuthorizer
-        GetOrganiserMe:
-          Type: Api
-          Properties:
-            RestApiId: !Ref CyrokxApi
-            Path: /organiser/me
-            Method: get
-            Auth:
-              Authorizer: JwtAuthorizer
-        UpdateOrganiserMe:
-          Type: Api
-          Properties:
-            RestApiId: !Ref CyrokxApi
-            Path: /organiser/me
-            Method: patch
-            Auth:
-              Authorizer: JwtAuthorizer
-        OrganiserImageUploadUrl:
-          Type: Api
-          Properties:
-            RestApiId: !Ref CyrokxApi
-            Path: /organiser/me/image-upload-url
-            Method: post
-            Auth:
-              Authorizer: JwtAuthorizer
-        DeleteDraftEvent:
-          Type: Api
-          Properties:
-            RestApiId: !Ref CyrokxApi
-            Path: /organiser/events/{event_id}
-            Method: delete
-            Auth:
-              Authorizer: JwtAuthorizer
-        UpdateTicketTier:
-          Type: Api
-          Properties:
-            RestApiId: !Ref CyrokxApi
-            Path: /organiser/events/{event_id}/ticket-tiers/{tier_id}
-            Method: put
-            Auth:
-              Authorizer: JwtAuthorizer
-        DeleteTicketTier:
-          Type: Api
-          Properties:
-            RestApiId: !Ref CyrokxApi
-            Path: /organiser/events/{event_id}/ticket-tiers/{tier_id}
-            Method: delete
-            Auth:
-              Authorizer: JwtAuthorizer
-        ApproveTicket:
-          Type: Api
-          Properties:
-            RestApiId: !Ref CyrokxApi
-            Path: /organiser/events/{event_id}/tickets/{ticket_id}/approve
-            Method: post
-            Auth:
-              Authorizer: JwtAuthorizer
-        RejectTicket:
-          Type: Api
-          Properties:
-            RestApiId: !Ref CyrokxApi
-            Path: /organiser/events/{event_id}/tickets/{ticket_id}/reject
-            Method: post
             Auth:
               Authorizer: JwtAuthorizer
         AdminCreateEvent:

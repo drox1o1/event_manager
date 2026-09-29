@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import datetime as dt
 import secrets
-import uuid
 from decimal import Decimal
 
 from aws_lambda_powertools import Logger
@@ -21,11 +20,18 @@ from aws_lambda_powertools.event_handler import APIGatewayRestResolver, CORSConf
 from aws_lambda_powertools.event_handler.exceptions import (
     BadRequestError,
     NotFoundError,
-    ServiceError,
 )
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from common.cities import DEFAULT_CITIES
 from common.db import get_session
+from common.helpers import (
+    ConflictError,
+    parse_body,
+    parse_pagination,
+    parse_uuid,
+    short_code,
+    utcnow,
+)
 from common.messaging import publish
 from common.models import (
     Category,
@@ -58,7 +64,6 @@ from common.schemas import (
     SitePageResponse,
     TicketTierSummary,
 )
-from pydantic import ValidationError
 from sqlalchemy import or_, select
 from sqlalchemy.orm import selectinload
 
@@ -70,25 +75,11 @@ app = APIGatewayRestResolver(
 MAX_PAGE_SIZE = 50
 
 
-class ConflictError(ServiceError):
-    """409 -- aws_lambda_powertools only ships 400/401/404/500 built in."""
-
-    def __init__(self, msg: str = "Conflict"):
-        super().__init__(409, msg)
-
-
-def _parse_uuid(value: str) -> uuid.UUID:
-    try:
-        return uuid.UUID(value)
-    except ValueError as exc:
-        raise NotFoundError("Not found") from exc
-
-
 def _parse_body(model):
-    try:
-        return model.model_validate(app.current_event.json_body)
-    except ValidationError as exc:
-        raise BadRequestError(str(exc)) from exc
+    return parse_body(model, app.current_event.json_body)
+
+
+_parse_uuid = parse_uuid
 
 
 def _price_from(tiers) -> float | None:
@@ -105,12 +96,7 @@ def list_events():
     params = app.current_event.query_string_parameters or {}
     category = params.get("category")
     city = params.get("city")
-
-    try:
-        page = max(int(params.get("page", "1")), 1)
-        page_size = min(max(int(params.get("page_size", "20")), 1), MAX_PAGE_SIZE)
-    except ValueError as exc:
-        raise BadRequestError("page and page_size must be integers") from exc
+    page, page_size = parse_pagination(params, MAX_PAGE_SIZE)
 
     query = (
         select(Event)
@@ -468,12 +454,8 @@ def get_organiser_page(organiser_id: str):
         }
 
 
-def _short_code(value: uuid.UUID) -> str:
-    return value.hex[:8].upper()
-
-
-def _utcnow() -> dt.datetime:
-    return dt.datetime.now(dt.UTC)
+_short_code = short_code
+_utcnow = utcnow
 
 
 @app.post("/events/<event_id>/checkout")

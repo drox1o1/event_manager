@@ -94,7 +94,7 @@ def _org_ctx(event):
 def test_replace_form_fields_succeeds(monkeypatch, mock_jwt_secret):
     fake_event = _fake_event()
     get_session, _ = _fake_get_session(fake_event, execute_all=[])
-    monkeypatch.setattr("authenticated_api.handler.get_session", get_session)
+    monkeypatch.setattr("organiser_routes.get_session", get_session)
 
     from authenticated_api.handler import handler as api_handler
 
@@ -123,7 +123,7 @@ def test_replace_form_fields_succeeds(monkeypatch, mock_jwt_secret):
 def test_replace_form_fields_rejects_choice_without_options(monkeypatch, mock_jwt_secret):
     fake_event = _fake_event()
     get_session, _ = _fake_get_session(fake_event, execute_all=[])
-    monkeypatch.setattr("authenticated_api.handler.get_session", get_session)
+    monkeypatch.setattr("organiser_routes.get_session", get_session)
 
     from authenticated_api.handler import handler as api_handler
 
@@ -138,7 +138,7 @@ def test_replace_form_fields_rejects_choice_without_options(monkeypatch, mock_jw
 def test_replace_form_fields_rejects_foreign_event(monkeypatch, mock_jwt_secret):
     fake_event = _fake_event()
     get_session, _ = _fake_get_session(fake_event, execute_all=[])
-    monkeypatch.setattr("authenticated_api.handler.get_session", get_session)
+    monkeypatch.setattr("organiser_routes.get_session", get_session)
 
     from authenticated_api.handler import handler as api_handler
 
@@ -156,7 +156,7 @@ def test_replace_form_fields_rejects_foreign_event(monkeypatch, mock_jwt_secret)
 def test_replace_event_images_rejects_more_than_three(monkeypatch, mock_jwt_secret):
     fake_event = _fake_event()
     get_session, _ = _fake_get_session(fake_event)
-    monkeypatch.setattr("authenticated_api.handler.get_session", get_session)
+    monkeypatch.setattr("organiser_routes.get_session", get_session)
 
     from authenticated_api.handler import handler as api_handler
 
@@ -171,7 +171,7 @@ def test_replace_event_images_rejects_more_than_three(monkeypatch, mock_jwt_secr
 def test_replace_event_images_succeeds(monkeypatch, mock_jwt_secret):
     fake_event = _fake_event()
     get_session, _ = _fake_get_session(fake_event)
-    monkeypatch.setattr("authenticated_api.handler.get_session", get_session)
+    monkeypatch.setattr("organiser_routes.get_session", get_session)
 
     from authenticated_api.handler import handler as api_handler
 
