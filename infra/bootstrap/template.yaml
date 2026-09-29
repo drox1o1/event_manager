@@ -1,9 +1,11 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >
-  CyRokx CI bootstrap -- GitHub OIDC provider + the single cyrokx-ci-role
-  GitHub Actions assumes to deploy infra/app, plus the S3 bucket SAM uploads
-  deployment artifacts to. Deployed once, manually, by a human with AWS
-  admin credentials (see apply.py). Never deployed by CI itself.
+  CyRokx CI bootstrap -- GitHub OIDC provider + cyrokx-ci-role (OIDC) and
+  cyrokx-ci-user (static access key) that GitHub Actions can use to deploy
+  infra/app, plus the S3 bucket SAM uploads deployment artifacts to. Both
+  principals share one managed policy (CiPolicy) so their permissions never
+  drift apart. Deployed once, manually, by a human with AWS admin
+  credentials (see apply.py). Never deployed by CI itself.
 
 Parameters:
   TrustedSubjects:
@@ -45,186 +47,207 @@ Resources:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
               StringLike:
                 token.actions.githubusercontent.com:sub: !Ref TrustedSubjects
-      Policies:
-        - PolicyName: cyrokx-app-stack-deploy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Sid: CloudFormationOnAppStacksOnly
-                Effect: Allow
-                Action:
-                  - cloudformation:CreateStack
-                  - cloudformation:UpdateStack
-                  - cloudformation:DeleteStack
-                  - cloudformation:DescribeStacks
-                  - cloudformation:DescribeStackEvents
-                  - cloudformation:DescribeStackResource
-                  - cloudformation:DescribeStackResources
-                  - cloudformation:GetTemplate
-                  - cloudformation:CreateChangeSet
-                  - cloudformation:ExecuteChangeSet
-                  - cloudformation:DescribeChangeSet
-                  - cloudformation:DeleteChangeSet
-                  - cloudformation:ListStackResources
-                Resource:
-                  - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/cyrokx-app-*/*
-                  - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/cyrokx-frontend-*/*
-              - Sid: ReadNetworkDataStackOutputs
-                Effect: Allow
-                Action:
-                  - cloudformation:DescribeStacks
-                  - cloudformation:ListExports
-                Resource: "*"
-              - Sid: DeployArtifactBucket
-                Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:PutObject
-                  - s3:ListBucket
-                Resource:
-                  - !GetAtt SamArtifactsBucket.Arn
-                  - !Sub ${SamArtifactsBucket.Arn}/*
-              - Sid: LambdaFunctionsAndLayers
-                Effect: Allow
-                Action:
-                  - lambda:CreateFunction
-                  - lambda:UpdateFunctionCode
-                  - lambda:UpdateFunctionConfiguration
-                  - lambda:DeleteFunction
-                  - lambda:GetFunction
-                  - lambda:GetFunctionConfiguration
-                  - lambda:AddPermission
-                  - lambda:RemovePermission
-                  - lambda:TagResource
-                  - lambda:UntagResource
-                  - lambda:PublishLayerVersion
-                  - lambda:DeleteLayerVersion
-                  - lambda:GetLayerVersion
-                  - lambda:ListVersionsByFunction
-                  - lambda:GetPolicy
-                  - lambda:CreateFunctionUrlConfig
-                  - lambda:UpdateFunctionUrlConfig
-                  - lambda:DeleteFunctionUrlConfig
-                  - lambda:GetFunctionUrlConfig
-                Resource:
-                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:cyrokx-*
-                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:cyrokx-*
-                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:cyrokx-*:*
-              - Sid: ApiGateway
-                Effect: Allow
-                # API Gateway ARNs don't include the account ID, and a
-                # brand-new REST API has no id to scope to before it's
-                # created -- broader than ideal for exactly that reason.
-                Action:
-                  - apigateway:*
-                Resource:
-                  - !Sub arn:aws:apigateway:${AWS::Region}::/restapis
-                  - !Sub arn:aws:apigateway:${AWS::Region}::/restapis/*
-              - Sid: Sqs
-                Effect: Allow
-                Action:
-                  - sqs:CreateQueue
-                  - sqs:DeleteQueue
-                  - sqs:GetQueueAttributes
-                  - sqs:SetQueueAttributes
-                  - sqs:TagQueue
-                Resource:
-                  - !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:cyrokx-*
-              - Sid: StepFunctions
-                Effect: Allow
-                Action:
-                  - states:CreateStateMachine
-                  - states:UpdateStateMachine
-                  - states:DeleteStateMachine
-                  - states:DescribeStateMachine
-                  - states:TagResource
-                Resource:
-                  - !Sub arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:cyrokx-*
-              - Sid: S3AppBucket
-                Effect: Allow
-                Action:
-                  - s3:CreateBucket
-                  - s3:DeleteBucket
-                  - s3:PutBucketPolicy
-                  - s3:PutEncryptionConfiguration
-                  - s3:PutBucketPublicAccessBlock
-                  - s3:PutBucketCORS
-                Resource:
-                  - arn:aws:s3:::cyrokx-banners-*
-              - Sid: IamForLambdaExecutionRoles
-                Effect: Allow
-                Action:
-                  - iam:CreateRole
-                  - iam:DeleteRole
-                  - iam:GetRole
-                  - iam:PutRolePolicy
-                  - iam:DeleteRolePolicy
-                  - iam:AttachRolePolicy
-                  - iam:DetachRolePolicy
-                  - iam:TagRole
-                Resource:
-                  - !Sub arn:aws:iam::${AWS::AccountId}:role/cyrokx-*
-              # Restricted so the CI role can only ever hand a role it
-              # creates to Lambda or Step Functions -- never to itself or
-              # anything else, which is what would turn iam:PassRole into a
-              # privilege-escalation path.
-              - Sid: PassRoleToLambdaAndStatesOnly
-                Effect: Allow
-                Action: iam:PassRole
-                Resource:
-                  - !Sub arn:aws:iam::${AWS::AccountId}:role/cyrokx-*
-                Condition:
-                  StringEquals:
-                    iam:PassedToService:
-                      - lambda.amazonaws.com
-                      - states.amazonaws.com
-              # BannersDistribution (event image CDN) in infra/app.
-              - Sid: CloudFrontForBannersCdn
-                Effect: Allow
-                Action:
-                  - cloudfront:CreateDistribution
-                  - cloudfront:UpdateDistribution
-                  - cloudfront:DeleteDistribution
-                  - cloudfront:GetDistribution
-                  - cloudfront:GetDistributionConfig
-                  - cloudfront:TagResource
-                  - cloudfront:CreateOriginAccessControl
-                  - cloudfront:UpdateOriginAccessControl
-                  - cloudfront:DeleteOriginAccessControl
-                  - cloudfront:GetOriginAccessControl
-                  - cloudfront:GetOriginAccessControlConfig
-                  - cloudfront:ListOriginAccessControls
-                Resource: "*"
-              # Frontend CloudFront distributions use the us-east-1 ACM cert.
-              - Sid: AcmReadForCloudFrontAliases
-                Effect: Allow
-                Action:
-                  - acm:DescribeCertificate
-                  - acm:ListCertificates
-                Resource: "*"
-              - Sid: S3BannersBucketPolicyRead
-                Effect: Allow
-                Action:
-                  - s3:GetBucketPolicy
-                  - s3:DeleteBucketPolicy
-                Resource:
-                  - arn:aws:s3:::cyrokx-banners-*
-              # migrate-check / post-deploy migration in the deploy workflows.
-              - Sid: InvokeMigrationRunner
-                Effect: Allow
-                Action: lambda:InvokeFunction
-                Resource:
-                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:cyrokx-migration-runner-*
-              - Sid: Logs
-                Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:DeleteLogGroup
-                  - logs:PutRetentionPolicy
-                  - logs:DescribeLogGroups
-                  - logs:TagResource
-                Resource:
-                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/cyrokx-*
+      ManagedPolicyArns:
+        - !Ref CiPolicy
+
+  # Same permissions as CiRole, but assumable with a static access key
+  # instead of an OIDC token -- workflows use whichever credential type is
+  # configured in their `aws-actions/configure-aws-credentials` step.
+  # AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY are never generated by this
+  # template (an AWS::IAM::AccessKey resource would leave the secret sitting
+  # in the CloudFormation stack's events/state); create the key once by hand
+  # with `aws iam create-access-key --user-name cyrokx-ci-user` and paste it
+  # into the repo's GitHub Actions secrets, then rotate it periodically the
+  # same way.
+  CiUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: cyrokx-ci-user
+      ManagedPolicyArns:
+        - !Ref CiPolicy
+
+  CiPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: cyrokx-ci-policy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: CloudFormationOnAppStacksOnly
+          Effect: Allow
+          Action:
+            - cloudformation:CreateStack
+            - cloudformation:UpdateStack
+            - cloudformation:DeleteStack
+            - cloudformation:DescribeStacks
+            - cloudformation:DescribeStackEvents
+            - cloudformation:DescribeStackResource
+            - cloudformation:DescribeStackResources
+            - cloudformation:GetTemplate
+            - cloudformation:CreateChangeSet
+            - cloudformation:ExecuteChangeSet
+            - cloudformation:DescribeChangeSet
+            - cloudformation:DeleteChangeSet
+            - cloudformation:ListStackResources
+          Resource:
+            - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/cyrokx-app-*/*
+            - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/cyrokx-frontend-*/*
+        - Sid: ReadNetworkDataStackOutputs
+          Effect: Allow
+          Action:
+            - cloudformation:DescribeStacks
+            - cloudformation:ListExports
+          Resource: "*"
+        - Sid: DeployArtifactBucket
+          Effect: Allow
+          Action:
+            - s3:GetObject
+            - s3:PutObject
+            - s3:ListBucket
+          Resource:
+            - !GetAtt SamArtifactsBucket.Arn
+            - !Sub ${SamArtifactsBucket.Arn}/*
+        - Sid: LambdaFunctionsAndLayers
+          Effect: Allow
+          Action:
+            - lambda:CreateFunction
+            - lambda:UpdateFunctionCode
+            - lambda:UpdateFunctionConfiguration
+            - lambda:DeleteFunction
+            - lambda:GetFunction
+            - lambda:GetFunctionConfiguration
+            - lambda:AddPermission
+            - lambda:RemovePermission
+            - lambda:TagResource
+            - lambda:UntagResource
+            - lambda:PublishLayerVersion
+            - lambda:DeleteLayerVersion
+            - lambda:GetLayerVersion
+            - lambda:ListVersionsByFunction
+            - lambda:GetPolicy
+            - lambda:CreateFunctionUrlConfig
+            - lambda:UpdateFunctionUrlConfig
+            - lambda:DeleteFunctionUrlConfig
+            - lambda:GetFunctionUrlConfig
+          Resource:
+            - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:cyrokx-*
+            - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:cyrokx-*
+            - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:cyrokx-*:*
+        - Sid: ApiGateway
+          Effect: Allow
+          # API Gateway ARNs don't include the account ID, and a
+          # brand-new REST API has no id to scope to before it's
+          # created -- broader than ideal for exactly that reason.
+          Action:
+            - apigateway:*
+          Resource:
+            - !Sub arn:aws:apigateway:${AWS::Region}::/restapis
+            - !Sub arn:aws:apigateway:${AWS::Region}::/restapis/*
+        - Sid: Sqs
+          Effect: Allow
+          Action:
+            - sqs:CreateQueue
+            - sqs:DeleteQueue
+            - sqs:GetQueueAttributes
+            - sqs:SetQueueAttributes
+            - sqs:TagQueue
+          Resource:
+            - !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:cyrokx-*
+        - Sid: StepFunctions
+          Effect: Allow
+          Action:
+            - states:CreateStateMachine
+            - states:UpdateStateMachine
+            - states:DeleteStateMachine
+            - states:DescribeStateMachine
+            - states:TagResource
+          Resource:
+            - !Sub arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:cyrokx-*
+        - Sid: S3AppBucket
+          Effect: Allow
+          Action:
+            - s3:CreateBucket
+            - s3:DeleteBucket
+            - s3:PutBucketPolicy
+            - s3:PutEncryptionConfiguration
+            - s3:PutBucketPublicAccessBlock
+            - s3:PutBucketCORS
+          Resource:
+            - arn:aws:s3:::cyrokx-banners-*
+        - Sid: IamForLambdaExecutionRoles
+          Effect: Allow
+          Action:
+            - iam:CreateRole
+            - iam:DeleteRole
+            - iam:GetRole
+            - iam:PutRolePolicy
+            - iam:DeleteRolePolicy
+            - iam:AttachRolePolicy
+            - iam:DetachRolePolicy
+            - iam:TagRole
+          Resource:
+            - !Sub arn:aws:iam::${AWS::AccountId}:role/cyrokx-*
+        # Restricted so the CI role can only ever hand a role it
+        # creates to Lambda or Step Functions -- never to itself or
+        # anything else, which is what would turn iam:PassRole into a
+        # privilege-escalation path.
+        - Sid: PassRoleToLambdaAndStatesOnly
+          Effect: Allow
+          Action: iam:PassRole
+          Resource:
+            - !Sub arn:aws:iam::${AWS::AccountId}:role/cyrokx-*
+          Condition:
+            StringEquals:
+              iam:PassedToService:
+                - lambda.amazonaws.com
+                - states.amazonaws.com
+        # BannersDistribution (event image CDN) in infra/app.
+        - Sid: CloudFrontForBannersCdn
+          Effect: Allow
+          Action:
+            - cloudfront:CreateDistribution
+            - cloudfront:UpdateDistribution
+            - cloudfront:DeleteDistribution
+            - cloudfront:GetDistribution
+            - cloudfront:GetDistributionConfig
+            - cloudfront:TagResource
+            - cloudfront:CreateOriginAccessControl
+            - cloudfront:UpdateOriginAccessControl
+            - cloudfront:DeleteOriginAccessControl
+            - cloudfront:GetOriginAccessControl
+            - cloudfront:GetOriginAccessControlConfig
+            - cloudfront:ListOriginAccessControls
+          Resource: "*"
+        # Frontend CloudFront distributions use the us-east-1 ACM cert.
+        - Sid: AcmReadForCloudFrontAliases
+          Effect: Allow
+          Action:
+            - acm:DescribeCertificate
+            - acm:ListCertificates
+          Resource: "*"
+        - Sid: S3BannersBucketPolicyRead
+          Effect: Allow
+          Action:
+            - s3:GetBucketPolicy
+            - s3:DeleteBucketPolicy
+          Resource:
+            - arn:aws:s3:::cyrokx-banners-*
+        # migrate-check / post-deploy migration in the deploy workflows.
+        - Sid: InvokeMigrationRunner
+          Effect: Allow
+          Action: lambda:InvokeFunction
+          Resource:
+            - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:cyrokx-migration-runner-*
+        - Sid: Logs
+          Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:DeleteLogGroup
+            - logs:PutRetentionPolicy
+            - logs:DescribeLogGroups
+            - logs:TagResource
+          Resource:
+            - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/cyrokx-*
 
   # SAM uploads Lambda deployment packages here on every build. A dedicated
   # bucket (rather than --resolve-s3's auto-created, unpredictably-named
@@ -257,5 +280,7 @@ Resources:
 Outputs:
   CiRoleArn:
     Value: !GetAtt CiRole.Arn
+  CiUserName:
+    Value: !Ref CiUser
   SamArtifactsBucketName:
     Value: !Ref SamArtifactsBucket
