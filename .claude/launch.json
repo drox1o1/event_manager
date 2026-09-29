@@ -87,6 +87,21 @@
       ],
       "port": 3002,
       "cwd": "frontend"
+    },
+    {
+      "name": "public-site-verify",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "start",
+        "-w",
+        "public-site",
+        "--",
+        "--port",
+        "3005"
+      ],
+      "port": 3005,
+      "cwd": "frontend"
     }
   ]
 }
