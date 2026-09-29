@@ -62,7 +62,7 @@ export function HomepageView({ content }: HomepageViewProps) {
         <>
           <FeaturedHero events={featured} />
           {search && (
-            <div style={{ position: 'relative', zIndex: 5, maxWidth: 'var(--content-max-width)', margin: isMobile ? '-26px auto 0' : '-38px auto 0', padding: '0 clamp(16px, 4vw, 32px)', display: 'flex', justifyContent: 'center' }}>
+            <div style={{ position: 'relative', zIndex: 5, maxWidth: 'var(--content-max-width)', margin: isMobile ? '16px auto 0' : '24px auto 0', padding: '0 clamp(16px, 4vw, 32px)', display: 'flex', justifyContent: 'center' }}>
               <div style={{ width: '100%', maxWidth: 860, background: 'var(--surface-card)', borderRadius: 20, boxShadow: '0 20px 50px rgba(5,23,71,0.18)', padding: isMobile ? 10 : 14 }}>
                 {search}
               </div>
@@ -105,7 +105,7 @@ export function HomepageView({ content }: HomepageViewProps) {
             section={section}
             onOpenEvent={openEvent}
             onOpenCategory={(name) => router.push(`/category/${encodeURIComponent(name)}`)}
-            onSeeAll={() => router.push('/events')}
+            onSeeAll={(href) => router.push(href)}
           />
         ))}
       </div>
@@ -122,7 +122,7 @@ function SectionBlock({
   section: HomepageResolvedSection;
   onOpenEvent: (id: string) => void;
   onOpenCategory: (name: string) => void;
-  onSeeAll: () => void;
+  onSeeAll: (href: string) => void;
 }) {
   if (section.type === 'category_grid') {
     const categories = section.categories ?? [];
@@ -141,13 +141,14 @@ function SectionBlock({
 
   const events = section.events ?? [];
   if (events.length === 0) return null;
+  const seeAllHref = section.category ? `/category/${encodeURIComponent(section.category)}` : '/events';
   return (
     <section style={{ marginBottom: 64 }}>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, marginBottom: 22 }}>
-        <SectionHeading title={section.title} kicker={section.type === 'trending_events' ? 'Trending' : 'Hand-picked'} noMargin />
+        <SectionHeading title={section.title} kicker={section.category ? 'Category' : section.type === 'trending_events' ? 'Trending' : 'Hand-picked'} noMargin />
         <a
-          href="/events"
-          onClick={(e) => { e.preventDefault(); onSeeAll(); }}
+          href={seeAllHref}
+          onClick={(e) => { e.preventDefault(); onSeeAll(seeAllHref); }}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 700, color: 'var(--text-heading)', textDecoration: 'none', whiteSpace: 'nowrap', padding: '9px 16px', borderRadius: 999, border: '1px solid var(--border-default)', background: 'var(--surface-card)' }}
         >
           See all <Icon name="arrow-right" size={15} />
@@ -164,6 +165,7 @@ function SectionBlock({
             priceFrom={formatINR(e.price_from)}
             category={e.category ?? undefined}
             soldOut={e.sold_out}
+            href={`/events/${e.id}`}
             onClick={() => onOpenEvent(e.id)}
           />
         ))}
@@ -220,7 +222,7 @@ function ValueBand() {
     { icon: 'zap', title: 'Book in seconds', body: 'No account needed — pick tickets, add participants, done.' },
     { icon: 'ticket', title: 'A ticket for everyone', body: 'Every participant gets their own ticket ID and QR code.' },
     { icon: 'shield-check', title: 'Verified organisers', body: 'Every organiser and event is reviewed by the Showtik team.' },
-    { icon: 'rotate-ccw', title: 'Easy refunds', body: 'Request a refund straight from your order page.' },
+    { icon: 'life-buoy', title: 'Help with every order', body: 'Raise a query about any transaction straight from your order page.' },
   ];
   return (
     <section style={{ maxWidth: 'var(--content-max-width)', margin: '0 auto', padding: '8px clamp(16px, 4vw, 32px) 56px' }}>
@@ -238,7 +240,7 @@ function ValueBand() {
 }
 
 function OrganiserCta() {
-  const organiserUrl = process.env.NEXT_PUBLIC_ORGANISER_URL ?? '/signup';
+  const organiserUrl = `${process.env.NEXT_PUBLIC_ORGANISER_URL ?? 'https://host.showtik.in'}/signup`;
   return (
     <section style={{ maxWidth: 'var(--content-max-width)', margin: '0 auto', padding: '0 clamp(16px, 4vw, 32px) 72px' }}>
       <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 28, background: 'var(--gradient-hero)', color: '#fff', padding: 'clamp(32px, 6vw, 64px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 28, flexWrap: 'wrap' }}>

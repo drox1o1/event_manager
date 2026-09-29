@@ -50,6 +50,7 @@ export function CategoryPageView({ category, icon, events }: CategoryPageViewPro
               priceFrom={formatINR(e.price_from)}
               category={e.category ?? undefined}
               soldOut={e.sold_out}
+              href={`/events/${e.id}`}
               onClick={() => router.push(`/events/${e.id}`)}
             />
           ))}

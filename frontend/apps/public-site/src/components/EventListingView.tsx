@@ -133,6 +133,7 @@ export function EventListingView({ events, categories, allCities, activeCategory
                   priceFrom={formatINR(e.price_from)}
                   category={e.category ?? undefined}
                   soldOut={e.sold_out}
+                  href={`/events/${e.id}`}
                   onClick={() => router.push(`/events/${e.id}`)}
                 />
               ))}

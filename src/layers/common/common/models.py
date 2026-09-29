@@ -188,6 +188,9 @@ class Event(Base):
     is_featured: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     featured_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     featured_headline: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # 0009: the hero is banner-only; clicking it goes here (else the event page).
+    featured_link_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    featured_mobile_banner_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     status: Mapped[EventStatus] = mapped_column(
         Enum(EventStatus, name="event_status", values_callable=lambda cls: [e.value for e in cls]),
         nullable=False,
@@ -303,6 +306,9 @@ class Order(Base):
     )
     payment_gateway_ref: Mapped[str | None] = mapped_column(String(200), nullable=True)
     occurrence_date: Mapped[dt.date | None] = mapped_column(Date, nullable=True)  # recurring events (0006)
+    # 0009: reserved for promo codes (not built yet) so exports have a fixed shape.
+    discount_amount: Mapped[Numeric] = mapped_column(Numeric(10, 2), nullable=False, default=0)
+    promo_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     event: Mapped["Event"] = relationship(back_populates="orders")
@@ -392,6 +398,24 @@ class RefundRequest(Base):
     order: Mapped["Order"] = relationship(back_populates="refund_requests")
 
 
+class OrderQuery(Base):
+    """A buyer's question about a transaction, raised from the order page
+    (0009; replaces the refund-request button). Read and resolved by the
+    super admin."""
+
+    __tablename__ = "order_queries"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    order_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("orders.id"), nullable=False)
+    category: Mapped[str] = mapped_column(String(50), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="open")  # open|resolved
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    resolved_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    order: Mapped["Order"] = relationship()
+
+
 class PlatformSettings(Base):
     """Single-row config table — enforced at the application layer, not the DB layer."""
 
@@ -468,6 +492,10 @@ class HomepageSection(Base):
     )
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # 0009: auto event rows can be limited to one category ("Marathon" row).
+    category_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("categories.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     events: Mapped[list["HomepageSectionEvent"]] = relationship(

@@ -105,6 +105,7 @@ def _homepage_section_dict(sec: HomepageSection) -> dict:
         "mode": sec.mode.value,
         "enabled": sec.enabled,
         "sort_order": sec.sort_order,
+        "category_id": str(sec.category_id) if sec.category_id else None,
         "event_ids": [str(e.event_id) for e in sorted(sec.events, key=lambda e: e.sort_order)],
     }
 
@@ -154,6 +155,7 @@ def replace_homepage():
                 mode=HomepageSectionMode(sec_in.mode),
                 enabled=sec_in.enabled,
                 sort_order=idx,
+                category_id=sec_in.category_id,
             )
             session.add(section)
             session.flush()
@@ -171,6 +173,7 @@ def replace_homepage():
                 "mode": section.mode.value,
                 "enabled": section.enabled,
                 "sort_order": section.sort_order,
+                "category_id": str(section.category_id) if section.category_id else None,
                 "event_ids": [str(eid) for eid in event_ids],
             }
             for section, event_ids in created

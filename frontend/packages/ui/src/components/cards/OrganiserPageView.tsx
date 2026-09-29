@@ -59,7 +59,7 @@ export function OrganiserPageView({ page, onOpenEvent, previewLabel }: Organiser
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 20 }}>
             {page.events.map((e) => (
-              <EventCard key={e.id} image={e.banner_image_url ?? undefined} title={e.title} date={formatEventDate(e.event_date)} city={e.city} priceFrom={formatINR(e.price_from)} category={e.category ?? undefined} soldOut={e.sold_out} onClick={onOpenEvent ? () => onOpenEvent(e.id) : undefined} />
+              <EventCard key={e.id} image={e.banner_image_url ?? undefined} title={e.title} date={formatEventDate(e.event_date)} city={e.city} priceFrom={formatINR(e.price_from)} category={e.category ?? undefined} soldOut={e.sold_out} href={onOpenEvent ? `/events/${e.id}` : undefined} onClick={onOpenEvent ? () => onOpenEvent(e.id) : undefined} />
             ))}
           </div>
         )}

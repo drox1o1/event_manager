@@ -95,6 +95,10 @@ export interface FeaturedEvent extends EventSummary {
   headline: string;
   description: string;
   organiser_name: string | null;
+  /** Where the banner goes when clicked; null = the event page. */
+  link_url?: string | null;
+  /** Optional 4:3 artwork for phones; falls back to banner_image_url. */
+  mobile_banner_url?: string | null;
 }
 
 export interface OrganiserPublicPage {
@@ -191,6 +195,8 @@ export interface HomepageResolvedSection {
   title: string;
   categories?: CategorySummary[];
   events?: EventSummary[];
+  /** Set when the row is limited to one category ("See all" links there). */
+  category?: string | null;
 }
 
 export interface HomepageContent {
@@ -233,6 +239,7 @@ export interface HomepageSection {
   mode: HomepageSectionMode;
   enabled: boolean;
   sort_order: number;
+  category_id?: string | null;
   event_ids: string[];
 }
 
@@ -247,6 +254,7 @@ export interface HomepageSectionInput {
   mode: HomepageSectionMode;
   enabled: boolean;
   event_ids: string[];
+  category_id?: string | null;
 }
 
 export interface HomepageReplaceRequest {
@@ -467,6 +475,8 @@ export interface OrganiserEventSummary {
   is_featured?: boolean;
   featured_order?: number;
   featured_headline?: string | null;
+  featured_link_url?: string | null;
+  featured_mobile_banner_url?: string | null;
   listing_type?: ListingType;
 }
 
@@ -544,6 +554,8 @@ export interface FeatureEventRequest {
   is_featured: boolean;
   featured_order?: number;
   featured_headline?: string | null;
+  featured_link_url?: string | null;
+  featured_mobile_banner_url?: string | null;
 }
 
 export interface BannerUploadUrlResponse {

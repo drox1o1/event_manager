@@ -11,28 +11,40 @@ export interface EventCardProps {
   priceFrom: string;
   category?: string;
   soldOut?: boolean;
+  /** Event page URL. When set the card is a real link (open in new tab,
+   *  crawlable); a plain left-click still calls onClick for in-app routing. */
+  href?: string;
   onClick?: () => void;
   style?: React.CSSProperties;
 }
 
 /** EventCard — the core discovery unit: poster image with category chip,
  *  title, date, city and price-from. Image zooms and card lifts on hover. */
-export function EventCard({ image, title, date, city, priceFrom, category, soldOut = false, onClick, style }: EventCardProps) {
+export function EventCard({ image, title, date, city, priceFrom, category, soldOut = false, href, onClick, style }: EventCardProps) {
   const [hover, setHover] = React.useState(false);
   const [day, ...rest] = date.split(' ');
+  const Root = href ? 'a' : 'div';
   return (
-    <div
-      onClick={onClick}
+    <Root
+      href={href}
+      onClick={(e: React.MouseEvent) => {
+        if (!onClick) return;
+        if (href && (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0)) return;
+        e.preventDefault();
+        onClick();
+      }}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      role={onClick ? 'link' : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onKeyDown={(e) => { if (onClick && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onClick(); } }}
+      role={!href && onClick ? 'link' : undefined}
+      tabIndex={!href && onClick ? 0 : undefined}
+      onKeyDown={(e: React.KeyboardEvent) => { if (!href && onClick && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onClick(); } }}
       style={{
+        color: 'inherit',
+        textDecoration: 'none',
         borderRadius: 18,
         background: 'var(--surface-card)',
         overflow: 'hidden',
-        cursor: onClick ? 'pointer' : 'default',
+        cursor: onClick || href ? 'pointer' : 'default',
         boxShadow: hover ? '0 18px 40px rgba(5,23,71,0.16)' : '0 2px 10px rgba(5,23,71,0.06)',
         transform: hover ? 'translateY(-4px)' : 'none',
         transition: 'box-shadow 0.25s ease, transform 0.25s ease',
@@ -77,6 +89,6 @@ export function EventCard({ image, title, date, city, priceFrom, category, soldO
           </span>
         </div>
       </div>
-    </div>
+    </Root>
   );
 }

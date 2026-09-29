@@ -148,6 +148,8 @@ def organiser_event_summary(e: Event) -> dict:
         "is_featured": e.is_featured,
         "featured_order": e.featured_order,
         "featured_headline": e.featured_headline,
+        "featured_link_url": e.featured_link_url,
+        "featured_mobile_banner_url": e.featured_mobile_banner_url,
         "listing_type": e.listing_type,
     }
 

@@ -25,7 +25,7 @@ function badgeStatus(status: string): BadgeStatus {
   return (allowed as string[]).includes(status) ? (status as BadgeStatus) : 'draft';
 }
 
-type FeatureDialog = { event: AdminEventSummary; headline: string; order: string } | null;
+type FeatureDialog = { event: AdminEventSummary; linkUrl: string; mobileBanner: string; order: string; uploading?: boolean } | null;
 
 function AllEventsInner() {
   const token = useRequireAuth();
@@ -62,8 +62,23 @@ function AllEventsInner() {
     await run(f.event.event_id, () => adminApi.featureEvent(token, f.event.event_id, {
       is_featured: isFeatured,
       featured_order: Number(f.order) || 0,
-      featured_headline: f.headline.trim() || null,
+      featured_link_url: f.linkUrl.trim() || null,
+      featured_mobile_banner_url: f.mobileBanner || null,
     }), 'Could not update featuring.');
+  };
+
+  const uploadMobileBanner = async (file: File) => {
+    if (!token || !feature) return;
+    const current = feature;
+    setFeature({ ...current, uploading: true });
+    try {
+      const { upload_url, image_url } = await adminApi.createImageUploadUrl(token, current.event.event_id, file.type || 'image/jpeg');
+      await adminApi.uploadFile(upload_url, file);
+      setFeature((f) => (f ? { ...f, mobileBanner: image_url, uploading: false } : f));
+    } catch (err) {
+      setFeature((f) => (f ? { ...f, uploading: false } : f));
+      setError(err instanceof ApiError ? err.message : 'Could not upload the mobile banner.');
+    }
   };
 
   const featuredCount = (events ?? []).filter((e) => e.is_featured).length;
@@ -143,7 +158,7 @@ function AllEventsInner() {
                 render: (r) => (
                   <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                     {(r.status === 'live' || r.status === 'soldout') && (
-                      <Button size="sm" variant="secondary" loading={busyId === r.event_id} onClick={() => setFeature({ event: r, headline: r.featured_headline ?? '', order: String(r.featured_order ?? 0) })}>
+                      <Button size="sm" variant="secondary" loading={busyId === r.event_id} onClick={() => setFeature({ event: r, linkUrl: r.featured_link_url ?? '', mobileBanner: r.featured_mobile_banner_url ?? '', order: String(r.featured_order ?? 0) })}>
                         <Icon name="star" size={14} />{r.is_featured ? 'Featured' : 'Feature'}
                       </Button>
                     )}
@@ -171,7 +186,7 @@ function AllEventsInner() {
         footer={
           <>
             {feature?.event.is_featured && <Button variant="destructive" onClick={() => saveFeature(false)}>Remove from homepage</Button>}
-            <Button onClick={() => saveFeature(true)}>{feature?.event.is_featured ? 'Save' : 'Feature event'}</Button>
+            <Button disabled={feature?.uploading} onClick={() => saveFeature(true)}>{feature?.event.is_featured ? 'Save' : 'Feature event'}</Button>
           </>
         }
       >
@@ -180,8 +195,27 @@ function AllEventsInner() {
             {!feature.event.banner_image_url && (
               <div style={{ padding: '10px 12px', borderRadius: 'var(--radius-control)', background: 'var(--status-warning-bg)', color: 'var(--status-warning-text)', fontSize: 13.5 }}>This event has no banner yet — add one in the editor first; the homepage hero is image-led.</div>
             )}
-            <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>Featured events headline the homepage hero with their banner. Two or more rotate as a carousel.</div>
-            <Input label="Hero headline (optional)" placeholder={feature.event.title} value={feature.headline} maxLength={200} onChange={(e) => setFeature({ ...feature, headline: e.target.value })} />
+            <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>The homepage hero shows the event banner on its own, with no text on top. Two or more rotate as a carousel.</div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '10px 12px', borderRadius: 'var(--radius-control)', background: 'var(--surface-muted, #f4f5f8)' }}>
+              <strong>Banner size:</strong> 1920 × 600 px (16:5), key content inside the centre 1600 × 500. Mobile: 1080 × 810 px (4:3). JPG or WebP, under 500 KB.
+            </div>
+            <Input label="Link when clicked (optional)" placeholder={`/events/${feature.event.event_id}`} value={feature.linkUrl} maxLength={500} onChange={(e) => setFeature({ ...feature, linkUrl: e.target.value })} />
+            <div style={{ fontSize: 12.5, color: 'var(--text-subtle)', marginTop: -8 }}>Leave blank to open the event page. Use a full https:// address for another site.</div>
+            <div>
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-heading)', marginBottom: 6 }}>Mobile banner (optional)</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                {feature.mobileBanner && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={feature.mobileBanner} alt="Mobile banner" style={{ width: 96, height: 72, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border-default)' }} />
+                )}
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13.5, fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer' }}>
+                  <Icon name="upload" size={14} />{feature.uploading ? 'Uploading…' : feature.mobileBanner ? 'Replace' : 'Upload'}
+                  <input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={feature.uploading} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadMobileBanner(file); e.target.value = ''; }} />
+                </label>
+                {feature.mobileBanner && <Button size="sm" variant="ghost" onClick={() => setFeature({ ...feature, mobileBanner: '' })}>Remove</Button>}
+              </div>
+              <div style={{ fontSize: 12.5, color: 'var(--text-subtle)', marginTop: 6 }}>Without one, phones show the main banner cropped to 4:3.</div>
+            </div>
             <Input label="Carousel position" type="number" min={0} value={feature.order} onChange={(e) => setFeature({ ...feature, order: e.target.value })} />
             <div style={{ fontSize: 12.5, color: 'var(--text-subtle)' }}>Lower numbers show first.</div>
           </div>

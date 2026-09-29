@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { Icon, Input, Textarea, Select, Switch, Button, Toast, PageHeading, useDirtyGuard } from '@showtik/ui';
 import { adminApi, ApiError } from '@showtik/api-client';
-import type { HomepageConfig, HomepageSection, HomepageSectionType, HomepageSectionMode, AdminEventSummary, FooterColumnItem } from '@showtik/api-client';
+import type { HomepageConfig, HomepageSection, HomepageSectionType, HomepageSectionMode, AdminEventSummary, FooterColumnItem, CategorySummary } from '@showtik/api-client';
 import { AdminShell } from '@/components/AdminShell';
 import { useRequireAuth } from '@/lib/auth';
 
@@ -58,6 +58,7 @@ function HomepageInner() {
   const [sections, setSections] = React.useState<DraftSection[]>([]);
   const savedSnapshot = React.useRef<string>('');
   const [liveEvents, setLiveEvents] = React.useState<AdminEventSummary[]>([]);
+  const [categories, setCategories] = React.useState<CategorySummary[]>([]);
   const [addType, setAddType] = React.useState<HomepageSectionType>('featured_events');
   const [newCity, setNewCity] = React.useState('');
   const [saving, setSaving] = React.useState(false);
@@ -72,13 +73,14 @@ function HomepageInner() {
         setConfig(cfg);
         setSettings(cfg.settings);
         const draftSections = cfg.sections.map((s) => ({
-          key: newKey(), title: s.title, section_type: s.section_type, mode: s.mode, enabled: s.enabled, event_ids: s.event_ids,
+          key: newKey(), title: s.title, section_type: s.section_type, mode: s.mode, enabled: s.enabled, event_ids: s.event_ids, category_id: s.category_id ?? null,
         }));
         setSections(draftSections);
         savedSnapshot.current = draftSnapshot(cfg.settings, draftSections);
       })
       .catch(() => setError('Could not load the homepage configuration.'));
     adminApi.listAllEvents(token, { status: 'live', pageSize: 50 }).then((r) => setLiveEvents(r.events)).catch(() => setLiveEvents([]));
+    adminApi.listCategories(token).then((r) => setCategories(r.categories)).catch(() => setCategories([]));
   }, [token]);
 
   React.useEffect(() => {
@@ -112,7 +114,7 @@ function HomepageInner() {
   const addSection = () => {
     setSections((ss) => [
       ...ss,
-      { key: newKey(), title: TYPE_LABEL[addType], section_type: addType, mode: 'auto', enabled: true, event_ids: [] },
+      { key: newKey(), title: TYPE_LABEL[addType], section_type: addType, mode: 'auto', enabled: true, event_ids: [], category_id: null },
     ]);
   };
 
@@ -181,11 +183,12 @@ function HomepageInner() {
           mode: isEventSection(s.section_type) ? s.mode : 'auto',
           enabled: s.enabled,
           event_ids: isEventSection(s.section_type) && s.mode === 'curated' ? s.event_ids : [],
+          category_id: isEventSection(s.section_type) && s.mode === 'auto' ? s.category_id ?? null : null,
         })),
       });
       setConfig(updated);
       const draftSections = updated.sections.map((s) => ({
-        key: newKey(), title: s.title, section_type: s.section_type, mode: s.mode, enabled: s.enabled, event_ids: s.event_ids,
+        key: newKey(), title: s.title, section_type: s.section_type, mode: s.mode, enabled: s.enabled, event_ids: s.event_ids, category_id: s.category_id ?? null,
       }));
       setSections(draftSections);
       savedSnapshot.current = draftSnapshot(updated.settings, draftSections);
@@ -279,6 +282,22 @@ function HomepageInner() {
                           <ModeChip active={s.mode === 'auto'} label="Automatic (latest live events)" onClick={() => patchSection(s.key, { mode: 'auto' })} />
                           <ModeChip active={s.mode === 'curated'} label="Curated (pick events)" onClick={() => patchSection(s.key, { mode: 'curated' })} />
                         </div>
+
+                        {s.mode === 'auto' && (
+                          <div style={{ marginTop: 12, maxWidth: 320 }}>
+                            <Select
+                              label="Only events in category"
+                              value={s.category_id ?? ''}
+                              onChange={(e) => {
+                                const id = e.target.value || null;
+                                const cat = categories.find((c) => c.id === id);
+                                patchSection(s.key, { category_id: id, ...(cat && !s.title.trim() ? { title: cat.name } : {}) });
+                              }}
+                              options={[{ value: '', label: 'All categories' }, ...categories.map((c) => ({ value: c.id, label: c.name }))]}
+                            />
+                            <div style={{ fontSize: 12.5, color: 'var(--text-subtle)', marginTop: 6 }}>A category row lists that category's upcoming events; "See all" opens the category page.</div>
+                          </div>
+                        )}
 
                         {s.mode === 'curated' && (
                           <div style={{ marginTop: 12 }}>

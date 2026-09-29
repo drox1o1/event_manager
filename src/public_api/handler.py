@@ -295,6 +295,8 @@ def _featured_dict(e: Event) -> dict:
             "headline": e.featured_headline or e.title,
             "description": (e.description or "")[:220],
             "organiser_name": e.organiser.org_name if e.organiser else None,
+            "link_url": e.featured_link_url,
+            "mobile_banner_url": e.featured_mobile_banner_url,
         }
     )
     return base
@@ -377,6 +379,26 @@ def get_homepage():
                     for e in ordered
                     if e.event_id in curated_by_id
                 ]
+            elif section is not None and section.category_id is not None:
+                # Category row ("Marathon"): that category's soonest live events.
+                cat = next((c for c in categories if c.id == section.category_id), None)
+                block["category"] = cat.name if cat else None
+                rows = (
+                    session.execute(
+                        select(Event)
+                        .where(
+                            Event.status == EventStatus.LIVE,
+                            Event.listing_type == "public",
+                            Event.category_id == section.category_id,
+                        )
+                        .options(selectinload(Event.ticket_tiers), selectinload(Event.category))
+                        .order_by(Event.event_date.asc())
+                        .limit(8)
+                    )
+                    .scalars()
+                    .all()
+                )
+                block["events"] = [_event_summary_dict(e) for e in rows]
             else:  # auto event row
                 window = live_pool[auto_offset : auto_offset + 4]
                 auto_offset += 4

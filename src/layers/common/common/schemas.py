@@ -403,6 +403,9 @@ class FeatureEventRequest(BaseModel):
     is_featured: bool
     featured_order: int = Field(default=0, ge=0, le=1000)
     featured_headline: str | None = Field(default=None, max_length=200)
+    # 0009: banner click target (blank = the event page) + optional phone artwork.
+    featured_link_url: str | None = Field(default=None, max_length=500)
+    featured_mobile_banner_url: str | None = Field(default=None, max_length=500)
 
 
 # --- Organiser profile / approval ---
@@ -498,6 +501,8 @@ class HomepageSectionInput(BaseModel):
     mode: HomepageSectionModeStr = "auto"
     enabled: bool = True
     event_ids: list[uuid.UUID] = Field(default_factory=list, max_length=24)
+    # Auto event rows only: limit the row to one category (0009).
+    category_id: uuid.UUID | None = None
 
     @model_validator(mode="after")
     def _only_event_sections_curate(self) -> "HomepageSectionInput":
@@ -505,6 +510,8 @@ class HomepageSectionInput(BaseModel):
             # A category grid has no event list; force auto + drop any picks.
             self.mode = "auto"
             self.event_ids = []
+        if self.section_type == "category_grid" or self.mode == "curated":
+            self.category_id = None
         return self
 
 

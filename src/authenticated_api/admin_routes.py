@@ -363,11 +363,15 @@ def feature_event(event_id: str):
         event.is_featured = body.is_featured
         event.featured_order = body.featured_order
         event.featured_headline = (body.featured_headline or "").strip() or None
+        event.featured_link_url = (body.featured_link_url or "").strip() or None
+        event.featured_mobile_banner_url = (body.featured_mobile_banner_url or "").strip() or None
         return {
             "event_id": event_id,
             "is_featured": event.is_featured,
             "featured_order": event.featured_order,
             "featured_headline": event.featured_headline,
+            "featured_link_url": event.featured_link_url,
+            "featured_mobile_banner_url": event.featured_mobile_banner_url,
         }
 
 

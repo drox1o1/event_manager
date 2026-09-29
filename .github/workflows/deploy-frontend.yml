@@ -63,7 +63,7 @@ jobs:
         env:
           NEXT_PUBLIC_API_BASE_URL: ${{ steps.params.outputs.api }}
           NEXT_PUBLIC_SITE_URL: https://showtik.in
-          NEXT_PUBLIC_ORGANISER_URL: https://host.showtik.in/signup
+          NEXT_PUBLIC_ORGANISER_URL: https://host.showtik.in
           NEXT_TELEMETRY_DISABLED: "1"
         run: make frontend-sam-build
 

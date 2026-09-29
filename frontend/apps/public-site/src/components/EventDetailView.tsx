@@ -9,7 +9,7 @@ import { BookingModal } from '@/components/BookingModal';
 
 export interface EventDetailViewProps {
   event: EventDetail;
-  /** Open the ticket selector immediately (e.g. from a homepage "Book tickets"). */
+  /** Open the ticket selector immediately (e.g. from a "?book=1" link). */
   autoBook?: boolean;
 }
 
@@ -36,7 +36,7 @@ function calendarUrl(e: EventDetail): string {
 }
 
 /** Event page — banner, host, date & location, rich description, video,
- *  gallery, tags, ticket info, FAQ, and a sticky "Book Tickets" card that opens
+ *  gallery, tags, ticket info and a sticky "Register Now" card that opens
  *  the multi-ticket booking flow. */
 export function EventDetailView({ event, autoBook }: EventDetailViewProps) {
   const router = useRouter();
@@ -224,7 +224,7 @@ export function EventDetailView({ event, autoBook }: EventDetailViewProps) {
                 );
               })}
             </div>
-            {canBook && <button type="button" onClick={() => setBooking(true)} style={bookBtn(false)}><Icon name="zap" size={16} />Book Tickets</button>}
+            {canBook && <button type="button" onClick={() => setBooking(true)} style={bookBtn(false)}><Icon name="zap" size={16} />Register Now</button>}
 
           </div>
 
@@ -235,7 +235,7 @@ export function EventDetailView({ event, autoBook }: EventDetailViewProps) {
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 30, fontWeight: 900, color: allFree ? 'var(--color-success)' : 'var(--text-heading)', margin: '2px 0 4px', letterSpacing: '-0.02em' }}>{priceLabel}</div>
                 <div style={{ fontSize: 13.5, color: 'var(--text-muted)', marginBottom: 18 }}>{formatEventDate(event.event_date)} · {event.city}</div>
                 <button type="button" disabled={!canBook} onClick={() => setBooking(true)} style={bookBtn(!canBook, true)}>
-                  <Icon name="zap" size={17} />{canBook ? 'Book Tickets' : event.sold_out ? 'Sold out' : 'Tickets unavailable'}
+                  <Icon name="zap" size={17} />{canBook ? 'Register Now' : event.sold_out ? 'Sold out' : 'Tickets unavailable'}
                 </button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text-muted)', marginTop: 12, justifyContent: 'center' }}><Icon name="shield-check" size={14} />Secure checkout · No account needed</div>
               </div>
@@ -251,7 +251,7 @@ export function EventDetailView({ event, autoBook }: EventDetailViewProps) {
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Tickets</div>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, color: 'var(--text-heading)' }}>{priceLabel}</div>
           </div>
-          <button type="button" onClick={() => setBooking(true)} style={{ ...bookBtn(false), width: 'auto', padding: '0 28px' }}><Icon name="zap" size={16} />Book Tickets</button>
+          <button type="button" onClick={() => setBooking(true)} style={{ ...bookBtn(false), width: 'auto', padding: '0 28px' }}><Icon name="zap" size={16} />Register Now</button>
         </div>
       )}
 
