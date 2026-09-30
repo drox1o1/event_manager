@@ -9,7 +9,14 @@ from app import app
 from app import parse_request_body as _parse_body
 from aws_lambda_powertools.event_handler.exceptions import BadRequestError, NotFoundError
 from common.db import get_session
-from common.helpers import ConflictError, parse_pagination, parse_uuid, short_code, utcnow, validation_message
+from common.helpers import (
+    ConflictError,
+    parse_pagination,
+    parse_uuid,
+    short_code,
+    utcnow,
+    validation_message,
+)
 from common.models import (
     ActivityLog,
     Event,

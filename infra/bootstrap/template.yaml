@@ -140,6 +140,32 @@ Resources:
             - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:cyrokx-*
             - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:cyrokx-*
             - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:layer:cyrokx-*:*
+        # Lambda's control plane calls these itself (not something the CI
+        # role/user invokes directly) to validate a function's VpcConfig on
+        # create/update -- migration_runner and the VPC-attached API
+        # functions all need this. EC2 describe actions don't support
+        # resource-level restriction, hence Resource: "*".
+        - Sid: DescribeVpcConfigForLambda
+          Effect: Allow
+          Action:
+            - ec2:DescribeSecurityGroups
+            - ec2:DescribeSubnets
+            - ec2:DescribeVpcs
+          Resource: "*"
+        # EmailSenderFunction/TicketGeneratorFunction consume EmailQueue/
+        # OrderCompletedQueue via SQS event source mappings (AWS::Serverless::
+        # Function's Events: Type: SQS). Mapping ARNs are auto-generated
+        # UUIDs, not tied to the function name, so this can't be scoped
+        # tighter than the mapping ARN pattern.
+        - Sid: SqsEventSourceMappings
+          Effect: Allow
+          Action:
+            - lambda:CreateEventSourceMapping
+            - lambda:UpdateEventSourceMapping
+            - lambda:DeleteEventSourceMapping
+            - lambda:GetEventSourceMapping
+          Resource:
+            - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:event-source-mapping:*
         - Sid: ApiGateway
           Effect: Allow
           # API Gateway ARNs don't include the account ID, and a

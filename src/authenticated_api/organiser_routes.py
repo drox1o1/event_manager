@@ -25,7 +25,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from uploads import upload_url
 
-
 # --- Organiser: account + public profile ---
 
 

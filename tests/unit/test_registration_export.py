@@ -41,7 +41,7 @@ def _setup(monkeypatch):
         id=uuid.uuid4(), event_id=event.id, buyer_name="Aditi Rao", buyer_email="aditi@example.com", buyer_phone="+919876543210",
         subtotal=Decimal("1000"), booking_fee=Decimal("0"), total_amount=Decimal("900"), discount_amount=Decimal("100"),
         promo_code="RUN10", payment_status=PaymentStatus.SUCCESS, payment_gateway_ref="pay_ABC123",
-        created_at=dt.datetime(2026, 10, 1, 9, 30, tzinfo=dt.timezone.utc),
+        created_at=dt.datetime(2026, 10, 1, 9, 30, tzinfo=dt.UTC),
     )
     order.form_responses = []
 
