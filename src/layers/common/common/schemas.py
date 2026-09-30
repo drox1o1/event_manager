@@ -25,6 +25,20 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1)
 
 
+class PasswordResetRequest(BaseModel):
+    """'Forgot password' trigger -- just the email to (maybe) send a reset
+    link to. The route always responds the same way whether or not that
+    email has an account, so this alone never reveals which emails are
+    registered."""
+
+    email: EmailStr
+
+
+class PasswordResetConfirmRequest(BaseModel):
+    token: str = Field(min_length=1)
+    new_password: str = Field(min_length=8, max_length=200)
+
+
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str

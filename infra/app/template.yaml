@@ -301,6 +301,22 @@ Resources:
             Method: post
             Auth:
               Authorizer: NONE
+        OrganiserForgotPassword:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/auth/forgot-password
+            Method: post
+            Auth:
+              Authorizer: NONE
+        OrganiserResetPassword:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/auth/reset-password
+            Method: post
+            Auth:
+              Authorizer: NONE
         CreateEvent:
           Type: Api
           Properties:
