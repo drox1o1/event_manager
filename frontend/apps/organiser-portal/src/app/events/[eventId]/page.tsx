@@ -11,9 +11,6 @@ import { useRequireAuth } from '@/lib/auth';
 import { EventDashboardPanel } from '@/components/event/EventDashboardPanel';
 import { EventCategoriesPanel } from '@/components/event/EventCategoriesPanel';
 import { EventRegistrationFormPanel } from '@/components/event/EventRegistrationFormPanel';
-import { EventDiscountsPanel } from '@/components/event/EventDiscountsPanel';
-import { EventTaxPanel } from '@/components/event/EventTaxPanel';
-import { EventOrdersPanel } from '@/components/event/EventOrdersPanel';
 import { ComingSoonPanel } from '@/components/event/ComingSoonPanel';
 
 function badgeStatus(status: string): BadgeStatus {
@@ -26,22 +23,17 @@ const GROUPS = [
   { name: 'Registration', tabs: [
     { key: 'categories', label: 'Categories' },
     { key: 'regform', label: 'Registration form' },
-    { key: 'discounts', label: 'Discounts' },
-    { key: 'tax', label: 'Tax' },
   ] },
-  { name: 'People', tabs: [{ key: 'orders', label: 'Orders' }] },
+  // Attendees opens its own (live) page; see selectOverflow.
+  { name: 'People', tabs: [{ key: 'attendees', label: 'Attendees' }] },
 ];
 
-// Overflow items. `attendees` and `edit` navigate to their own routes; the rest
-// render a "coming soon" placeholder so the full workspace structure is visible.
+// Overflow items navigate to their own routes. Unbuilt features (discounts,
+// tax, per-event orders, merch, leaderboards, certificates, bibs, email
+// templates) are hidden until they have a backend -- see
+// docs/internal/hidden-features.md.
 const OVERFLOW = [
-  { key: 'attendees', label: 'Attendees', icon: 'users', route: true },
   { key: 'edit', label: 'Edit event', icon: 'pencil', route: true },
-  { key: 'merch', label: 'Merchandize', icon: 'shopping-bag' },
-  { key: 'leaderboards', label: 'Leaderboards', icon: 'trophy' },
-  { key: 'certificates', label: 'Certificates', icon: 'award' },
-  { key: 'bib', label: 'Attendee bib', icon: 'hash' },
-  { key: 'email', label: 'Email templates', icon: 'mail' },
 ];
 const OVERFLOW_LABEL: Record<string, string> = Object.fromEntries(OVERFLOW.map((o) => [o.key, o.label]));
 
@@ -156,12 +148,13 @@ function EventWorkspace() {
           <React.Fragment key={g.name}>
             {gi > 0 && <div style={{ width: 1, background: 'var(--border-default)', margin: '8px 6px' }} />}
             <div style={{ display: 'flex', gap: 2 }}>
-              {g.tabs.map((t) => <TabButton key={t.key} active={tab === t.key} onClick={() => setTab(t.key)}>{t.label}</TabButton>)}
+              {g.tabs.map((t) => <TabButton key={t.key} active={tab === t.key} onClick={() => (t.key === 'attendees' ? selectOverflow('attendees') : setTab(t.key))}>{t.label}</TabButton>)}
             </div>
           </React.Fragment>
         ))}
         <div style={{ flex: 1 }} />
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
+        {/* "More" only when it holds something besides Edit event (already in the header). */}
+        {OVERFLOW.length > 1 && <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
           <TabButton active={moreSelected} onClick={() => setMoreOpen((v) => !v)}>
             {moreSelected ? OVERFLOW_LABEL[tab] : 'More'} <Icon name="chevron-down" size={14} />
           </TabButton>
@@ -174,16 +167,13 @@ function EventWorkspace() {
               ))}
             </div>
           )}
-        </div>
+        </div>}
       </div>
 
       {/* Panels */}
       {tab === 'dashboard' && <EventDashboardPanel event={event} />}
-      {tab === 'categories' && <EventCategoriesPanel event={event} />}
+      {tab === 'categories' && <EventCategoriesPanel event={event} onEdit={() => router.push(`/events/${eventId}/manage/tickets`)} />}
       {tab === 'regform' && <EventRegistrationFormPanel eventId={eventId} token={token} />}
-      {tab === 'discounts' && <EventDiscountsPanel />}
-      {tab === 'tax' && <EventTaxPanel />}
-      {tab === 'orders' && <EventOrdersPanel />}
       {moreSelected && overflowItem && (
         <ComingSoonPanel label={overflowItem.label} icon={overflowItem.icon} tab={tab} onEdit={() => router.push(`/events/${eventId}/manage/basic`)} />
       )}
