@@ -11,6 +11,7 @@ from common.auth import (
     hash_password,
     issue_access_token,
     issue_email_verification_token,
+    issue_password_reset_token,
     issue_refresh_token,
     verify_password,
 )
@@ -47,6 +48,14 @@ def test_issue_and_decode_email_verification_token(mock_jwt_secret):
     token = issue_email_verification_token(subject_id)
     payload = decode_token(token, expected_type="email_verify")
     assert payload["sub"] == str(subject_id)
+
+
+def test_issue_and_decode_password_reset_token(mock_jwt_secret):
+    subject_id = uuid.uuid4()
+    token = issue_password_reset_token(subject_id, "organiser")
+    payload = decode_token(token, expected_type="password_reset")
+    assert payload["sub"] == str(subject_id)
+    assert payload["role"] == "organiser"
 
 
 def test_decode_token_rejects_wrong_type(mock_jwt_secret):

@@ -455,6 +455,10 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface StatusResponse {
+  status: string;
+}
+
 // --- Organiser: events ---
 
 export interface EventCreateRequest {

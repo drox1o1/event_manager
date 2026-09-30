@@ -1,0 +1,11 @@
+{#
+  Shared by ticket_approved and ticket_rejected. heading/outcome_text/
+  show_view_ticket are set by the CONTEXT_BUILDERS entry in handler.py.
+#}
+{% extends "layout.html.jinja" %}
+{% import "_macros.html.jinja" as m %}
+{% block heading %}{{ heading }}{% endblock %}
+{% block content %}
+{% call m.p() %}{{ attendee_name }}'s ticket <strong>{{ ticket_code }}</strong> for <strong>{{ event_title }}</strong> {{ outcome_text }}{% endcall %}
+{% if show_view_ticket %}{% call m.p() %}{{ m.button("View ticket", site() ~ "/order/" ~ order_id) }}{% endcall %}{% endif %}
+{% endblock %}

@@ -1,0 +1,7 @@
+{% extends "layout.html.jinja" %}
+{% import "_macros.html.jinja" as m %}
+{% block heading %}Event to review{% endblock %}
+{% block content %}
+{% call m.p() %}<strong>{{ org_name }}</strong> submitted <strong>{{ event_title }}</strong> for approval.{% endcall %}
+{% call m.p() %}{{ m.button("Review event", admin() ~ "/events/" ~ event_id) }}{% endcall %}
+{% endblock %}

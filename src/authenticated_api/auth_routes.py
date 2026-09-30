@@ -6,7 +6,7 @@ since there's no JWT yet at signup/login time.
 
 import uuid
 
-from app import app
+from app import app, logger
 from app import parse_request_body as _parse_body
 from aws_lambda_powertools.event_handler.exceptions import (
     BadRequestError,
@@ -14,19 +14,27 @@ from aws_lambda_powertools.event_handler.exceptions import (
     UnauthorizedError,
 )
 from common.auth import (
+    PASSWORD_RESET_TOKEN_TTL_SECONDS,
     InvalidTokenError,
     decode_token,
     hash_password,
     issue_access_token,
     issue_email_verification_token,
+    issue_password_reset_token,
     issue_refresh_token,
     verify_password,
 )
 from common.db import get_session
-from common.helpers import ConflictError
-from common.messaging import publish
+from common.helpers import ConflictError, utcnow
+from common.messaging import publish_to_ses
 from common.models import AdminUser, Organiser, OrganiserStatus
-from common.schemas import LoginRequest, OrganiserSignupRequest, TokenResponse
+from common.schemas import (
+    LoginRequest,
+    OrganiserSignupRequest,
+    PasswordResetConfirmRequest,
+    PasswordResetRequest,
+    TokenResponse,
+)
 from sqlalchemy import select
 
 
@@ -53,13 +61,12 @@ def organiser_signup():
         organiser_id = organiser.id
 
     verification_token = issue_email_verification_token(organiser_id)
-    publish(
-        "EMAIL_QUEUE_URL",
+    publish_to_ses(
         {
             "type": "organiser_verification",
             "to": body.email,
             "verification_token": verification_token,
-        },
+        }
     )
 
     return {"organiser_id": str(organiser_id), "status": OrganiserStatus.PENDING.value}, 201
@@ -109,6 +116,59 @@ def organiser_login():
         )
 
     return tokens.model_dump()
+
+
+@app.post("/organiser/auth/forgot-password")
+def organiser_forgot_password():
+    """Always responds the same way regardless of whether `email` has an
+    account -- an endpoint that answers differently is an email-enumeration
+    oracle. The real work (issuing a token, queuing an email) only happens
+    when there's actually an organiser to reset."""
+    body = _parse_body(PasswordResetRequest)
+
+    with get_session() as session:
+        organiser = session.execute(
+            select(Organiser).where(Organiser.email == body.email)
+        ).scalar_one_or_none()
+        if organiser is not None:
+            reset_token = issue_password_reset_token(organiser.id, "organiser")
+            publish_to_ses(
+                {
+                    "type": "password_reset",
+                    "to": organiser.email,
+                    "reset_token": reset_token,
+                    "expires_minutes": PASSWORD_RESET_TOKEN_TTL_SECONDS // 60,
+                }
+            )
+
+    return {"status": "if_account_exists_email_sent"}
+
+
+@app.post("/organiser/auth/reset-password")
+def organiser_reset_password():
+    body = _parse_body(PasswordResetConfirmRequest)
+
+    try:
+        payload = decode_token(body.token, expected_type="password_reset")
+    except InvalidTokenError as exc:
+        raise BadRequestError("Invalid or expired reset link") from exc
+
+    organiser_id = uuid.UUID(payload["sub"])
+    with get_session() as session:
+        organiser = session.get(Organiser, organiser_id)
+        if organiser is None:
+            raise NotFoundError("Organiser not found")
+        organiser.password_hash = hash_password(body.new_password)
+        email = organiser.email
+
+    # Best-effort: a queue hiccup shouldn't fail a reset that already
+    # succeeded -- the password is already changed at this point.
+    try:
+        publish_to_ses({"type": "password_changed", "to": email, "changed_at": utcnow().isoformat()})
+    except Exception:  # noqa: BLE001
+        logger.exception("could not queue password_changed notification")
+
+    return {"status": "password_reset"}
 
 
 # --- Admin auth (unauthenticated -- admin rows are seeded, never self-registered) ---

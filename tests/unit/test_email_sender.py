@@ -27,7 +27,7 @@ MESSAGES = [
     {"type": "ticket_rejected", "to": "c@x.com", "attendee_name": "Asha", "event_title": "Run", "ticket_code": "22222222", "order_id": "o1"},
     {"type": "email_verified", "to": "a@x.com", "name": "Ravi"},
     {"type": "password_reset", "to": "a@x.com", "reset_token": "rtok", "expires_minutes": 30},
-    {"type": "password_changed", "to": "a@x.com", "changed_at": "2026-09-28 10:00 IST", "audience": "admin"},
+    {"type": "password_changed", "to": "a@x.com", "changed_at": "2026-09-28T10:00:00+05:30", "audience": "admin"},
     {"type": "admin_organiser_pending", "to": "ops@x.com", "org_name": "Run Club", "contact_name": "Ravi",
      "organiser_email": "a@x.com", "organiser_id": "org1"},
     {"type": "event_submitted", "to": "a@x.com", "event_title": "Run", "event_id": "e1"},
@@ -49,9 +49,24 @@ MESSAGES = [
 
 
 def test_every_template_has_a_test_message():
-    from email_sender.handler import TEMPLATES
+    from email_sender.handler import SUBJECTS
 
-    assert set(TEMPLATES) == {m["type"] for m in MESSAGES}
+    assert set(SUBJECTS) == {m["type"] for m in MESSAGES}
+
+
+def test_dates_render_human_readable_not_iso():
+    """dd-mm-yyyy[ HH:MM:SS], not the raw ISO strings producers publish."""
+    from email_sender.handler import _render
+
+    _, html_body, _ = _render(
+        {"type": "password_changed", "to": "a@x.com", "changed_at": "2026-09-28T10:00:00+05:30"}
+    )
+    assert "28-09-2026 10:00:00" in html_body
+    assert "2026-09-28T10:00:00" not in html_body
+
+    _, html_body, _ = _render(MESSAGES[7])  # order_confirmation, event_date="2026-11-22"
+    assert "22-11-2026" in html_body
+    assert "2026-11-22" not in html_body
 
 
 def test_password_reset_links_to_the_right_app(monkeypatch):
@@ -79,7 +94,11 @@ def test_order_email_escapes_html_and_lists_every_ticket():
     assert "&lt;2026&gt;" in html_body
     assert "11111111" in html_body and "22222222" in html_body
     assert "Awaiting approval" in html_body
-    assert "Brijesh (Full Marathon)" in text_body
+    # Plain-text body is auto-derived from the HTML (tags stripped), so each
+    # ticket's fields land on their own line rather than one hand-authored
+    # "name (tier)" phrase -- still readable, just not identical formatting.
+    assert "Brijesh" in text_body and "Full Marathon" in text_body
+    assert "Awaiting approval" in text_body
 
 
 def _records(*bodies):

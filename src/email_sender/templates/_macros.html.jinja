@@ -1,0 +1,26 @@
+{#
+  Shared building blocks for email bodies -- the Jinja equivalent of the old
+  handler.py's _p/_muted/_button/_callout/_details Python helpers.
+
+  p/muted/callout take their content as a {% call %} block (not a string
+  arg) specifically so a paragraph can freely mix literal markup (<strong>,
+  <br>) with autoescaped dynamic values ({{ event_title }}) the same way
+  you'd write any other template content -- no manual escaping, no "is this
+  string already HTML-safe?" bookkeeping.
+#}
+
+{% macro p() %}<p style="margin:0 0 16px;font-size:15px;line-height:1.6">{{ caller() }}</p>{% endmacro %}
+
+{% macro muted() %}<p style="margin:0 0 16px;font-size:13px;line-height:1.6;color:#777">{{ caller() }}</p>{% endmacro %}
+
+{% macro callout() %}<div style="margin:0 0 16px;padding:14px 16px;background:#FFF7ED;border-left:4px solid #C4143F;border-radius:8px;font-size:14px;line-height:1.6">{{ caller() }}</div>{% endmacro %}
+
+{% macro button(label, url) %}<a href="{{ url }}" style="display:inline-block;background:#C4143F;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 26px;border-radius:10px">{{ label }}</a>{% endmacro %}
+
+{% macro details(rows) %}
+<table role="presentation" width="100%" style="margin:0 0 16px;font-size:14px">
+{% for label, value in rows %}{% if value %}
+<tr><td style="padding:8px 0;border-top:1px solid #eee;color:#666">{{ label }}</td><td style="padding:8px 0;border-top:1px solid #eee;text-align:right;font-weight:600">{{ value }}</td></tr>
+{% endif %}{% endfor %}
+</table>
+{% endmacro %}

@@ -35,7 +35,7 @@ jobs:
       - name: Resolve API URL and existing stack parameters
         id: params
         run: |
-          API_URL=$(aws cloudformation describe-stacks --stack-name cyrokx-app-prod \
+          API_URL=$(aws cloudformation describe-stacks --stack-name "cyrokx-app-${STAGE}" \
             --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
           echo "api=${API_URL%/}" >> "$GITHUB_OUTPUT"
           # Keep the custom-domain certificate the stack was deployed with --
@@ -59,11 +59,22 @@ jobs:
       - name: Install
         run: make frontend-install && make install
 
+      - name: Resolve stage-aware site domains
+        id: domains
+        run: |
+          if [ "$STAGE" = "prod" ]; then
+            echo "site=https://showtik.in" >> "$GITHUB_OUTPUT"
+            echo "organiser=https://host.showtik.in" >> "$GITHUB_OUTPUT"
+          else
+            echo "site=https://${STAGE}.showtik.in" >> "$GITHUB_OUTPUT"
+            echo "organiser=https://host-${STAGE}.showtik.in" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build and package
         env:
           NEXT_PUBLIC_API_BASE_URL: ${{ steps.params.outputs.api }}
-          NEXT_PUBLIC_SITE_URL: https://showtik.in
-          NEXT_PUBLIC_ORGANISER_URL: https://host.showtik.in
+          NEXT_PUBLIC_SITE_URL: ${{ steps.domains.outputs.site }}
+          NEXT_PUBLIC_ORGANISER_URL: ${{ steps.domains.outputs.organiser }}
           NEXT_TELEMETRY_DISABLED: "1"
         run: make frontend-sam-build
 

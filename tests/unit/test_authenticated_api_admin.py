@@ -256,7 +256,7 @@ def test_approve_organiser_sets_verified(monkeypatch, mock_jwt_secret):
         password_hash="x", status=OrganiserStatus.PENDING,
     )
     monkeypatch.setattr("admin_routes.get_session", _fake_get_session(fake_organiser))
-    monkeypatch.setattr("events_service.publish", MagicMock())
+    monkeypatch.setattr("events_service.publish_to_ses", MagicMock())
 
     from authenticated_api.handler import handler as api_handler
 

@@ -1,0 +1,8 @@
+{% extends "layout.html.jinja" %}
+{% import "_macros.html.jinja" as m %}
+{% block heading %}Your payout is on its way{% endblock %}
+{% block content %}
+{% call m.p() %}We've sent your ticket-sales payout. It usually reaches your bank within 1–3 working days.{% endcall %}
+{{ m.details([("Amount", amount), ("Reference", payout_reference), ("Period", period), ("Account", account_display)]) }}
+{% call m.p() %}{{ m.button("View payouts", portal() ~ "/payouts") }}{% endcall %}
+{% endblock %}
