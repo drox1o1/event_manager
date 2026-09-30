@@ -668,7 +668,7 @@ def notify(message: dict) -> None:
     if not message.get("to"):
         return
     try:
-        publish("EMAIL_QUEUE_URL", message)
+        publish(message)
     except Exception:  # noqa: BLE001
         logger.exception("could not queue email", extra={"type": message.get("type")})
 

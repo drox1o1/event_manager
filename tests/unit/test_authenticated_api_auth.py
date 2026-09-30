@@ -66,7 +66,7 @@ def test_forgot_password_issues_token_and_queues_email_for_known_organiser(monke
 
     assert response["statusCode"] == 200
     mock_publish.assert_called_once()
-    _, msg = mock_publish.call_args[0]
+    (msg,) = mock_publish.call_args[0]
     assert msg["type"] == "password_reset"
     assert msg["to"] == organiser.email
     assert "reset_token" in msg

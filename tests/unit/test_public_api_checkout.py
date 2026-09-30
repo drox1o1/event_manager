@@ -203,7 +203,7 @@ def test_raise_query_saves_and_emails_admin_and_organiser(monkeypatch):
     order, admins = _order_with_event()
     monkeypatch.setattr("public_api.handler.get_session", _fake_session(get_return=order, execute_all=admins))
     sent = []
-    monkeypatch.setattr("public_api.handler.publish", lambda queue, msg: sent.append(msg))
+    monkeypatch.setattr("public_api.handler.publish", lambda msg: sent.append(msg))
 
     from public_api.handler import handler as api_handler
 

@@ -62,12 +62,11 @@ def organiser_signup():
 
     verification_token = issue_email_verification_token(organiser_id)
     publish(
-        "EMAIL_QUEUE_URL",
         {
             "type": "organiser_verification",
             "to": body.email,
             "verification_token": verification_token,
-        },
+        }
     )
 
     return {"organiser_id": str(organiser_id), "status": OrganiserStatus.PENDING.value}, 201
@@ -134,13 +133,12 @@ def organiser_forgot_password():
         if organiser is not None:
             reset_token = issue_password_reset_token(organiser.id, "organiser")
             publish(
-                "EMAIL_QUEUE_URL",
                 {
                     "type": "password_reset",
                     "to": organiser.email,
                     "reset_token": reset_token,
                     "expires_minutes": PASSWORD_RESET_TOKEN_TTL_SECONDS // 60,
-                },
+                }
             )
 
     return {"status": "if_account_exists_email_sent"}
@@ -166,7 +164,7 @@ def organiser_reset_password():
     # Best-effort: a queue hiccup shouldn't fail a reset that already
     # succeeded -- the password is already changed at this point.
     try:
-        publish("EMAIL_QUEUE_URL", {"type": "password_changed", "to": email, "changed_at": utcnow().isoformat()})
+        publish({"type": "password_changed", "to": email, "changed_at": utcnow().isoformat()})
     except Exception:  # noqa: BLE001
         logger.exception("could not queue password_changed notification")
 
