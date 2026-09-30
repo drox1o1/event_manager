@@ -37,6 +37,7 @@ export default function LoginPage() {
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <Input label="Email" type="email" placeholder="you@organisation.com" value={email} onChange={(e) => setEmail(e.target.value)} />
         <Input label="Password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <Link href="/forgot-password" style={{ fontSize: 13, color: 'var(--text-link)', textDecoration: 'none', alignSelf: 'flex-end' }}>Forgot password?</Link>
         {error && <div style={{ fontSize: 13, color: 'var(--color-error)' }}>{error}</div>}
         <Button type="submit" fullWidth size="lg" loading={submitting}>Log in</Button>
       </form>
