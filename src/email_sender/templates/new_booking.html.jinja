@@ -1,7 +1,8 @@
 {% extends "layout.html.jinja" %}
 {% import "_macros.html.jinja" as m %}
+{% block heading %}You have a new booking{% endblock %}
 {% block content %}
 {% call m.p() %}Someone just booked <strong>{{ event_title }}</strong>.{% endcall %}
 {{ m.details([("Booked by", buyer_name), ("Tickets", ticket_count), ("Amount", total), ("Sold so far", sold)]) }}
-{% call m.p() %}{{ m.button("View attendees", url) }}{% endcall %}
+{% call m.p() %}{{ m.button("View attendees", portal() ~ "/events/" ~ event_id ~ "/manage/attendees") }}{% endcall %}
 {% endblock %}

@@ -1,8 +1,10 @@
 {% extends "layout.html.jinja" %}
 {% import "_macros.html.jinja" as m %}
+{% block preheader %}Payment received — your tickets for {{ event_title }} are inside.{% endblock %}
+{% block heading %}Booking confirmed{% endblock %}
 {% block content %}
 {% call m.p() %}Hi {{ buyer_name }}, you're going to <strong>{{ event_title }}</strong>!{% endcall %}
-{% call m.p() %}📅 {{ when }}<br>📍 {{ venue }}{% endcall %}
+{% call m.p() %}📅 {{ event_date|human_date }} {{ event_time }}<br>📍 {{ venue }}{% endcall %}
 <table role="presentation" width="100%" style="margin:0 0 16px;font-size:14px">
 {% for t in tickets %}
 <tr><td style="padding:10px 0;border-top:1px solid #eee">
@@ -13,6 +15,6 @@
 {% endfor %}
 </table>
 {% call m.p() %}Order / payment ID: <strong style="font-family:monospace">{{ order_code }}</strong> · Total: <strong style="font-family:{{ font_display }}">{{ total }}</strong>{% endcall %}
-{% call m.p() %}{{ m.button("View tickets & QR codes", url) }}{% endcall %}
+{% call m.p() %}{{ m.button("View tickets & QR codes", site() ~ "/order/" ~ order_id) }}{% endcall %}
 {% call m.muted() %}Show the QR code on your phone at the entry gate. Each ticket can be scanned once.{% endcall %}
 {% endblock %}

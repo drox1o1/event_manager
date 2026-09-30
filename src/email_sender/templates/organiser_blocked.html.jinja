@@ -1,10 +1,11 @@
 {#
   Shared by organiser_rejected and organiser_suspended -- same shape
   (lead sentence + optional reason + contact line), different wording,
-  set by the Python function per type into `lead`/`heading`/`reason`.
+  set by the CONTEXT_BUILDERS entry in handler.py per type.
 #}
 {% extends "layout.html.jinja" %}
 {% import "_macros.html.jinja" as m %}
+{% block heading %}{{ heading }}{% endblock %}
 {% block content %}
 {% call m.p() %}{{ lead }}{% endcall %}
 {% if reason %}{% call m.p() %}<strong>Reason:</strong> {{ reason }}{% endcall %}{% endif %}

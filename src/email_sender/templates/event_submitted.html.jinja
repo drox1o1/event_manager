@@ -1,6 +1,7 @@
 {% extends "layout.html.jinja" %}
 {% import "_macros.html.jinja" as m %}
+{% block heading %}Your event is in review{% endblock %}
 {% block content %}
 {% call m.p() %}Thanks for submitting <strong>{{ event_title }}</strong>. The Showtik team will review it — usually within one working day — and email you when it's live.{% endcall %}
-{% call m.p() %}{{ m.button("View submission", url) }}{% endcall %}
+{% call m.p() %}{{ m.button("View submission", portal() ~ "/events/" ~ event_id ~ "/manage/publish") }}{% endcall %}
 {% endblock %}

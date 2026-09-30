@@ -1,5 +1,7 @@
 {% extends "layout.html.jinja" %}
 {% import "_macros.html.jinja" as m %}
+{% block preheader %}Your application is now in review.{% endblock %}
+{% block heading %}Email verified ✔{% endblock %}
 {% block content %}
 {% call m.p() %}Thanks{% if name %}, {{ name }}{% endif %} — your email address is confirmed.{% endcall %}
 {% call m.p() %}Your organiser application is now with the Showtik team. Reviews usually take 1–2 working days, and we'll email you the result.{% endcall %}

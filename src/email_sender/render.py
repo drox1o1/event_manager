@@ -7,6 +7,7 @@ risking them drifting apart).
 See handler.py's module docstring for the full message-type catalogue.
 """
 
+import datetime as dt
 import html
 import os
 import re
@@ -45,9 +46,50 @@ def logo_mark_url() -> str:
     return f"{site()}/brand/showtik-mark.png"
 
 
-def account_url(msg: dict) -> str:
+def account_url(audience: str | None = None) -> str:
     """Base URL for the app the recipient's account lives in."""
-    return {"admin": admin, "attendee": site}.get(msg.get("audience"), portal)()
+    return {"admin": admin, "attendee": site}.get(audience, portal)()
+
+
+# --- date/time display -------------------------------------------------------
+# Producers publish dates as ISO strings (Event/Order columns' own
+# .isoformat(), datetime.utcnow().isoformat(), ...) -- correct, unambiguous
+# data, but not something to show a human. Templates apply these filters at
+# the point of display instead of every producer having to remember a
+# presentation format; human_date/human_datetime parse and reformat
+# dd-mm-yyyy[ HH:MM:SS], falling back to the original value unchanged for
+# anything they can't parse as a date (never hide data behind a formatting
+# failure).
+
+
+def _parse_iso(value) -> dt.date | dt.datetime | None:
+    if not value:
+        return None
+    if isinstance(value, (dt.date, dt.datetime)):
+        return value
+    text = str(value)
+    for parser in (dt.datetime.fromisoformat, dt.date.fromisoformat):
+        try:
+            return parser(text)
+        except ValueError:
+            continue
+    return None
+
+
+def human_date(value) -> str:
+    """dd-mm-yyyy, for a date-only value."""
+    parsed = _parse_iso(value)
+    return parsed.strftime("%d-%m-%Y") if parsed else (str(value) if value else "")
+
+
+def human_datetime(value) -> str:
+    """dd-mm-yyyy HH:MM:SS, for a full timestamp."""
+    parsed = _parse_iso(value)
+    if isinstance(parsed, dt.datetime):
+        return parsed.strftime("%d-%m-%Y %H:%M:%S")
+    if isinstance(parsed, dt.date):
+        return parsed.strftime("%d-%m-%Y")
+    return str(value) if value else ""
 
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -62,6 +104,7 @@ env.globals.update(
     site=site,
     portal=portal,
     admin=admin,
+    account_url=account_url,
     logo_mark_url=logo_mark_url,
     support_email=SUPPORT_EMAIL,
     # Trusted, compile-time constants (not user input) -- marked safe so
@@ -70,6 +113,7 @@ env.globals.update(
     font_display=Markup(FONT_DISPLAY),
     font_body=Markup(FONT_BODY),
 )
+env.filters.update(human_date=human_date, human_datetime=human_datetime)
 
 
 def render_html(template_name: str, context: dict) -> str:

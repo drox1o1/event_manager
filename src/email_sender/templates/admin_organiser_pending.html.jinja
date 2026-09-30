@@ -1,7 +1,8 @@
 {% extends "layout.html.jinja" %}
 {% import "_macros.html.jinja" as m %}
+{% block heading %}New organiser to review{% endblock %}
 {% block content %}
 {% call m.p() %}A new organiser has verified their email and is waiting for approval.{% endcall %}
 {{ m.details([("Organisation", org_name), ("Contact", contact_name), ("Email", organiser_email)]) }}
-{% call m.p() %}{{ m.button("Review organiser", url) }}{% endcall %}
+{% call m.p() %}{{ m.button("Review organiser", admin() ~ "/organisers/" ~ organiser_id) }}{% endcall %}
 {% endblock %}

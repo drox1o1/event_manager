@@ -1,9 +1,10 @@
 {% extends "layout.html.jinja" %}
 {% import "_macros.html.jinja" as m %}
+{% block heading %}New transaction query{% endblock %}
 {% block content %}
 {% call m.p() %}A buyer raised a query about their order.{% endcall %}
-{{ m.details(rows) }}
+{{ m.details([("Event", event_title), ("Order / payment ID", order_code), ("Transaction ID", payment_ref), ("Buyer", buyer_name), ("Mobile", buyer_phone), ("Email", buyer_email), ("Query type", category)]) }}
 {% call m.callout() %}{{ message }}{% endcall %}
-{% call m.p() %}{{ m.button("Open queries", url) }}{% endcall %}
+{% call m.p() %}{{ m.button("Open queries", admin() ~ "/queries") }}{% endcall %}
 {% call m.muted() %}Reply to the buyer at {{ buyer_email }}.{% endcall %}
 {% endblock %}

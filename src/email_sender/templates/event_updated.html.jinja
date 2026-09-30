@@ -1,5 +1,6 @@
 {% extends "layout.html.jinja" %}
 {% import "_macros.html.jinja" as m %}
+{% block heading %}Your event has changed{% endblock %}
 {% block content %}
 {% call m.p() %}The organiser has updated <strong>{{ event_title }}</strong>. Your tickets remain valid.{% endcall %}
 <table role="presentation" width="100%" style="margin:0 0 16px;font-size:14px">
@@ -8,5 +9,5 @@
 {% endfor %}
 </table>
 {% if note %}{% call m.p() %}{{ note }}{% endcall %}{% endif %}
-{% call m.p() %}{{ m.button("View event", url) }}{% endcall %}
+{% call m.p() %}{{ m.button("View event", site() ~ "/events/" ~ event_id) }}{% endcall %}
 {% endblock %}
