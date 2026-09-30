@@ -1,0 +1,6 @@
+{% extends "layout.html.jinja" %}
+{% import "_macros.html.jinja" as m %}
+{% block content %}
+{% call m.p() %}Your organiser account has been reinstated — you can create and manage events again.{% endcall %}
+{% call m.p() %}{{ m.button("Open organiser portal", portal_url) }}{% endcall %}
+{% endblock %}

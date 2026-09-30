@@ -13,10 +13,10 @@ ignore = ["E501", "UP042"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-# src/authenticated_api is on the path in its own right (not just as the
-# `authenticated_api` package via `src`) because its CodeUri in
-# infra/app/template.yaml deploys that directory's *contents* as the Lambda
-# root -- handler.py and its sibling modules (app.py, events_service.py, ...)
-# import each other with plain top-level names (`import app`, not
-# `from . import app`), matching how they resolve once deployed.
-pythonpath = ["src/layers/common", "src", "src/authenticated_api"]
+# src/authenticated_api and src/email_sender are on the path in their own
+# right (not just as packages via `src`) because their CodeUri in
+# infra/app/template.yaml deploys each directory's *contents* as the Lambda
+# root -- handler.py and its sibling modules (app.py/events_service.py, or
+# render.py) import each other with plain top-level names (`import app`,
+# not `from . import app`), matching how they resolve once deployed.
+pythonpath = ["src/layers/common", "src", "src/authenticated_api", "src/email_sender"]

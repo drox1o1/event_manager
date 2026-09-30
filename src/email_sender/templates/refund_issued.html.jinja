@@ -1,0 +1,8 @@
+{% extends "layout.html.jinja" %}
+{% import "_macros.html.jinja" as m %}
+{% block content %}
+{% call m.p() %}Hi {{ buyer_name }}, we've issued a refund for your booking.{% endcall %}
+{% if reason %}{% call m.p() %}<strong>Reason:</strong> {{ reason }}{% endcall %}{% endif %}
+{{ m.details(rows) }}
+{% call m.p() %}It usually appears on your original payment method within 5–7 working days, depending on your bank.{% endcall %}
+{% endblock %}

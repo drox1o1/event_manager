@@ -1,0 +1,6 @@
+{% extends "layout.html.jinja" %}
+{% import "_macros.html.jinja" as m %}
+{% block content %}
+{% call m.p() %}Good news — the Showtik team has approved your organiser account. You can now create and publish events.{% endcall %}
+{% call m.p() %}{{ m.button("Create your first event", url) }}{% endcall %}
+{% endblock %}

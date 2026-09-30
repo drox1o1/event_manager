@@ -1,0 +1,28 @@
+{#
+  Outer shell every email extends: <head>, the navy header bar (logo mark +
+  live wordmark), the white card body, and the footer line. Context expected
+  from render.py's globals: font_display, font_body, support_email,
+  logo_mark_url(). Context expected per-render: heading, preheader (may be
+  empty). Subclasses fill {% block content %}.
+#}
+<!doctype html><html><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<!--[if !mso]><!-->
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<!--<![endif]-->
+</head><body style="margin:0;background:#F5F5F5;font-family:{{ font_body }};color:#333">
+{% if preheader %}<div style="display:none;max-height:0;overflow:hidden;opacity:0">{{ preheader }}</div>{% endif %}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:28px 12px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden">
+<tr><td style="background:#051747;padding:20px 28px">
+<table role="presentation" cellpadding="0" cellspacing="0"><tr>
+<td style="padding-right:10px"><img src="{{ logo_mark_url() }}" width="26" height="26" alt="" style="display:block;border:0;outline:0"></td>
+<td style="color:#ffffff;font-size:21px;font-weight:800;letter-spacing:-0.01em;font-family:{{ font_display }}">showtik</td>
+</tr></table>
+</td></tr>
+<tr><td style="padding:30px 28px 8px">
+<h1 style="margin:0 0 14px;font-size:24px;line-height:1.2;color:#051747;font-family:{{ font_display }};font-weight:700">{{ heading }}</h1>
+{% block content %}{% endblock %}
+</td></tr>
+<tr><td style="padding:22px 28px 28px;font-size:12px;color:#999">You're receiving this because of activity on your Showtik account or booking. Questions? Write to {{ support_email }}.</td></tr>
+</table></td></tr></table></body></html>

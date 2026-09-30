@@ -1,0 +1,12 @@
+{% extends "layout.html.jinja" %}
+{% import "_macros.html.jinja" as m %}
+{% block content %}
+{% call m.p() %}The organiser has updated <strong>{{ event_title }}</strong>. Your tickets remain valid.{% endcall %}
+<table role="presentation" width="100%" style="margin:0 0 16px;font-size:14px">
+{% for c in changes %}
+<tr><td style="padding:8px 0;border-top:1px solid #eee;color:#666">{{ c.field }}</td><td style="padding:8px 0;border-top:1px solid #eee;text-align:right"><s style="color:#999">{{ c.old }}</s><br><strong>{{ c.new }}</strong></td></tr>
+{% endfor %}
+</table>
+{% if note %}{% call m.p() %}{{ note }}{% endcall %}{% endif %}
+{% call m.p() %}{{ m.button("View event", url) }}{% endcall %}
+{% endblock %}

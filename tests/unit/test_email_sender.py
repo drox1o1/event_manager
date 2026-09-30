@@ -79,7 +79,11 @@ def test_order_email_escapes_html_and_lists_every_ticket():
     assert "&lt;2026&gt;" in html_body
     assert "11111111" in html_body and "22222222" in html_body
     assert "Awaiting approval" in html_body
-    assert "Brijesh (Full Marathon)" in text_body
+    # Plain-text body is auto-derived from the HTML (tags stripped), so each
+    # ticket's fields land on their own line rather than one hand-authored
+    # "name (tier)" phrase -- still readable, just not identical formatting.
+    assert "Brijesh" in text_body and "Full Marathon" in text_body
+    assert "Awaiting approval" in text_body
 
 
 def _records(*bodies):

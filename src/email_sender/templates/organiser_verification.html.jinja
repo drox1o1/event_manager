@@ -1,0 +1,8 @@
+{% extends "layout.html.jinja" %}
+{% import "_macros.html.jinja" as m %}
+{% block content %}
+{% call m.p() %}Thanks for signing up as an organiser on Showtik. Confirm your email address to continue.{% endcall %}
+{% call m.p() %}{{ m.button("Verify email", url) }}{% endcall %}
+{% call m.p() %}Our team also reviews every new organiser — we'll email you as soon as your account is approved.{% endcall %}
+{% call m.muted() %}Button not working? Paste this link into your browser:<br>{{ url }}{% endcall %}
+{% endblock %}

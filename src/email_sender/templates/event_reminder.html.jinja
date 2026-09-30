@@ -1,0 +1,9 @@
+{% extends "layout.html.jinja" %}
+{% import "_macros.html.jinja" as m %}
+{% block content %}
+{% call m.p() %}Hi {{ buyer_name }}, <strong>{{ event_title }}</strong> is almost here.{% endcall %}
+{% call m.p() %}📅 {{ when }}<br>📍 {{ venue }}{% endcall %}
+{% if map_url %}{% call m.p() %}<a href="{{ map_url }}" style="color:#C4143F">Get directions</a>{% endcall %}{% endif %}
+{% call m.p() %}{{ m.button("Open my tickets", url) }}{% endcall %}
+{% call m.muted() %}Keep your QR code ready at the gate, and arrive a little early to beat the queue.{% endcall %}
+{% endblock %}

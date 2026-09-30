@@ -1,0 +1,9 @@
+{% extends "layout.html.jinja" %}
+{% import "_macros.html.jinja" as m %}
+{% block content %}
+{% call m.p() %}A buyer raised a query about their order.{% endcall %}
+{{ m.details(rows) }}
+{% call m.callout() %}{{ message }}{% endcall %}
+{% call m.p() %}{{ m.button("Open queries", url) }}{% endcall %}
+{% call m.muted() %}Reply to the buyer at {{ buyer_email }}.{% endcall %}
+{% endblock %}

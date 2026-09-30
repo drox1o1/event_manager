@@ -1,0 +1,7 @@
+{% extends "layout.html.jinja" %}
+{% import "_macros.html.jinja" as m %}
+{% block content %}
+{% call m.p() %}Someone just booked <strong>{{ event_title }}</strong>.{% endcall %}
+{{ m.details([("Booked by", buyer_name), ("Tickets", ticket_count), ("Amount", total), ("Sold so far", sold)]) }}
+{% call m.p() %}{{ m.button("View attendees", url) }}{% endcall %}
+{% endblock %}

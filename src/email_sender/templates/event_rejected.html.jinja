@@ -1,0 +1,7 @@
+{% extends "layout.html.jinja" %}
+{% import "_macros.html.jinja" as m %}
+{% block content %}
+{% call m.p() %}The Showtik team reviewed <strong>{{ event_title }}</strong> and requested changes before it can go live.{% endcall %}
+{% if reason %}{% call m.p() %}<strong>Feedback:</strong> {{ reason }}{% endcall %}{% endif %}
+{% call m.p() %}{{ m.button("Edit and resubmit", url) }}{% endcall %}
+{% endblock %}

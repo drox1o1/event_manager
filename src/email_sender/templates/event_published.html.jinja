@@ -1,0 +1,6 @@
+{% extends "layout.html.jinja" %}
+{% import "_macros.html.jinja" as m %}
+{% block content %}
+{% call m.p() %}<strong>{{ event_title }}</strong> has been approved and is now live — anyone can find it and book tickets.{% endcall %}
+{% call m.p() %}{{ m.button("View event page", url) }}{% endcall %}
+{% endblock %}
