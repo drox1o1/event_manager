@@ -33,6 +33,7 @@ from common.schemas import (
     OrganiserSignupRequest,
     PasswordResetConfirmRequest,
     PasswordResetRequest,
+    RefreshRequest,
     TokenResponse,
 )
 from sqlalchemy import select
@@ -118,6 +119,35 @@ def organiser_login():
     return tokens.model_dump()
 
 
+@app.post("/organiser/auth/refresh")
+def organiser_refresh():
+    body = _parse_body(RefreshRequest)
+
+    try:
+        payload = decode_token(body.refresh_token, expected_type="refresh")
+    except InvalidTokenError as exc:
+        raise UnauthorizedError("Invalid or expired refresh token") from exc
+
+    organiser_id = uuid.UUID(payload["sub"])
+    with get_session() as session:
+        organiser = session.get(Organiser, organiser_id)
+        if organiser is None or organiser.status == OrganiserStatus.SUSPENDED:
+            raise UnauthorizedError("Invalid or expired refresh token")
+
+        # Stateless refresh tokens for now -- the same one is handed back
+        # unchanged (it's still valid until its own 30-day expiry) rather
+        # than rotated. TODO: once refresh tokens need to be revocable
+        # (logout-everywhere, compromised-token response), track issued
+        # tokens server-side (e.g. a token-family table with a revoked_at
+        # column) and rotate + invalidate the prior one on each refresh.
+        tokens = TokenResponse(
+            access_token=issue_access_token(organiser.id, "organiser"),
+            refresh_token=body.refresh_token,
+        )
+
+    return tokens.model_dump()
+
+
 @app.post("/organiser/auth/forgot-password")
 def organiser_forgot_password():
     """Always responds the same way regardless of whether `email` has an
@@ -188,6 +218,30 @@ def admin_login():
         tokens = TokenResponse(
             access_token=issue_access_token(admin.id, "admin"),
             refresh_token=issue_refresh_token(admin.id, "admin"),
+        )
+
+    return tokens.model_dump()
+
+
+@app.post("/admin/auth/refresh")
+def admin_refresh():
+    body = _parse_body(RefreshRequest)
+
+    try:
+        payload = decode_token(body.refresh_token, expected_type="refresh")
+    except InvalidTokenError as exc:
+        raise UnauthorizedError("Invalid or expired refresh token") from exc
+
+    admin_id = uuid.UUID(payload["sub"])
+    with get_session() as session:
+        admin = session.get(AdminUser, admin_id)
+        if admin is None:
+            raise UnauthorizedError("Invalid or expired refresh token")
+
+        # See the TODO on organiser_refresh above -- same stateless approach.
+        tokens = TokenResponse(
+            access_token=issue_access_token(admin.id, "admin"),
+            refresh_token=body.refresh_token,
         )
 
     return tokens.model_dump()

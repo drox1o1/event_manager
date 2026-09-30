@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/auth';
 /** Login — super admin sign-in. Single account, provisioned by the platform team. */
 export default function AdminLoginPage() {
   const router = useRouter();
-  const { setToken } = useAuth();
+  const { setTokens } = useAuth();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
@@ -20,8 +20,8 @@ export default function AdminLoginPage() {
     setSubmitting(true);
     setError(null);
     try {
-      const { access_token } = await adminApi.login({ email, password });
-      setToken(access_token);
+      const tokens = await adminApi.login({ email, password });
+      setTokens(tokens);
       router.replace('/dashboard');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not log in. Please try again.');

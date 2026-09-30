@@ -41,6 +41,13 @@ export function login(body: LoginRequest): Promise<TokenResponse> {
   return apiFetch<TokenResponse>('/organiser/auth/login', { method: 'POST', body });
 }
 
+export function refresh(refreshToken: string): Promise<TokenResponse> {
+  return apiFetch<TokenResponse>('/organiser/auth/refresh', {
+    method: 'POST',
+    body: { refresh_token: refreshToken },
+  });
+}
+
 /** Always resolves the same way regardless of whether `email` has an
  * account -- the backend never reveals which emails are registered. */
 export function forgotPassword(email: string): Promise<StatusResponse> {
