@@ -4,6 +4,12 @@ on:
   pull_request:
     types: [closed]
     branches: [main]
+  # Manual cleanup of a leftover PR stack, e.g. stage=pr_develop.
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: "Stage to tear down (pr_<branch>)"
+        required: true
 
 permissions:
   contents: read
@@ -12,9 +18,15 @@ jobs:
   teardown:
     runs-on: ubuntu-latest
     steps:
+      # The make targets below live in the repo; without a checkout there is no Makefile.
+      - uses: actions/checkout@v4
+
       - name: Derive stage from branch
         id: stage
         run: |
+          if [ -n "${{ inputs.stage }}" ]; then
+            case "${{ inputs.stage }}" in pr_*) echo "stage=${{ inputs.stage }}" >> "$GITHUB_OUTPUT"; exit 0;; *) echo "Only pr_* stages can be torn down" && exit 1;; esac
+          fi
           RAW="${{ github.head_ref }}"
           TOKEN=$(echo "$RAW" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/_/g; s/^_+//; s/_+$//' | cut -c1-20)
           echo "stage=pr_${TOKEN}" >> "$GITHUB_OUTPUT"
