@@ -11,10 +11,11 @@ Description: >
   NONE (reachable directly, bypassing CloudFront) rather than AWS_IAM +
   CloudFront Origin Access Control.
 
-  Custom domains (showtik.in prod only -- see AcmCertificateArn) are
-  showtik.in + www.showtik.in -> public-site, host.showtik.in ->
-  organiser-portal, admin.showtik.in -> admin-panel. DNS itself (Route 53
-  hosted zone, ALIAS records) is managed outside this template.
+  Custom domains, when AcmCertificateArn is set, depend on Stage:
+  prod -> showtik.in + www.showtik.in / host.showtik.in / admin.showtik.in;
+  dev -> dev.showtik.in / host-dev.showtik.in / admin-dev.showtik.in. DNS
+  itself (Route 53 hosted zone, ALIAS records) is managed outside this
+  template.
 
 Parameters:
   Stage:
@@ -33,15 +34,17 @@ Parameters:
     Type: String
     Default: ""
     Description: >
-      us-east-1 ACM cert covering showtik.in, www.showtik.in,
-      host.showtik.in, admin.showtik.in (CloudFront only accepts certs from
-      us-east-1, regardless of the distribution's own region). Leave blank
-      to fall back to each distribution's default *.cloudfront.net domain
-      with no custom Aliases -- used for the dev stage, which doesn't have
-      its own subdomains.
+      us-east-1 ACM cert covering this stage's Aliases (CloudFront only
+      accepts certs from us-east-1, regardless of the distribution's own
+      region). A wildcard cert (showtik.in + *.showtik.in SANs) covers every
+      stage's subdomains at once, so the same ARN can be reused for both
+      prod and dev -- or each stage can have its own cert if preferred, ACM
+      doesn't care. Leave blank to fall back to each distribution's default
+      *.cloudfront.net domain with no custom Aliases.
 
 Conditions:
   HasCustomDomain: !Not [!Equals [!Ref AcmCertificateArn, ""]]
+  IsProdStage: !Equals [!Ref Stage, "prod"]
 
 Resources:
   # --- public-site ---
@@ -72,7 +75,10 @@ Resources:
         Enabled: true
         HttpVersion: http2
         PriceClass: PriceClass_100
-        Aliases: !If [HasCustomDomain, ["showtik.in", "www.showtik.in"], !Ref "AWS::NoValue"]
+        Aliases: !If
+          - HasCustomDomain
+          - !If [IsProdStage, ["showtik.in", "www.showtik.in"], ["dev.showtik.in"]]
+          - !Ref "AWS::NoValue"
         ViewerCertificate: !If
           - HasCustomDomain
           - AcmCertificateArn: !Ref AcmCertificateArn
@@ -126,7 +132,10 @@ Resources:
         Enabled: true
         HttpVersion: http2
         PriceClass: PriceClass_100
-        Aliases: !If [HasCustomDomain, ["host.showtik.in"], !Ref "AWS::NoValue"]
+        Aliases: !If
+          - HasCustomDomain
+          - !If [IsProdStage, ["host.showtik.in"], ["host-dev.showtik.in"]]
+          - !Ref "AWS::NoValue"
         ViewerCertificate: !If
           - HasCustomDomain
           - AcmCertificateArn: !Ref AcmCertificateArn
@@ -180,7 +189,10 @@ Resources:
         Enabled: true
         HttpVersion: http2
         PriceClass: PriceClass_100
-        Aliases: !If [HasCustomDomain, ["admin.showtik.in"], !Ref "AWS::NoValue"]
+        Aliases: !If
+          - HasCustomDomain
+          - !If [IsProdStage, ["admin.showtik.in"], ["admin-dev.showtik.in"]]
+          - !Ref "AWS::NoValue"
         ViewerCertificate: !If
           - HasCustomDomain
           - AcmCertificateArn: !Ref AcmCertificateArn
