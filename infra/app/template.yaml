@@ -309,6 +309,14 @@ Resources:
             Method: post
             Auth:
               Authorizer: NONE
+        OrganiserRefresh:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/auth/refresh
+            Method: post
+            Auth:
+              Authorizer: NONE
         OrganiserForgotPassword:
           Type: Api
           Properties:
@@ -573,6 +581,14 @@ Resources:
           Properties:
             RestApiId: !Ref CyrokxApi
             Path: /admin/auth/login
+            Method: post
+            Auth:
+              Authorizer: NONE
+        AdminRefresh:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/auth/refresh
             Method: post
             Auth:
               Authorizer: NONE

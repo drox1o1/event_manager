@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/auth';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setToken } = useAuth();
+  const { setTokens } = useAuth();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
@@ -21,8 +21,8 @@ export default function LoginPage() {
     setSubmitting(true);
     setError(null);
     try {
-      const { access_token } = await organiserApi.login({ email, password });
-      setToken(access_token);
+      const tokens = await organiserApi.login({ email, password });
+      setTokens(tokens);
       router.replace('/dashboard');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not log in. Please try again.');

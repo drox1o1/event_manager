@@ -46,6 +46,13 @@ export function login(body: LoginRequest): Promise<TokenResponse> {
   return apiFetch<TokenResponse>('/admin/auth/login', { method: 'POST', body });
 }
 
+export function refresh(refreshToken: string): Promise<TokenResponse> {
+  return apiFetch<TokenResponse>('/admin/auth/refresh', {
+    method: 'POST',
+    body: { refresh_token: refreshToken },
+  });
+}
+
 export function getModerationQueue(token: string): Promise<ModerationQueueResponse> {
   return apiFetch<ModerationQueueResponse>('/admin/moderation-queue', { token });
 }
