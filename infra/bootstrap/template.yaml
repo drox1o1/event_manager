@@ -111,6 +111,8 @@ Resources:
             - s3:GetObject
             - s3:PutObject
             - s3:ListBucket
+            # `sam delete` (PR-stack teardown) removes the stack's artifacts.
+            - s3:DeleteObject
           Resource:
             - !GetAtt SamArtifactsBucket.Arn
             - !Sub ${SamArtifactsBucket.Arn}/*
