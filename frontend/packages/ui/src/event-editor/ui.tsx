@@ -9,7 +9,7 @@ export function SectionTitle({ title, description, actions }: { title: string; d
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
       <div>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 800, letterSpacing: '-0.015em', color: 'var(--text-heading)', margin: 0 }}>{title}</h1>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 600, letterSpacing: '-0.015em', color: 'var(--text-heading)', margin: 0 }}>{title}</h1>
         {description && <div style={{ fontSize: 14.5, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}>{description}</div>}
       </div>
       {actions && <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>{actions}</div>}
@@ -20,7 +20,7 @@ export function SectionTitle({ title, description, actions }: { title: string; d
 export function SubHeading({ children, hint }: { children: React.ReactNode; hint?: React.ReactNode }) {
   return (
     <div style={{ margin: '4px 0 14px' }}>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 700, color: 'var(--text-heading)' }}>{children}</div>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 600, color: 'var(--text-heading)' }}>{children}</div>
       {hint && <div style={{ fontSize: 13.5, color: 'var(--text-muted)', marginTop: 4 }}>{hint}</div>}
     </div>
   );
@@ -77,7 +77,7 @@ export function ChoiceCard({
           <Icon name={icon} size={19} />
         </span>
       )}
-      <span style={{ fontSize: 15.5, fontWeight: 700, color: 'var(--text-heading)' }}>{title}</span>
+      <span style={{ fontSize: 15.5, fontWeight: 600, color: 'var(--text-heading)' }}>{title}</span>
       {description && <span style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.45 }}>{description}</span>}
       {note && <span style={{ fontSize: 12.5, color: 'var(--text-subtle)', fontStyle: 'italic' }}>{note}</span>}
     </button>

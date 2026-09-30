@@ -47,7 +47,7 @@ export function Modal({ open = true, title, children, footer, onClose, width = 4
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--text-heading)', letterSpacing: '-0.01em' }}>{title}</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 600, color: 'var(--text-heading)', letterSpacing: '-0.01em' }}>{title}</div>
           {onClose && (
             <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-subtle)' }}>
               <Icon name="x" size={20} />

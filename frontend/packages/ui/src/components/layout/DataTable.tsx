@@ -31,7 +31,7 @@ export function DataTable<T extends { id?: string | number }>({ columns = [], ro
         <thead>
           <tr>
             {columns.map((c) => (
-              <th key={c.key} style={{ textAlign: 'left', padding: '13px 16px', fontSize: 11.5, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-subtle)', fontWeight: 700, background: 'var(--color-off-white)', borderBottom: '1px solid var(--border-default)' }}>
+              <th key={c.key} style={{ textAlign: 'left', padding: '13px 16px', fontSize: 11.5, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-subtle)', fontWeight: 600, background: 'var(--color-off-white)', borderBottom: '1px solid var(--border-default)' }}>
                 {c.label}
               </th>
             ))}

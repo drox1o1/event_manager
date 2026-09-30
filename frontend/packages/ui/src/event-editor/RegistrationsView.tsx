@@ -111,7 +111,7 @@ export function RegistrationsView({ api, token, eventId }: { api: RegistrationsA
         ].map((s) => (
           <div key={s.label} style={{ background: 'var(--surface-card)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)', padding: '16px 18px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text-muted)', fontWeight: 600 }}><Icon name={s.icon} size={14} />{s.label}</div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 800, color: 'var(--text-heading)', marginTop: 4 }}>{s.value}</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 600, color: 'var(--text-heading)', marginTop: 4 }}>{s.value}</div>
           </div>
         ))}
       </div>
@@ -154,7 +154,7 @@ export function RegistrationsView({ api, token, eventId }: { api: RegistrationsA
             <div key={r.ticket_id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--border-default)' : 'none', opacity: busy === r.ticket_id ? 0.5 : 1 }}>
               <div onClick={() => setOpen(expanded ? null : r.ticket_id)} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', cursor: 'pointer', flexWrap: 'wrap' }}>
                 <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, color: 'var(--text-heading)' }}>{r.attendee_name}</div>
+                  <div style={{ fontWeight: 600, color: 'var(--text-heading)' }}>{r.attendee_name}</div>
                   <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>{r.attendee_email || r.buyer_email}</div>
                 </div>
                 <div style={{ flex: '1 1 160px', fontSize: 13.5 }}>

@@ -63,9 +63,7 @@ export function HomepageView({ content }: HomepageViewProps) {
           <FeaturedHero events={featured} />
           {search && (
             <div style={{ position: 'relative', zIndex: 5, maxWidth: 'var(--content-max-width)', margin: isMobile ? '16px auto 0' : '24px auto 0', padding: '0 clamp(16px, 4vw, 32px)', display: 'flex', justifyContent: 'center' }}>
-              <div style={{ width: '100%', maxWidth: 860, background: 'var(--surface-card)', borderRadius: 20, boxShadow: '0 20px 50px rgba(5,23,71,0.18)', padding: isMobile ? 10 : 14 }}>
-                {search}
-              </div>
+              {search}
             </div>
           )}
         </>
@@ -83,12 +81,12 @@ export function HomepageView({ content }: HomepageViewProps) {
           <span aria-hidden style={{ position: 'absolute', top: '-30%', right: '-12%', width: '46%', height: '190%', background: 'var(--gradient-brand)', opacity: 0.5, transform: 'rotate(18deg)', filter: 'blur(2px)', borderRadius: 40 }} />
           <span aria-hidden style={{ position: 'absolute', bottom: '-40%', left: '-14%', width: '38%', height: '170%', background: 'radial-gradient(circle, rgba(34,83,246,0.55), transparent 70%)', transform: 'rotate(-12deg)' }} />
           <div style={{ position: 'relative' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.75)', marginBottom: 18 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.75)', marginBottom: 18 }}>
               <span style={{ width: 22, height: 2, background: 'var(--color-accent)', borderRadius: 2 }} />
               {hero.eyebrow}
               <span style={{ width: 22, height: 2, background: 'var(--color-accent)', borderRadius: 2 }} />
             </div>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(42px, 8vw, 86px)', fontWeight: 900, lineHeight: 0.94, letterSpacing: '-0.03em', textTransform: 'uppercase', margin: `0 auto ${hero.subheadline ? 20 : 36}px`, maxWidth: 980 }}>{hero.headline}</h1>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(42px, 8vw, 86px)', fontWeight: 600, lineHeight: 1.08, letterSpacing: '-0.03em', margin: `0 auto ${hero.subheadline ? 20 : 36}px`, maxWidth: 980 }}>{hero.headline}</h1>
             {hero.subheadline && (
               <p style={{ fontSize: 19, color: 'rgba(255,255,255,0.82)', maxWidth: 640, margin: '0 auto 36px', lineHeight: 1.5 }}>{hero.subheadline}</p>
             )}
@@ -149,7 +147,7 @@ function SectionBlock({
         <a
           href={seeAllHref}
           onClick={(e) => { e.preventDefault(); onSeeAll(seeAllHref); }}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 700, color: 'var(--text-heading)', textDecoration: 'none', whiteSpace: 'nowrap', padding: '9px 16px', borderRadius: 999, border: '1px solid var(--border-default)', background: 'var(--surface-card)' }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 14, fontWeight: 600, color: 'var(--text-heading)', textDecoration: 'none', whiteSpace: 'nowrap', padding: '9px 16px', borderRadius: 999, border: '1px solid var(--border-default)', background: 'var(--surface-card)' }}
         >
           See all <Icon name="arrow-right" size={15} />
         </a>
@@ -177,8 +175,8 @@ function SectionBlock({
 function SectionHeading({ title, kicker, noMargin }: { title: string; kicker?: string; noMargin?: boolean }) {
   return (
     <div style={{ marginBottom: noMargin ? 0 : 22 }}>
-      {kicker && <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--color-accent)', marginBottom: 8 }}>{kicker}</div>}
-      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(26px, 3.4vw, 36px)', fontWeight: 900, letterSpacing: '-0.02em', textTransform: 'uppercase', color: 'var(--text-heading)', margin: 0, lineHeight: 1 }}>
+      {kicker && <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--color-accent)', marginBottom: 8 }}>{kicker}</div>}
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(26px, 3.4vw, 36px)', fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-heading)', margin: 0, lineHeight: 1 }}>
         {title}
       </h2>
     </div>
@@ -210,7 +208,7 @@ function CategoryTile({ name, icon, index, onClick }: { name: string; icon?: str
       <span style={{ width: 42, height: 42, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', background: hover ? 'rgba(255,255,255,0.18)' : `${tint}14`, color: hover ? '#fff' : tint, transition: 'all .2s ease' }}>
         <Icon name={icon || iconForCategory(name)} size={21} />
       </span>
-      <span style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 800, color: hover ? '#fff' : 'var(--text-heading)', marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+      <span style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, color: hover ? '#fff' : 'var(--text-heading)', marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
         {name}<Icon name="arrow-up-right" size={16} />
       </span>
     </button>
@@ -230,7 +228,7 @@ function ValueBand() {
         {items.map((it) => (
           <div key={it.title} style={{ background: 'var(--surface-card)', padding: '26px 24px' }}>
             <span style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--color-accent-tint)', color: 'var(--color-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}><Icon name={it.icon} size={19} /></span>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 17, color: 'var(--text-heading)', marginBottom: 6 }}>{it.title}</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 17, color: 'var(--text-heading)', marginBottom: 6 }}>{it.title}</div>
             <div style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.5 }}>{it.body}</div>
           </div>
         ))}
@@ -246,11 +244,11 @@ function OrganiserCta() {
       <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 28, background: 'var(--gradient-hero)', color: '#fff', padding: 'clamp(32px, 6vw, 64px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 28, flexWrap: 'wrap' }}>
         <span aria-hidden style={{ position: 'absolute', top: '-60%', right: '-10%', width: '45%', height: '220%', background: 'var(--gradient-brand)', opacity: 0.55, transform: 'rotate(20deg)', borderRadius: 40 }} />
         <div style={{ position: 'relative', maxWidth: 620 }}>
-          <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)', marginBottom: 10 }}>For organisers</div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(30px, 4.4vw, 52px)', fontWeight: 900, lineHeight: 0.98, letterSpacing: '-0.02em', textTransform: 'uppercase', margin: '0 0 14px' }}>Host your next event on Showtik</h2>
+          <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)', marginBottom: 10 }}>For organisers</div>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(30px, 4.4vw, 52px)', fontWeight: 600, lineHeight: 1.08, letterSpacing: '-0.02em', margin: '0 0 14px' }}>Host your next event on Showtik</h2>
           <p style={{ fontSize: 17, color: 'rgba(255,255,255,0.82)', margin: 0, lineHeight: 1.5 }}>Marathons, concerts, workshops — sell multiple ticket types, collect participant details and get paid, all in one place.</p>
         </div>
-        <a href={organiserUrl} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 8, height: 54, padding: '0 28px', borderRadius: 14, background: '#fff', color: 'var(--color-ink)', fontWeight: 800, fontSize: 16, textDecoration: 'none' }}>
+        <a href={organiserUrl} style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 8, height: 54, padding: '0 28px', borderRadius: 14, background: '#fff', color: 'var(--color-ink)', fontWeight: 600, fontSize: 16, textDecoration: 'none' }}>
           Create an event <Icon name="arrow-right" size={17} />
         </a>
       </div>

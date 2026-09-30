@@ -29,7 +29,7 @@ export function EmptyState({ icon = 'search', title, description, action, style 
       >
         <Icon name={icon} size={24} />
       </div>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 6, letterSpacing: '-0.01em' }}>{title}</div>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 600, color: 'var(--text-heading)', marginBottom: 6, letterSpacing: '-0.01em' }}>{title}</div>
       {description && <div style={{ fontSize: 14, color: 'var(--text-muted)', maxWidth: 340, margin: '0 auto 20px' }}>{description}</div>}
       {action}
     </div>

@@ -157,7 +157,7 @@ export function EventEditor(props: EventEditorProps) {
   const nav = (
     <nav style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{ padding: '18px 16px 8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', color: 'var(--text-heading)', fontWeight: 700, fontSize: 15 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', color: 'var(--text-heading)', fontWeight: 600, fontSize: 15 }}>
           <Icon name="square-pen" size={18} /> Edit event
         </div>
         <div style={{ marginLeft: 20, borderLeft: '2px solid var(--border-default)', paddingLeft: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -187,7 +187,7 @@ export function EventEditor(props: EventEditorProps) {
       </div>
       <div style={{ flex: 1 }} />
       <div style={{ borderTop: '1px solid var(--border-default)', padding: '14px 16px' }}>
-        <button type="button" onClick={() => { if (dirty && !window.confirm('Leave without saving your changes?')) return; onExit(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, border: 'none', background: 'none', color: 'var(--color-accent)', fontWeight: 700, fontSize: 14.5, cursor: 'pointer', padding: '6px 8px' }}>
+        <button type="button" onClick={() => { if (dirty && !window.confirm('Leave without saving your changes?')) return; onExit(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, border: 'none', background: 'none', color: 'var(--color-accent)', fontWeight: 600, fontSize: 14.5, cursor: 'pointer', padding: '6px 8px' }}>
           <Icon name="chevron-left" size={16} />{exitLabel}
         </button>
       </div>
@@ -199,12 +199,12 @@ export function EventEditor(props: EventEditorProps) {
       <header style={{ position: 'sticky', top: 0, zIndex: 40, display: 'flex', alignItems: 'center', gap: 14, height: 64, padding: '0 20px', background: 'var(--surface-card)', borderBottom: '1px solid var(--border-default)' }}>
         {isMobile && <button type="button" aria-label="Open steps" onClick={() => setNavOpen(true)} style={{ border: 'none', background: 'none', cursor: 'pointer', display: 'flex' }}><Icon name="menu" size={22} /></button>}
         <LogoMark style={{ height: 30 }} />
-        {!isMobile && <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, color: 'var(--text-heading)' }}>showtik</span>}
+        {!isMobile && <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 18, color: 'var(--text-heading)' }}>showtik</span>}
         <Icon name="chevron-right" size={16} color="var(--text-subtle)" />
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, border: '1px solid var(--border-default)', borderRadius: 12, padding: '6px 12px', minWidth: 0 }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: pill.color, flex: 'none' }} title={pill.label} />
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-heading)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: isMobile ? 150 : 320 }}>{event.title}</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-heading)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: isMobile ? 150 : 320 }}>{event.title}</div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{formatEventDate(event.event_date)} · {event.city} · {pill.label}</div>
           </div>
           <a href={publicUrl} target="_blank" rel="noreferrer" aria-label="Open public page" style={{ color: 'var(--text-muted)', display: 'flex' }}><Icon name="arrow-up-right" size={16} /></a>

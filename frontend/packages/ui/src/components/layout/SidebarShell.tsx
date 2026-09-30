@@ -31,7 +31,7 @@ function Wordmark({ brandLabel, onClick }: { brandLabel: string; onClick?: () =>
   const content = (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
       <LogoMark style={{ height: 26 }} title={brandLabel} />
-      <span style={{ fontSize: 19, fontWeight: 700, color: '#fff' }}>{brandLabel.toLowerCase()}</span>
+      <span style={{ fontSize: 19, fontWeight: 600, color: '#fff' }}>{brandLabel.toLowerCase()}</span>
     </span>
   );
   if (!onClick) return content;

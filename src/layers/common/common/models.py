@@ -13,6 +13,7 @@ import uuid
 
 from sqlalchemy import (
     Boolean,
+    Column,
     Date,
     DateTime,
     Enum,
@@ -20,6 +21,7 @@ from sqlalchemy import (
     Integer,
     Numeric,
     String,
+    Table,
     Text,
     Time,
     func,
@@ -143,6 +145,16 @@ class AdminUser(Base):
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+# 0010: every category an event is listed under (includes the primary
+# events.category_id). Lets one event appear under e.g. Marathon AND Sports.
+event_categories = Table(
+    "event_categories",
+    Base.metadata,
+    Column("event_id", UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"), primary_key=True),
+    Column("category_id", UUID(as_uuid=True), ForeignKey("categories.id", ondelete="CASCADE"), primary_key=True),
+)
+
+
 class Category(Base):
     __tablename__ = "categories"
 
@@ -207,6 +219,8 @@ class Event(Base):
 
     organiser: Mapped["Organiser"] = relationship(back_populates="events")
     category: Mapped["Category"] = relationship(back_populates="events")
+    # All listing categories (primary included); eager so every read has them.
+    categories: Mapped[list["Category"]] = relationship(secondary=event_categories, lazy="selectin")
     ticket_tiers: Mapped[list["TicketTier"]] = relationship(
         back_populates="event", cascade="all, delete-orphan"
     )

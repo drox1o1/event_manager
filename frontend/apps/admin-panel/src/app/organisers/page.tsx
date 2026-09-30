@@ -216,7 +216,7 @@ function OrganisersInner() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Avatar name={r.org_name} size={36} />
                     <div>
-                      <div style={{ fontWeight: 700, color: 'var(--text-heading)' }}>{r.org_name}</div>
+                      <div style={{ fontWeight: 600, color: 'var(--text-heading)' }}>{r.org_name}</div>
                       <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{r.contact_name} · {r.email}</div>
                       {r.status_reason && <div style={{ fontSize: 12, color: 'var(--status-error-text)', marginTop: 2 }}>Reason: {r.status_reason}</div>}
                     </div>

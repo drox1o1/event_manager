@@ -31,7 +31,7 @@ export function CategoryPageView({ category, icon, events }: CategoryPageViewPro
           <Icon name={icon || iconForCategory(category)} size={28} color="#fff" />
         </div>
         <div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 5vw, 38px)', fontWeight: 800, letterSpacing: '-0.02em', textTransform: 'uppercase', color: 'var(--text-heading)', margin: '0 0 4px' }}>{category}</h1>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(28px, 5vw, 38px)', fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-heading)', margin: '0 0 4px' }}>{category}</h1>
           <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>{events.length} event{events.length === 1 ? '' : 's'} found</div>
         </div>
       </div>

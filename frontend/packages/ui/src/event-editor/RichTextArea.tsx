@@ -109,7 +109,7 @@ export function RichText({ text, style }: { text: string; style?: React.CSSPrope
     if (!line.trim()) return;
     const h = line.match(/^#{1,3}\s+(.*)$/);
     if (h) {
-      blocks.push(<h4 key={`h${idx}`} style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--text-heading)', margin: '18px 0 8px' }}>{inline(h[1], `h${idx}`)}</h4>);
+      blocks.push(<h4 key={`h${idx}`} style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text-heading)', margin: '18px 0 8px' }}>{inline(h[1], `h${idx}`)}</h4>);
     } else {
       blocks.push(<p key={`p${idx}`} style={{ margin: '0 0 12px' }}>{inline(line, `p${idx}`)}</p>);
     }

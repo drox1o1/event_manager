@@ -40,7 +40,7 @@ export function TicketTierRow({ name, price, description, available = true, rema
       }}
     >
       <div>
-        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-heading)' }}>{name}</div>
+        <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-heading)' }}>{name}</div>
         {description && <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>{description}</div>}
         {remaining != null && available && (
           <div style={{ fontSize: 12, color: 'var(--color-warning)', marginTop: 4, fontWeight: 600 }}>{remaining} left</div>
@@ -48,7 +48,7 @@ export function TicketTierRow({ name, price, description, available = true, rema
         {!available && <div style={{ fontSize: 12, color: 'var(--text-subtle)', marginTop: 4, fontWeight: 600 }}>Sold out</div>}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 'none' }}>
-        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-accent)' }}>{price}</div>
+        <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-accent)' }}>{price}</div>
         {available && (
           <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-control)' }}>
             <button onClick={() => onQuantityChange && onQuantityChange(Math.max(0, quantity - 1))} style={stepBtn}>−</button>

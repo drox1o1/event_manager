@@ -8,7 +8,7 @@ export default function Error({ reset }: { error: Error & { digest?: string }; r
       <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--status-error-bg)', color: 'var(--color-error)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
         <Icon name="x-circle" size={30} />
       </div>
-      <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--text-heading)', margin: '0 0 8px' }}>Something went wrong</h1>
+      <h1 style={{ fontSize: 28, fontWeight: 600, color: 'var(--text-heading)', margin: '0 0 8px' }}>Something went wrong</h1>
       <p style={{ fontSize: 15, color: 'var(--text-muted)', margin: '0 0 28px' }}>
         We couldn&apos;t load this page. This is usually temporary — please try again.
       </p>

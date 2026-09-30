@@ -242,9 +242,17 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
         const list = prev[first.id] ?? [];
         if (!list[0]) return prev;
         const p0 = list[0];
+        const answers = { ...p0.answers };
+        if (nameField && empty(answers[nameField.id])) answers[nameField.id] = buyer.name.trim();
+        // Don't make the buyer type their mobile / email a second time.
+        for (const f of fields) {
+          if (!empty(answers[f.id])) continue;
+          if (f.field_type === 'phone') answers[f.id] = buyer.phone;
+          else if (f.field_type === 'text' && /e-?mail/i.test(f.label)) answers[f.id] = buyer.email.trim();
+        }
         const filled = nameField
-          ? { ...p0, answers: empty(p0.answers[nameField.id]) ? { ...p0.answers, [nameField.id]: buyer.name.trim() } : p0.answers }
-          : { ...p0, name: p0.name.trim() ? p0.name : buyer.name.trim() };
+          ? { ...p0, answers }
+          : { ...p0, answers, name: p0.name.trim() ? p0.name : buyer.name.trim() };
         return { ...prev, [first.id]: [filled, ...list.slice(1)] };
       });
     }
@@ -297,7 +305,7 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
             <button type="button" aria-label="Back" onClick={() => setStep(step === 'attendees' ? 'buyer' : 'select')} style={{ border: 'none', background: 'none', cursor: 'pointer', display: 'flex', color: 'var(--text-heading)' }}><Icon name="chevron-left" size={22} /></button>
           )}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800, color: 'var(--text-heading)' }}>{title}</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 600, color: 'var(--text-heading)' }}>{title}</div>
             <div style={{ fontSize: 13, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.title}</div>
           </div>
           <div style={{ display: 'flex', gap: 6 }} aria-hidden>
@@ -317,7 +325,7 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {sessions.length > 0 && (
                 <div style={{ marginBottom: 8 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 8 }}>Choose a date</div>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text-heading)', marginBottom: 8 }}>Choose a date</div>
                   <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
                     {sessions.map((d) => (
                       <button key={d} type="button" onClick={() => { setSession(d); setSelectError(null); }} style={{ flex: 'none', padding: '10px 14px', borderRadius: 12, border: `1.5px solid ${session === d ? 'var(--color-accent)' : 'var(--border-default)'}`, background: session === d ? 'var(--color-accent-tint)' : 'var(--surface-card)', fontWeight: 600, fontSize: 13.5, cursor: 'pointer', color: 'var(--text-heading)' }}>{formatEventDate(d)}</button>
@@ -329,7 +337,7 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
               {tiers.length === 0 && <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>Tickets aren’t on sale yet.</div>}
               {groups.map((g) => (
                 <React.Fragment key={g.name ?? '_'}>
-                  {g.name && <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-accent-secondary)', marginTop: 8 }}>{g.name}</div>}
+                  {g.name && <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-accent-secondary)', marginTop: 8 }}>{g.name}</div>}
                   {g.tiers.map((t) => {
                     const state = saleState(t);
                     const n = qty[t.id] ?? 0;
@@ -337,12 +345,12 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
                       <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 18px', borderRadius: 14, border: '1px solid var(--border-default)', borderLeft: n > 0 ? '4px solid var(--color-accent-secondary)' : '1px solid var(--border-default)', background: n > 0 ? 'var(--surface-card)' : 'var(--color-off-white)', opacity: state.available ? 1 : 0.6 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-heading)' }}>{t.name}</div>
-                          <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--text-heading)', marginTop: 4 }}>
+                          <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text-heading)', marginTop: 4 }}>
                             {t.ticket_type === 'donation' ? `Pay what you want${Number(t.price) > 0 ? ` (min ${formatINR(t.price)})` : ''}` : formatINR(t.price)}
                           </div>
                           {t.description && <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.45 }}>{t.description}</div>}
                           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 6, fontSize: 12, color: 'var(--text-subtle)' }}>
-                            {state.available && state.remaining <= 20 && <span style={{ color: 'var(--status-warning-text)', fontWeight: 700 }}>Only {state.remaining} left</span>}
+                            {state.available && state.remaining <= 20 && <span style={{ color: 'var(--status-warning-text)', fontWeight: 600 }}>Only {state.remaining} left</span>}
                             {t.requires_approval && <span>Requires organiser approval</span>}
                             {t.min_per_order > 1 && <span>Min {t.min_per_order} per order</span>}
                           </div>
@@ -354,13 +362,13 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
                           )}
                         </div>
                         {!state.available ? (
-                          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>{state.reason}</span>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>{state.reason}</span>
                         ) : n === 0 ? (
-                          <button type="button" onClick={() => setTierQty(t, Math.max(1, t.min_per_order))} style={{ minWidth: 110, height: 44, borderRadius: 10, border: '1.5px solid var(--color-accent-secondary)', background: 'var(--surface-card)', color: 'var(--color-accent-secondary)', fontWeight: 700, fontSize: 15, cursor: 'pointer' }}>Add</button>
+                          <button type="button" onClick={() => setTierQty(t, Math.max(1, t.min_per_order))} style={{ minWidth: 110, height: 44, borderRadius: 10, border: '1.5px solid var(--color-accent-secondary)', background: 'var(--surface-card)', color: 'var(--color-accent-secondary)', fontWeight: 600, fontSize: 15, cursor: 'pointer' }}>Add</button>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                             <StepBtn icon="minus" label={`Remove one ${t.name}`} onClick={() => setTierQty(t, n - 1)} />
-                            <span style={{ minWidth: 20, textAlign: 'center', fontSize: 20, fontWeight: 700, color: 'var(--color-accent-secondary)' }}>{n}</span>
+                            <span style={{ minWidth: 20, textAlign: 'center', fontSize: 20, fontWeight: 600, color: 'var(--color-accent-secondary)' }}>{n}</span>
                             <StepBtn icon="plus" label={`Add one ${t.name}`} disabled={n >= Math.min(t.max_per_order, state.remaining)} onClick={() => setTierQty(t, n + 1)} />
                           </div>
                         )}
@@ -388,7 +396,7 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
                 onChange={(ev) => { setBuyer({ ...buyer, email: ev.target.value }); setBuyerErrors((b) => ({ ...b, email: '' })); }}
                 onBlur={() => { if (buyer.email && !EMAIL_RE.test(buyer.email.trim())) setBuyerErrors((b) => ({ ...b, email: 'Enter a valid email address, e.g. name@example.com' })); }}
               />
-              <Checkbox label="I am also a participant (fill in my name as participant 1)" checked={buyerIsParticipant} onChange={(ev) => setBuyerIsParticipant(ev.target.checked)} />
+              <Checkbox label="I am also a participant (use my details for participant 1)" checked={buyerIsParticipant} onChange={(ev) => setBuyerIsParticipant(ev.target.checked)} />
             </div>
           )}
 
@@ -398,7 +406,7 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
               {selected.map((t) => (
                 <section key={t.id} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, paddingBottom: 6, borderBottom: '1px solid var(--border-default)' }}>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 800, color: 'var(--text-heading)' }}>{t.name}</div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text-heading)' }}>{t.name}</div>
                     <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{qty[t.id]} {qty[t.id] === 1 ? 'participant' : 'participants'}</div>
                   </div>
                   {(people[t.id] ?? []).map((p, i) => {
@@ -408,7 +416,7 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
                     const label = (f: FormField) => (f.required || f === nameField || (f.field_type === 'dob' && ageRule(t)) ? `${f.label} *` : f.label);
                     return (
                       <div key={k} data-has-error={hasErr ? 'true' : undefined} style={{ border: `1px solid ${hasErr ? 'var(--color-error)' : 'var(--border-default)'}`, borderTop: `3px solid ${hasErr ? 'var(--color-error)' : 'var(--color-accent-secondary)'}`, borderRadius: 14, padding: '16px 18px' }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 12 }}>Participant {i + 1} of {qty[t.id]}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 12 }}>Participant {i + 1} of {qty[t.id]}</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                           {!nameField && (
                             <Input label="Participant name *" placeholder="Full name" value={p.name} error={e.name} onChange={(ev) => patchPerson(t.id, i, { name: ev.target.value })} />
@@ -451,7 +459,7 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
               ))}
 
               <div style={{ background: 'var(--color-off-white)', borderRadius: 14, padding: 18 }}>
-                <div style={{ fontWeight: 700, color: 'var(--text-heading)', marginBottom: 12 }}>Order summary</div>
+                <div style={{ fontWeight: 600, color: 'var(--text-heading)', marginBottom: 12 }}>Order summary</div>
                 <div style={{ fontSize: 13.5, color: 'var(--text-muted)', marginBottom: 10 }}>Booked by <strong>{buyer.name}</strong> · +91 {buyer.phone} · {buyer.email}</div>
                 {session && <div style={{ fontSize: 13.5, color: 'var(--text-muted)', marginBottom: 10 }}>Date: <strong>{formatEventDate(session)}</strong></div>}
                 {selected.map((t) => (
@@ -464,8 +472,8 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
                 ))}
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13.5, color: 'var(--text-muted)', paddingTop: 10, borderTop: '1px solid var(--border-default)' }}><span>Booking fee</span><span>₹0</span></div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 8 }}>
-                  <span style={{ fontWeight: 700 }}>Total</span>
-                  <span style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 800, color: 'var(--color-accent)' }}>{money(total)}</span>
+                  <span style={{ fontWeight: 600 }}>Total</span>
+                  <span style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, color: 'var(--color-accent)' }}>{money(total)}</span>
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--text-subtle)', marginTop: 10, lineHeight: 1.45 }}>One payment for the whole order. Each participant receives a separate ticket ID.</div>
               </div>

@@ -154,7 +154,7 @@ export function TicketsStep({ api, token, event, readOnly, onChanged, onContinue
       {tiers.length === 0 ? (
         <div style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-card)', overflow: 'hidden', background: 'var(--surface-card)' }}>
           <div style={{ padding: '48px 24px', textAlign: 'center' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 8 }}>Set up ticketing</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: 'var(--text-heading)', marginBottom: 8 }}>Set up ticketing</div>
             <div style={{ fontSize: 15, color: 'var(--text-muted)', marginBottom: 24 }}>Create paid tickets, free entries and custom donation entries</div>
             {!readOnly && <Button size="lg" onClick={() => setDrawer({ tier: null })}><Icon name="plus" size={18} />Add tickets</Button>}
           </div>
@@ -165,7 +165,7 @@ export function TicketsStep({ api, token, event, readOnly, onChanged, onContinue
       ) : (
         <div style={{ background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-card)' }}>
           {!isMobile && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px 110px 100px 44px', gap: 12, padding: '14px 20px', borderBottom: '1px solid var(--border-default)', fontSize: 13, fontWeight: 700, color: 'var(--text-muted)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px 110px 100px 44px', gap: 12, padding: '14px 20px', borderBottom: '1px solid var(--border-default)', fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>
               <span>Ticket Details</span><span>Status</span><span style={{ textAlign: 'right' }}>Price</span><span style={{ textAlign: 'right' }}>Sold/Qty</span><span />
             </div>
           )}
@@ -173,10 +173,10 @@ export function TicketsStep({ api, token, event, readOnly, onChanged, onContinue
             <div key={t.id} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 44px' : '1fr 110px 110px 100px 44px', gap: 12, alignItems: 'center', padding: '16px 20px', borderBottom: i < tiers.length - 1 ? '1px solid var(--border-default)' : 'none', opacity: busy === t.id ? 0.5 : 1 }}>
               <div style={{ minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-heading)' }}>{t.name}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 'var(--radius-pill)', border: '1px solid var(--border-default)', color: 'var(--text-muted)' }}>{TYPE_LABEL[t.ticket_type]}</span>
+                  <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-heading)' }}>{t.name}</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 'var(--radius-pill)', border: '1px solid var(--border-default)', color: 'var(--text-muted)' }}>{TYPE_LABEL[t.ticket_type]}</span>
                   {t.group_name && <span style={{ fontSize: 11.5, padding: '3px 8px', borderRadius: 'var(--radius-pill)', background: 'var(--surface-accent-secondary-tint)', color: 'var(--color-accent-secondary)', fontWeight: 600 }}>{t.group_name}</span>}
-                  {(t.min_age != null || t.max_age != null) && <span style={{ fontSize: 11.5, padding: '3px 8px', borderRadius: 'var(--radius-pill)', background: 'var(--surface-accent-tint)', color: 'var(--color-accent)', fontWeight: 700 }}>{ageLabel(t.min_age, t.max_age)}</span>}
+                  {(t.min_age != null || t.max_age != null) && <span style={{ fontSize: 11.5, padding: '3px 8px', borderRadius: 'var(--radius-pill)', background: 'var(--surface-accent-tint)', color: 'var(--color-accent)', fontWeight: 600 }}>{ageLabel(t.min_age, t.max_age)}</span>}
                   {t.requires_approval && <span style={{ fontSize: 11.5, padding: '3px 8px', borderRadius: 'var(--radius-pill)', background: 'var(--status-warning-bg)', color: 'var(--status-warning-text)', fontWeight: 600 }}>Needs approval</span>}
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4, fontFamily: 'ui-monospace, monospace' }}>ID: {t.code}</div>
@@ -184,7 +184,7 @@ export function TicketsStep({ api, token, event, readOnly, onChanged, onContinue
               </div>
               {!isMobile && (
                 <>
-                  <span><span style={{ fontSize: 11.5, fontWeight: 700, padding: '4px 9px', borderRadius: 'var(--radius-pill)', border: `1px solid ${t.sale_status === 'on_sale' ? 'var(--color-success)' : 'var(--border-default)'}`, background: t.sale_status === 'on_sale' ? 'var(--status-success-bg)' : 'var(--status-muted-bg)', color: t.sale_status === 'on_sale' ? 'var(--status-success-text)' : 'var(--status-muted-text)', textTransform: 'uppercase' }}>{t.sale_status === 'on_sale' ? 'On sale' : 'Paused'}</span></span>
+                  <span><span style={{ fontSize: 11.5, fontWeight: 600, padding: '4px 9px', borderRadius: 'var(--radius-pill)', border: `1px solid ${t.sale_status === 'on_sale' ? 'var(--color-success)' : 'var(--border-default)'}`, background: t.sale_status === 'on_sale' ? 'var(--status-success-bg)' : 'var(--status-muted-bg)', color: t.sale_status === 'on_sale' ? 'var(--status-success-text)' : 'var(--status-muted-text)', textTransform: 'uppercase' }}>{t.sale_status === 'on_sale' ? 'On sale' : 'Paused'}</span></span>
                   <span style={{ textAlign: 'right', fontWeight: 600, color: 'var(--text-heading)' }}>{t.ticket_type === 'donation' ? `≥ ${formatINR(t.price)}` : formatINR(t.price)}</span>
                   <span style={{ textAlign: 'right', color: 'var(--text-body)' }}>{t.quantity_sold}/{t.quantity_total}</span>
                 </>
@@ -211,7 +211,7 @@ export function TicketsStep({ api, token, event, readOnly, onChanged, onContinue
       {tiers.length > 0 && (
         <div style={{ marginTop: 28 }}>
           <Card>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 10 }}>How do you want to collect payments?</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 600, color: 'var(--text-heading)', marginBottom: 10 }}>How do you want to collect payments?</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, color: 'var(--text-heading)' }}><Icon name="badge-check" size={18} color="var(--color-accent)" />You are accepting payments through Showtik.</div>
             <div style={{ fontSize: 13.5, color: 'var(--text-muted)', marginTop: 6 }}>Buyers pay once per order — each participant still gets their own ticket ID.</div>
           </Card>
@@ -282,7 +282,7 @@ function TicketDrawer({ tier, onClose, onSave }: { tier: OrganiserEventTier | nu
       <div style={{ position: 'relative', width: 'min(680px, 100vw)', height: '100%', background: 'var(--surface-card)', display: 'flex', flexDirection: 'column', boxShadow: '-12px 0 40px rgba(5,23,71,0.18)', fontFamily: 'var(--font-sans)' }}>
         <div style={{ padding: '26px 28px 20px', borderBottom: '1px solid var(--border-default)', display: 'flex', justifyContent: 'space-between', gap: 12 }}>
           <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 800, color: 'var(--text-heading)' }}>{tier ? 'Edit ticket' : 'Create new tickets'}</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 600, color: 'var(--text-heading)' }}>{tier ? 'Edit ticket' : 'Create new tickets'}</div>
             <div style={{ fontSize: 14.5, color: 'var(--text-muted)', marginTop: 4 }}>Add or edit tickets</div>
           </div>
           <button type="button" aria-label="Close" onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', alignSelf: 'flex-start' }}><Icon name="x" size={22} /></button>
@@ -344,7 +344,7 @@ function TicketDrawer({ tier, onClose, onSave }: { tier: OrganiserEventTier | nu
                 </div>
                 <div style={{ fontSize: 13.5, color: 'var(--text-muted)', marginTop: 6 }}>Checked against each participant&apos;s date of birth on the event date. Needs a <strong>Date of birth</strong> question in the registration form.</div>
               </div>
-              <button type="button" onClick={() => setAdvanced((a) => !a)} style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', padding: 0, fontWeight: 700, color: 'var(--text-heading)', cursor: 'pointer', fontSize: 14.5 }}>
+              <button type="button" onClick={() => setAdvanced((a) => !a)} style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', padding: 0, fontWeight: 600, color: 'var(--text-heading)', cursor: 'pointer', fontSize: 14.5 }}>
                 Advanced settings <Icon name={advanced ? 'chevron-up' : 'chevron-down'} size={16} />
               </button>
               {advanced && (

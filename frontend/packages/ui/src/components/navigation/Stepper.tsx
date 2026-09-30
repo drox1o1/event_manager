@@ -26,7 +26,7 @@ export function Stepper({ steps = [], activeIndex = 0, style }: StepperProps) {
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: 13,
-                  fontWeight: 700,
+                  fontWeight: 600,
                   flex: 'none',
                   background: done ? 'var(--color-accent)' : active ? 'var(--color-accent-tint)' : 'var(--color-off-white)',
                   color: done ? '#fff' : active ? 'var(--color-accent)' : 'var(--text-subtle)',

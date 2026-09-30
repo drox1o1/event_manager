@@ -84,7 +84,7 @@ function RefundsInner() {
             columns={[
               { key: 'order_id', label: 'Order', render: (r) => <span style={{ fontFamily: 'monospace', fontSize: 12.5 }}>{r.order_id.slice(0, 8)}</span> },
               { key: 'buyer_name', label: 'Buyer', render: (r) => r.buyer_name ?? '—' },
-              { key: 'amount', label: 'Amount', render: (r) => <span style={{ fontWeight: 700, color: 'var(--text-heading)' }}>{formatINR(r.amount)}</span> },
+              { key: 'amount', label: 'Amount', render: (r) => <span style={{ fontWeight: 600, color: 'var(--text-heading)' }}>{formatINR(r.amount)}</span> },
               { key: 'reason', label: 'Reason given' },
               { key: 'requested_at', label: 'Requested', render: (r) => formatTimestamp(r.requested_at) },
               {

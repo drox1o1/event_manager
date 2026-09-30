@@ -35,7 +35,7 @@ export function CityPageView({ city, events }: CityPageViewProps) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
             <Icon name="map-pin" size={24} color="var(--color-accent)" />
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(30px, 5.5vw, 44px)', fontWeight: 800, letterSpacing: '-0.02em', textTransform: 'uppercase', margin: 0 }}>Events in {city}</h1>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(30px, 5.5vw, 44px)', fontWeight: 600, letterSpacing: '-0.02em', margin: 0 }}>Events in {city}</h1>
           </div>
           <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.7)' }}>{events.length} events happening across {city}</div>
         </div>

@@ -24,6 +24,8 @@ const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 export interface BasicInfoValues {
   title: string;
   categoryId: string;
+  /** Optional second category ('' = none). Max 2 categories per event. */
+  secondCategoryId: string;
   locationType: LocationType;
   venueName: string;
   venueAddress: string;
@@ -54,7 +56,7 @@ function today(): string {
 export function valuesFromEvent(e?: OrganiserEventDetail | null): BasicInfoValues {
   if (!e) {
     return {
-      title: '', categoryId: '', locationType: 'venue', venueName: '', venueAddress: '', city: '', onlineUrl: '',
+      title: '', categoryId: '', secondCategoryId: '', locationType: 'venue', venueName: '', venueAddress: '', city: '', onlineUrl: '',
       scheduleType: 'single', startDate: '', startTime: '', hasEnd: false, endDate: '', endTime: '', timezone: 'Asia/Kolkata',
       frequency: 'weekly', weekdays: [], until: '', description: '', tags: '', hostId: '',
     };
@@ -63,6 +65,7 @@ export function valuesFromEvent(e?: OrganiserEventDetail | null): BasicInfoValue
   return {
     title: e.title,
     categoryId: e.category_id,
+    secondCategoryId: e.category_ids?.[0] ?? '',
     locationType: e.location_type,
     venueName: online ? '' : e.venue_name,
     venueAddress: online ? '' : e.venue_address,
@@ -119,6 +122,7 @@ export function toCreateRequest(v: BasicInfoValues, withHost: boolean): EventCre
   const body: EventCreateRequest = {
     title: v.title.trim(),
     category_id: v.categoryId,
+    category_ids: v.secondCategoryId && v.secondCategoryId !== v.categoryId ? [v.secondCategoryId] : [],
     description: v.description.trim(),
     event_date: v.startDate,
     event_time: time(v.startTime),
@@ -234,7 +238,7 @@ export function BasicInfoForm({
     <div ref={topRef} style={{ display: 'flex', flexDirection: 'column' }}>
       {restored && (
         <div style={{ marginBottom: 20 }}>
-          <Notice>We restored the event you were creating. <button type="button" onClick={discardDraft} style={{ background: 'none', border: 'none', color: 'var(--color-accent)', fontWeight: 700, cursor: 'pointer', padding: 0 }}>Start over</button></Notice>
+          <Notice>We restored the event you were creating. <button type="button" onClick={discardDraft} style={{ background: 'none', border: 'none', color: 'var(--color-accent)', fontWeight: 600, cursor: 'pointer', padding: 0 }}>Start over</button></Notice>
         </div>
       )}
       {disabled && disabledReason && <div style={{ marginBottom: 20 }}><Notice tone="warning">{disabledReason}</Notice></div>}
@@ -248,8 +252,18 @@ export function BasicInfoForm({
       </div>
       <div style={{ ...grid2, marginTop: 16 }}>
         <div {...errBox('categoryId')}>
-          <Select label="Category *" value={v.categoryId} placeholder="Choose a category" options={categories.map((c) => ({ value: c.id, label: c.name }))} error={errors.categoryId} onChange={(e) => set('categoryId', e.target.value)} />
+          <Select label="Category *" value={v.categoryId} placeholder="Choose a category" options={categories.map((c) => ({ value: c.id, label: c.name }))} error={errors.categoryId} onChange={(e) => { set('categoryId', e.target.value); if (e.target.value === v.secondCategoryId) set('secondCategoryId', ''); }} />
         </div>
+        <Select
+          label="Second category (optional)"
+          value={v.secondCategoryId || 'none'}
+          disabled={!v.categoryId}
+          options={[{ value: 'none', label: 'None' }, ...categories.filter((c) => c.id !== v.categoryId).map((c) => ({ value: c.id, label: c.name }))]}
+          onChange={(e) => set('secondCategoryId', e.target.value === 'none' ? '' : e.target.value)}
+        />
+      </div>
+      <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 6 }}>Your event is listed under up to 2 categories, e.g. Marathon + Sports.</div>
+      <div style={{ marginTop: 16 }}>
         <Input label="Tags" placeholder="Running, Marathon, Fitness" value={v.tags} onChange={(e) => set('tags', e.target.value)} />
       </div>
 
@@ -284,7 +298,7 @@ export function BasicInfoForm({
 
       <Divider />
       <SubHeading hint="Select the event date, time, and timezone.">Date and time</SubHeading>
-      <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 4 }}>How often does your event happen?</div>
+      <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text-heading)', marginBottom: 4 }}>How often does your event happen?</div>
       <div style={{ fontSize: 13.5, color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.5 }}>Single Event tickets cover the whole event; Recurring Event buyers pick which session they attend.</div>
       <div style={{ ...grid2, marginBottom: 20 }}>
         <ChoiceCard icon="calendar-days" title="Single" description="Happens once — one day or across multiple days. One ticket setup for the whole event." note="Works for most events: concerts, festivals, conferences, workshops." selected={v.scheduleType === 'single'} onClick={() => set('scheduleType', 'single')} />
@@ -295,7 +309,7 @@ export function BasicInfoForm({
         <div {...errBox('startDate')}><Input label="Start date *" type="date" value={v.startDate} error={errors.startDate} onChange={(e) => set('startDate', e.target.value)} /></div>
         <div {...errBox('startTime')}><Input label="Start time *" type="time" value={v.startTime} error={errors.startTime} onChange={(e) => set('startTime', e.target.value)} /></div>
         {!v.hasEnd && (
-          <button type="button" onClick={() => set('hasEnd', true)} style={{ alignSelf: 'end', height: 44, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: 'var(--text-heading)', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+          <button type="button" onClick={() => set('hasEnd', true)} style={{ alignSelf: 'end', height: 44, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: 'var(--text-heading)', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
             <Icon name="plus" size={16} /> Add end time
           </button>
         )}
@@ -353,13 +367,13 @@ export function BasicInfoForm({
           <div style={{ flex: '1 1 320px', maxWidth: 480 }}>
             <FieldLabel>Organizer Page</FieldLabel>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, border: '1px solid var(--border-default)', borderRadius: 'var(--radius-control)', padding: '10px 14px', background: 'var(--surface-card)' }}>
-              <span style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--gradient-brand)', color: '#fff', fontSize: 12, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{hostLabel.charAt(0).toUpperCase()}</span>
+              <span style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--gradient-brand)', color: '#fff', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{hostLabel.charAt(0).toUpperCase()}</span>
               <span style={{ fontSize: 15, color: 'var(--text-body)', fontWeight: 600 }}>{hostLabel}</span>
             </div>
           </div>
         ) : null}
         {onManageHost && (
-          <button type="button" onClick={onManageHost} style={{ height: 44, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: 'var(--text-heading)', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+          <button type="button" onClick={onManageHost} style={{ height: 44, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: 'var(--text-heading)', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
             <Icon name="pencil" size={15} /> Edit organizer page
           </button>
         )}

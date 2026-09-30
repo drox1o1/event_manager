@@ -42,7 +42,7 @@ export function FeaturedHero({ events }: { events: FeaturedEvent[] }) {
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
       onKeyDown={(e) => { if (!multi) return; if (e.key === 'ArrowRight') go(index + 1); if (e.key === 'ArrowLeft') go(index - 1); }}
-      style={{ position: 'relative', width: '100%', aspectRatio: isMobile ? '4 / 3' : '16 / 5', overflow: 'hidden', background: 'var(--color-ink)' }}
+      style={{ position: 'relative', width: '100%', aspectRatio: isMobile ? '16 / 9' : '12 / 5', maxHeight: '72vh', overflow: 'hidden', background: 'var(--color-ink)' }}
     >
       {events.map((e, i) => {
         const active = i === index;
@@ -68,7 +68,12 @@ export function FeaturedHero({ events }: { events: FeaturedEvent[] }) {
             style={{ position: 'absolute', inset: 0, display: 'block', opacity: active ? 1 : 0, transition: 'opacity 0.9s ease', pointerEvents: active ? 'auto' : 'none' }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={image ?? ''} alt={e.title} loading={i === 0 ? 'eager' : 'lazy'} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            <>
+              {/* Blurred copy fills the side gutters; the real banner is shown whole (never cropped). */}
+              <img src={image ?? ''} alt="" aria-hidden loading={i === 0 ? 'eager' : 'lazy'} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(28px) brightness(0.85)', transform: 'scale(1.15)' }} />
+              <img src={image ?? ''} alt={e.title} loading={i === 0 ? 'eager' : 'lazy'} style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+            </>
+              <HeroDetails e={e} isMobile={isMobile} multi={multi} />
           </a>
         );
       })}
@@ -92,6 +97,66 @@ export function FeaturedHero({ events }: { events: FeaturedEvent[] }) {
         </>
       )}
     </section>
+  );
+}
+
+function when(e: FeaturedEvent) {
+  const d = new Date(`${e.event_date}T00:00:00`);
+  const day = isNaN(d.getTime()) ? e.event_date : d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  const t = e.event_time ? (() => { const [h, m] = e.event_time.split(':').map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`; })() : null;
+  return t ? `${day} · ${t}` : day;
+}
+
+function price(e: FeaturedEvent) {
+  if (e.sold_out) return 'Sold out';
+  const n = e.price_from == null ? null : Number(e.price_from);
+  if (n == null || isNaN(n)) return null;
+  return n > 0 ? `From ₹${n.toLocaleString('en-IN')}` : 'Free';
+}
+
+/** Always-visible event details over the banner: what it is, when/where,
+ *  price and a clear CTA. Phones get a compact title + CTA strip. */
+function HeroDetails({ e, isMobile, multi }: { e: FeaturedEvent; isMobile: boolean; multi: boolean }) {
+  const cta = e.sold_out ? 'View event' : Number(e.price_from ?? 0) > 0 ? 'Book tickets' : 'Register now';
+  const ctaEl = (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: isMobile ? 34 : 40, padding: isMobile ? '0 14px' : '0 18px', borderRadius: 8, background: 'var(--action-primary-bg)', color: '#fff', fontSize: 14, fontWeight: 500, whiteSpace: 'nowrap', flex: 'none' }}>
+      {cta}<Icon name="arrow-right" size={15} />
+    </span>
+  );
+  if (isMobile) {
+    return (
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: `28px 14px ${multi ? 26 : 12}px`, background: 'linear-gradient(to top, rgba(5,12,32,0.85), rgba(5,12,32,0))', display: 'flex', alignItems: 'center', gap: 10, color: '#fff' }}>
+        <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</span>
+        {ctaEl}
+      </div>
+    );
+  }
+  const where = [e.venue_name, e.city].filter(Boolean).join(', ') || (e.location_type === 'online' ? 'Online' : null);
+  const p = price(e);
+  return (
+    <div
+      style={{
+        position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end',
+        background: 'linear-gradient(to top, rgba(5,12,32,0.88) 0%, rgba(5,12,32,0.55) 35%, rgba(5,12,32,0) 65%)',
+        color: '#fff',
+      }}
+    >
+      <div style={{ width: '100%', maxWidth: 'var(--content-max-width)', margin: '0 auto', padding: `0 88px ${multi ? 48 : 32}px`, display: 'flex', alignItems: 'flex-end', gap: 24 }}>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {e.category && <span style={{ alignSelf: 'flex-start', fontSize: 12, fontWeight: 500, padding: '3px 10px', borderRadius: 999, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.25)' }}>{e.category}</span>}
+          <div style={{ fontSize: 'clamp(22px, 2.4vw, 32px)', fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1.15 }}>{e.headline || e.title}</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 18px', fontSize: 14, color: 'rgba(255,255,255,0.85)' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon name="calendar" size={15} />{when(e)}</span>
+            {where && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Icon name="map-pin" size={15} />{where}</span>}
+            {e.organiser_name && <span>by {e.organiser_name}</span>}
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, flex: 'none' }}>
+          {p && <span style={{ fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.9)' }}>{p}</span>}
+          {ctaEl}
+        </div>
+      </div>
+    </div>
   );
 }
 

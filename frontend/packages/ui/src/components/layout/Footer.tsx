@@ -52,13 +52,13 @@ export function Footer({ style, columns = DEFAULT_COLS, tagline = DEFAULT_TAGLIN
         <div style={{ maxWidth: 240 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
             <LogoMark style={{ height: 30 }} />
-            <span style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>showtik</span>
+            <span style={{ fontSize: 20, fontWeight: 600, color: '#fff' }}>showtik</span>
           </div>
           <div style={{ fontSize: 13, lineHeight: 1.6 }}>{tagline}</div>
         </div>
         {columns.map((c) => (
           <div key={c.title}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginBottom: 12 }}>{c.title}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', marginBottom: 12 }}>{c.title}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {c.links.map((l) => (
                 <a key={l.label} href={l.href} style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>{l.label}</a>

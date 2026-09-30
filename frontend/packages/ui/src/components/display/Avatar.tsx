@@ -29,7 +29,7 @@ export function Avatar({ src, name = '', size = 40, style }: AvatarProps) {
         alignItems: 'center',
         justifyContent: 'center',
         fontFamily: 'var(--font-sans)',
-        fontWeight: 700,
+        fontWeight: 600,
         fontSize: size * 0.38,
         flex: 'none',
         ...style,

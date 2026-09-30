@@ -17,6 +17,8 @@ export interface NavbarProps {
   onLogoClick?: () => void;
   /** Organiser portal sign-in URL; shows an "Organiser Login" link top right. */
   organiserLoginUrl?: string;
+  /** Where "List your event" points (organiser sign-up); a subtle text link. */
+  listEventUrl?: string;
   style?: React.CSSProperties;
 }
 
@@ -37,6 +39,7 @@ export function Navbar({
   onCityChange,
   onLogoClick,
   organiserLoginUrl,
+  listEventUrl,
   style,
 }: NavbarProps) {
   const isMobile = useIsMobile();
@@ -170,11 +173,21 @@ export function Navbar({
         <button onClick={onSearchClick} aria-label="Search" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-heading)', display: 'flex' }}>
           <Icon name="search" size={19} />
         </button>
+        {listEventUrl && !isMobile && (
+          <a
+            href={listEventUrl}
+            style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-muted)', textDecoration: 'none', whiteSpace: 'nowrap', padding: '0 4px' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-heading)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; }}
+          >
+            List your event
+          </a>
+        )}
         {organiserLoginUrl && (
           <a
             href={organiserLoginUrl}
             aria-label="Organiser login"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: isMobile ? 34 : 38, padding: isMobile ? '0 10px' : '0 16px', borderRadius: 10, background: 'var(--color-ink)', color: '#fff', fontSize: 13.5, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: isMobile ? 34 : 38, padding: isMobile ? '0 10px' : '0 16px', borderRadius: 10, background: 'var(--color-ink)', color: '#fff', fontSize: 13.5, fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}
           >
             <Icon name="log-in" size={15} />{isMobile ? 'Organiser' : 'Organiser Login'}
           </a>

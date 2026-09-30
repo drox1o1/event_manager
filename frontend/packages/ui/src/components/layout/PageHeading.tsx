@@ -16,7 +16,7 @@ export function PageHeading({ title, description, actions, style }: PageHeadingP
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 24, flexWrap: 'wrap', fontFamily: 'var(--font-sans)', ...style }}>
       <div>
-        <h1 style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 800, letterSpacing: '-0.01em', textTransform: 'uppercase', color: 'var(--text-heading)', margin: 0 }}>
+        <h1 style={{ display: 'flex', alignItems: 'center', gap: 12, fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-heading)', margin: 0 }}>
           <span aria-hidden style={{ width: 5, height: 24, background: 'var(--gradient-brand)', borderRadius: 3, flex: 'none' }} />
           {title}
         </h1>

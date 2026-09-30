@@ -68,7 +68,7 @@ export function EventTaxPanel() {
             <Select label="How tax is applied" value={mode} onChange={(e) => setMode(e.target.value)} options={TAX_MODE} />
 
             <div style={{ marginTop: 4 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 4 }}>Per-category overrides</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-heading)', marginBottom: 4 }}>Per-category overrides</div>
               <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 12 }}>Charge a different rate for specific categories — otherwise the default {rate || '0'}% applies.</div>
               <div style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-control)', overflow: 'hidden' }}>
                 {overrides.map((o, i) => (
@@ -87,13 +87,13 @@ export function EventTaxPanel() {
         </div>
 
         <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)', padding: 22 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 4 }}>Invoice preview</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-heading)', marginBottom: 4 }}>Invoice preview</div>
           <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 16 }}>21K Half Marathon · 1 ticket</div>
           <PreviewRow label="Ticket price" value={`₹${sample.toLocaleString('en-IN')}`} />
           <PreviewRow label={`${label || 'Tax'} (${enabled ? rate || 0 : 0}%)${mode === TAX_MODE[1] ? ' incl.' : ''}`} value={enabled ? `₹${taxAmt.toLocaleString('en-IN')}` : '₹0'} muted={mode === TAX_MODE[1]} />
           <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 12, marginTop: 6, borderTop: '1.5px solid var(--border-default)' }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-heading)' }}>Total</span>
-            <span style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 800, color: 'var(--color-accent)' }}>₹{total.toLocaleString('en-IN')}</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-heading)' }}>Total</span>
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--color-accent)' }}>₹{total.toLocaleString('en-IN')}</span>
           </div>
           <div style={{ marginTop: 16, fontSize: 12, color: 'var(--text-subtle)', display: 'flex', gap: 6, alignItems: 'flex-start' }}>
             <Icon name="info" size={14} /> {mode === TAX_MODE[1] ? 'Tax is already part of the ticket price shown to buyers.' : 'Tax is added on top at checkout.'}

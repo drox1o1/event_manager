@@ -15,7 +15,7 @@ function SettingsCard({ icon, title, description, children }: { icon: string; ti
           <Icon name={icon} size={17} />
         </span>
         <div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-heading)' }}>{title}</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, color: 'var(--text-heading)' }}>{title}</div>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>{description}</div>
         </div>
       </div>
@@ -112,12 +112,12 @@ function SettingsInner() {
           <div>
             <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-subtle)', marginBottom: 8 }}>PREVIEW</div>
             <div style={{ border: '1px solid var(--border-default)', borderRadius: 'var(--radius-control)', overflow: 'hidden' }}>
-              <div style={{ background: 'var(--color-ink)', color: '#fff', padding: '16px 20px', fontWeight: 700, fontSize: 15 }}>
+              <div style={{ background: 'var(--color-ink)', color: '#fff', padding: '16px 20px', fontWeight: 600, fontSize: 15 }}>
                 {settings.email_sender_name || 'Showtik'}
               </div>
               <div style={{ padding: 20 }}>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>You&apos;re going! Your order is confirmed.</div>
-                <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-heading)', marginBottom: 4 }}>Jazz Night at The Terrace</div>
+                <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-heading)', marginBottom: 4 }}>Jazz Night at The Terrace</div>
                 <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 14 }}>Sat, 12 Jul · 7:00 PM · The Terrace, Bandra, Mumbai</div>
                 <div style={{ width: 64, height: 64, borderRadius: 8, background: 'var(--color-off-white)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-subtle)', margin: '0 auto 14px' }}>
                   <Icon name="qr-code" size={28} />

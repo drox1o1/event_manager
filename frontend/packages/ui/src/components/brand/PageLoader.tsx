@@ -32,7 +32,7 @@ export function PageLoader({ variant = 'page', label = 'Loading', tone = 'light'
       <style>{'@keyframes showtik-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(0.9);opacity:0.72}}@keyframes showtik-slide{0%{transform:translateX(-100%)}100%{transform:translateX(320%)}}'}</style>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <LogoMark style={{ height: 40, animation: 'showtik-pulse 1.3s ease-in-out infinite' }} />
-        <span style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, letterSpacing: '-0.01em', color: dark ? '#fff' : 'var(--color-ink)' }}>showtik</span>
+        <span style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 600, letterSpacing: '-0.01em', color: dark ? '#fff' : 'var(--color-ink)' }}>showtik</span>
       </div>
       <div style={{ position: 'relative', width: 128, height: 4, borderRadius: 999, overflow: 'hidden', background: dark ? 'rgba(255,255,255,0.16)' : 'var(--color-rule)' }}>
         <span style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: '30%', borderRadius: 999, background: 'var(--color-accent)', animation: 'showtik-slide 1.1s ease-in-out infinite' }} />

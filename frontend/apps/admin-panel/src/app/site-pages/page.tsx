@@ -119,7 +119,7 @@ function SitePagesInner() {
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
           <button onClick={backToList} style={{ background: 'none', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer', display: 'flex' }}><Icon name="arrow-left" size={20} /></button>
-          <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-heading)' }}>{mode === 'create' ? 'New page' : `Edit /${activeSlug}`}</div>
+          <div style={{ fontSize: 22, fontWeight: 600, color: 'var(--text-heading)' }}>{mode === 'create' ? 'New page' : `Edit /${activeSlug}`}</div>
         </div>
 
         {error && <div style={{ color: 'var(--color-error)', marginBottom: 16, fontSize: 14 }}>{error}</div>}

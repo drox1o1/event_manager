@@ -110,7 +110,8 @@ def list_events():
         .order_by(Event.event_date.asc())
     )
     if category:
-        query = query.join(Event.category).where(Category.name == category)
+        # Any of the event's listing categories, not just the primary one.
+        query = query.where(Event.categories.any(Category.name == category))
     if city:
         query = query.where(Event.city == city)
     keyword = (params.get("q") or "").strip()
@@ -149,6 +150,7 @@ def get_event(event_id: str):
             id=event.id,
             title=event.title,
             category=event.category.name if event.category else None,
+            categories=_category_names(event),
             city=event.city,
             event_date=event.event_date,
             price_from=_price_from(event.ticket_tiers),
@@ -276,11 +278,18 @@ def get_site_page(slug: str):
         return SitePageResponse.model_validate(page).model_dump(mode="json")
 
 
+def _category_names(e: Event) -> list[str]:
+    primary = e.category.name if e.category else None
+    extras = sorted((c for c in e.categories if c.id != e.category_id), key=lambda c: (c.sort_order, c.name))
+    return ([primary] if primary else []) + [c.name for c in extras]
+
+
 def _event_summary_dict(e: Event) -> dict:
     return EventSummary(
         id=e.id,
         title=e.title,
         category=e.category.name if e.category else None,
+        categories=_category_names(e),
         city=e.city,
         event_date=e.event_date,
         price_from=_price_from(e.ticket_tiers),
@@ -393,7 +402,7 @@ def get_homepage():
                         .where(
                             Event.status == EventStatus.LIVE,
                             Event.listing_type == "public",
-                            Event.category_id == section.category_id,
+                            Event.categories.any(Category.id == section.category_id),
                         )
                         .options(selectinload(Event.ticket_tiers), selectinload(Event.category))
                         .order_by(Event.event_date.asc())

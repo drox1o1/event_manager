@@ -121,7 +121,7 @@ export function MediaStep({ api, token, event, readOnly, onSaved, onDirtyChange 
         <input type="file" accept="image/*" onChange={pickBanner} disabled={readOnly} style={{ display: 'none' }} />
         {!banner.preview ? (
           <>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 22px', background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-control)', fontWeight: 700, color: 'var(--text-heading)' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 22px', background: 'var(--surface-card)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-control)', fontWeight: 600, color: 'var(--text-heading)' }}>
               <Icon name="camera" size={18} /> Add Banner
             </span>
             <span style={{ fontSize: 13.5, color: 'var(--text-muted)' }}>Max image size 10MB. Recommended dimension: 1200×600px (2:1)</span>

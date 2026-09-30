@@ -93,7 +93,7 @@ export function EventCategoriesPanel({ event }: { event?: OrganiserEventDetail |
             return (
               <button key={c.id} onClick={() => setActiveId(c.id)} style={{ textAlign: 'left', cursor: 'pointer', background: 'var(--surface-card)', border: `1.5px solid ${on ? 'var(--color-accent)' : 'var(--border-default)'}`, borderRadius: 'var(--radius-card)', padding: 16, boxShadow: on ? 'var(--shadow-card)' : 'none', fontFamily: 'var(--font-sans)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-heading)' }}>{c.name}</span>
+                  <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-heading)' }}>{c.name}</span>
                   {c.enabled ? <Badge status="live">Enabled</Badge> : <Badge status="draft">Disabled</Badge>}
                 </div>
                 <div style={{ display: 'flex', gap: 14, fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 10 }}>

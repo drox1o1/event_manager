@@ -95,7 +95,7 @@ function ModerationInner() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-heading)' }}>{e.title}</div>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-heading)' }}>{e.title}</div>
                     <Badge status="review" />
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-subtle)', marginTop: 6 }}>
@@ -110,7 +110,7 @@ function ModerationInner() {
             <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)', padding: 28 }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
                 <div>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 6 }}>{selected.title}</div>
+                  <div style={{ fontSize: 22, fontWeight: 600, color: 'var(--text-heading)', marginBottom: 6 }}>{selected.title}</div>
                   <div style={{ fontSize: 13, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
                     <Icon name="clock" size={14} /> Submitted {selected.submitted_at ? formatTimestamp(selected.submitted_at) : '—'}
                   </div>

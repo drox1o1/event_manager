@@ -47,13 +47,13 @@ function DashboardInner() {
 
       {!!pendingOrgs && (
         <div onClick={() => router.push('/organisers')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', marginBottom: 24, borderRadius: 'var(--radius-card)', background: 'var(--status-warning-bg)', color: 'var(--text-body)', fontSize: 14 }}>
-          <strong>{pendingOrgs} organiser{pendingOrgs === 1 ? ' is' : 's are'} waiting for approval.</strong> They can&apos;t create events until you approve them. <span style={{ marginLeft: 'auto', fontWeight: 700, color: 'var(--text-link)' }}>Review &rarr;</span>
+          <strong>{pendingOrgs} organiser{pendingOrgs === 1 ? ' is' : 's are'} waiting for approval.</strong> They can&apos;t create events until you approve them. <span style={{ marginLeft: 'auto', fontWeight: 600, color: 'var(--text-link)' }}>Review &rarr;</span>
         </div>
       )}
 
       <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)', padding: 24, maxWidth: 640 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 700, color: 'var(--text-heading)' }}>Awaiting moderation</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, color: 'var(--text-heading)' }}>Awaiting moderation</div>
           <a href="/moderation" onClick={(e) => { e.preventDefault(); router.push('/moderation'); }} style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-link)', textDecoration: 'none' }}>Open queue &rarr;</a>
         </div>
         {queue === null ? (

@@ -73,7 +73,7 @@ export function EventDiscountsPanel() {
             return (
               <button key={d.id} onClick={() => setActiveId(d.id)} style={{ textAlign: 'left', cursor: 'pointer', background: 'var(--surface-card)', border: `1.5px solid ${on ? 'var(--color-accent)' : 'var(--border-default)'}`, borderRadius: 'var(--radius-card)', padding: 16, boxShadow: on ? 'var(--shadow-card)' : 'none', fontFamily: 'var(--font-sans)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-heading)', fontFamily: 'monospace' }}>{d.code || 'Auto-apply'}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-heading)', fontFamily: 'monospace' }}>{d.code || 'Auto-apply'}</span>
                   {d.enabled ? <Badge status="live">Active</Badge> : <Badge status="draft">Off</Badge>}
                 </div>
                 <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 10 }}>
@@ -89,7 +89,7 @@ export function EventDiscountsPanel() {
         </div>
 
         <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)', padding: 24 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 20 }}>{activeId === 'new' ? 'New discount' : 'Edit discount'}</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text-heading)', marginBottom: 20 }}>{activeId === 'new' ? 'New discount' : 'Edit discount'}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             <div>
               <Input label="Discount code" placeholder="RUNXTREME-30" value={active.code} onChange={(e) => patch('code', e.target.value)} />

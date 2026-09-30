@@ -143,7 +143,7 @@ function AllEventsInner() {
                       {r.is_featured && <span title="Featured on homepage" style={{ position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: '50%', background: '#F5A524', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="star" size={11} /></span>}
                     </div>
                     <div>
-                      <div style={{ fontWeight: 700, color: 'var(--text-heading)' }}>{r.title}</div>
+                      <div style={{ fontWeight: 600, color: 'var(--text-heading)' }}>{r.title}</div>
                       <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>{formatEventDate(r.event_date)} · {r.city}{r.listing_type === 'private' ? ' · Private' : ''}</div>
                     </div>
                   </div>

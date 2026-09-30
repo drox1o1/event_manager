@@ -170,7 +170,7 @@ export function RegistrationFormStep({ api, token, event, readOnly, onSaved, onD
           </div>
         ))}
         {!readOnly && (
-          <button type="button" onClick={addBlank} style={{ padding: '16px', border: '1.5px dashed var(--border-default)', borderRadius: 'var(--radius-card)', background: 'none', color: 'var(--text-heading)', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          <button type="button" onClick={addBlank} style={{ padding: '16px', border: '1.5px dashed var(--border-default)', borderRadius: 'var(--radius-card)', background: 'none', color: 'var(--text-heading)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <Icon name="plus" size={16} /> Add a custom question
           </button>
         )}

@@ -15,7 +15,7 @@ export function PanelHead({
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 22, gap: 16, flexWrap: 'wrap' }}>
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--text-heading)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text-heading)' }}>
           <span aria-hidden style={{ width: 4, height: 18, background: 'var(--gradient-brand)', borderRadius: 2, flex: 'none' }} />
           {title}
         </div>

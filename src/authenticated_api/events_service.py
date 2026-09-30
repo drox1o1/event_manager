@@ -171,6 +171,22 @@ def form_field_dict(f: EventFormField) -> dict:
     ).model_dump(mode="json")
 
 
+def category_names(e: Event) -> list[str]:
+    """Primary category first, then the extra ones in admin sort order."""
+    primary = e.category.name if e.category else None
+    extras = sorted((c for c in e.categories if c.id != e.category_id), key=lambda c: (c.sort_order, c.name))
+    return ([primary] if primary else []) + [c.name for c in extras]
+
+
+def set_categories(session, event: Event, extra_ids) -> None:
+    """Sync event_categories to primary + extras; unknown ids are rejected."""
+    wanted = [event.category_id] + [i for i in dict.fromkeys(extra_ids or []) if i != event.category_id]
+    cats = session.execute(select(Category).where(Category.id.in_(wanted))).scalars().all()
+    if len(cats) != len(wanted):
+        raise BadRequestError("Choose categories from the list")
+    event.categories = cats
+
+
 def organiser_event_summary(e: Event) -> dict:
     tickets_sold = sum(t.quantity_sold for t in e.ticket_tiers)
     tickets_total = sum(t.quantity_total for t in e.ticket_tiers)
@@ -178,6 +194,7 @@ def organiser_event_summary(e: Event) -> dict:
         "event_id": str(e.id),
         "title": e.title,
         "category": e.category.name if e.category else None,
+        "categories": category_names(e),
         "city": e.city,
         "event_date": e.event_date.isoformat(),
         "event_time": e.event_time.isoformat(),
@@ -204,6 +221,7 @@ def organiser_event_detail(e: Event) -> dict:
             "venue_address": e.venue_address,
             "capacity": e.capacity,
             "category_id": str(e.category_id),
+            "category_ids": [str(c.id) for c in e.categories if c.id != e.category_id],
             "organiser_id": str(e.organiser_id) if e.organiser_id else None,
             "organiser_name": e.organiser.org_name if e.organiser else None,
             "location_type": e.location_type,
@@ -271,6 +289,7 @@ def create_event_impl(body: EventCreateRequest, organiser_id: uuid.UUID | None, 
         status=EventStatus.DRAFT,
     )
     session.add(event)
+    set_categories(session, event, body.category_ids)
     session.flush()
     return event.id
 
@@ -282,6 +301,8 @@ def update_event_impl(event_id: str, body: EventUpdateRequest, organiser_id: uui
 
     changes = body.model_dump(exclude_unset=True)
     changes.pop("organiser_id", None)
+    extra_ids = changes.pop("category_ids", None)
+    old_primary = event.category_id
     if organiser_id is None and "organiser_id" in body.model_fields_set:
         if body.organiser_id is not None and session.get(Organiser, body.organiser_id) is None:
             raise BadRequestError("Unknown organiser")
@@ -297,6 +318,9 @@ def update_event_impl(event_id: str, body: EventUpdateRequest, organiser_id: uui
 
     for field, value in changes.items():
         setattr(event, field, value)
+    if extra_ids is not None or "category_id" in changes:
+        keep = extra_ids if extra_ids is not None else [c.id for c in event.categories if c.id != old_primary]
+        set_categories(session, event, keep)
 
     loc = event.location_type
     if loc != "venue":

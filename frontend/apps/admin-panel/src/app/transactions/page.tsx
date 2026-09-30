@@ -57,7 +57,7 @@ function TransactionsInner() {
                   </div>
                 ),
               },
-              { key: 'total_amount', label: 'Amount', render: (r) => <span style={{ fontWeight: 700, color: 'var(--text-heading)' }}>{formatINR(r.total_amount)}</span> },
+              { key: 'total_amount', label: 'Amount', render: (r) => <span style={{ fontWeight: 600, color: 'var(--text-heading)' }}>{formatINR(r.total_amount)}</span> },
               { key: 'payment_status', label: 'Status', render: (r) => <StatusPill status={r.payment_status} /> },
               { key: 'created_at', label: 'Date', render: (r) => formatTimestamp(r.created_at) },
             ]}

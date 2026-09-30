@@ -33,3 +33,7 @@ video {
   max-width: 100%;
   height: auto;
 }
+
+/* Geist: headings get tighter tracking instead of heavier weight. */
+h1, h2, h3 { letter-spacing: -0.02em; font-weight: 600; }
+body { -webkit-font-smoothing: antialiased; }

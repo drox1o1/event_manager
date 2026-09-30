@@ -70,11 +70,11 @@ export function EventDashboardPanel({ event }: { event?: OrganiserEventDetail | 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 20, marginBottom: 28 }}>
         <div style={{ background: 'linear-gradient(135deg, var(--color-accent-secondary), color-mix(in srgb, var(--color-accent-secondary) 78%, black))', borderRadius: 'var(--radius-card)', padding: 22, color: '#fff', boxShadow: 'var(--shadow-card)' }}>
           <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em', opacity: 0.85 }}>Status</div>
-          <div style={{ fontSize: 30, fontWeight: 700, marginTop: 6 }}>{statusLabel}</div>
+          <div style={{ fontSize: 30, fontWeight: 600, marginTop: 6 }}>{statusLabel}</div>
         </div>
         <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--radius-card)', padding: 22, boxShadow: 'var(--shadow-card)' }}>
           <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-subtle)' }}>Balance</div>
-          <div style={{ fontSize: 30, fontWeight: 700, color: 'var(--text-heading)', marginTop: 6 }}>{inr(0)}</div>
+          <div style={{ fontSize: 30, fontWeight: 600, color: 'var(--text-heading)', marginTop: 6 }}>{inr(0)}</div>
           <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--text-muted)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}><span>Payable</span><span style={{ fontWeight: 600 }}>{inr(revenue)}</span></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 3 }}><span>Paid</span><span style={{ fontWeight: 600, color: 'var(--color-success)' }}>{inr(revenue)}</span></div>
@@ -85,7 +85,7 @@ export function EventDashboardPanel({ event }: { event?: OrganiserEventDetail | 
       </div>
 
       <div style={{ background: 'var(--surface-card)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)', padding: 24 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 18 }}>Orders by date</div>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text-heading)', marginBottom: 18 }}>Orders by date</div>
         <OrdersChart />
       </div>
     </div>

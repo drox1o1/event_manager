@@ -56,6 +56,8 @@ export interface EventSummary {
   id: string;
   title: string;
   category: string | null;
+  /** Every category the event is listed under (primary first, max 2). */
+  categories?: string[];
   city: string;
   event_date: string;
   price_from: string | null;
@@ -458,6 +460,8 @@ export interface LoginRequest {
 export interface EventCreateRequest {
   title: string;
   category_id: string;
+  /** Optional second category (an event can be listed under at most 2). */
+  category_ids?: string[];
   description: string;
   event_date: string;
   event_time: string;
@@ -527,6 +531,8 @@ export interface OrganiserEventDetail extends OrganiserEventSummary {
   banner_image_url: string | null;
   gallery_images: string[];
   category_id: string;
+  /** The optional second category (excludes the primary). */
+  category_ids?: string[];
   organiser_id: string | null;
   organiser_name: string | null;
   ticket_tiers: OrganiserEventTier[];

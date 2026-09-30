@@ -27,7 +27,7 @@ export function SiteNavbar({ categories, cities }: SiteNavbarProps) {
       onCategoryClick={(category) => router.push(`/category/${encodeURIComponent(category)}`)}
       onCityChange={(city) => router.push(`/city/${encodeURIComponent(city)}`)}
       onLogoClick={() => router.push('/')}
-      organiserLoginUrl={`${process.env.NEXT_PUBLIC_ORGANISER_URL ?? 'https://host.showtik.in'}/login`}
+      listEventUrl={`${process.env.NEXT_PUBLIC_ORGANISER_URL ?? 'https://host.showtik.in'}/signup`}
     />
   );
 }

@@ -99,7 +99,7 @@ export function PublishStep({ api, token, event, readOnly, blockers, primary, se
           <div>
             <FieldLabel required>Organizer page</FieldLabel>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, border: '1px solid var(--border-default)', borderRadius: 'var(--radius-control)', padding: '12px 16px' }}>
-              <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--gradient-brand)', color: '#fff', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{hostLabel.charAt(0).toUpperCase()}</span>
+              <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--gradient-brand)', color: '#fff', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{hostLabel.charAt(0).toUpperCase()}</span>
               <span style={{ fontWeight: 600, color: 'var(--text-heading)' }}>{hostLabel}</span>
             </div>
           </div>
@@ -134,14 +134,14 @@ export function PublishStep({ api, token, event, readOnly, blockers, primary, se
               {!event.banner_image_url && <Icon name="image" size={30} />}
             </div>
             <div style={{ padding: '18px 22px 22px' }}>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--text-heading)', marginBottom: 6 }}>{event.title}</div>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 600, color: 'var(--text-heading)', marginBottom: 6 }}>{event.title}</div>
               <div style={{ fontSize: 14, color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Icon name="calendar" size={14} />{formatDateTime(event.event_date, event.event_time)}</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Icon name="map-pin" size={14} />{event.location_type === 'venue' ? `${event.venue_name}, ${event.city}` : `Online · ${event.city}`}</span>
               </div>
             </div>
           </div>
-          <a href={previewUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 14, fontWeight: 700, color: 'var(--text-heading)', textDecoration: 'none' }}>
+          <a href={previewUrl} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 14, fontWeight: 600, color: 'var(--text-heading)', textDecoration: 'none' }}>
             Preview your event <Icon name="arrow-up-right" size={16} />
           </a>
         </div>

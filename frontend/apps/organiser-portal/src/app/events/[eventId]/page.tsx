@@ -126,7 +126,7 @@ function EventWorkspace() {
       <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'flex-start', justifyContent: 'space-between', marginBottom: 22, gap: 16 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6, flexWrap: 'wrap' }}>
-            <div style={{ fontSize: isMobile ? 22 : 26, fontWeight: 700, color: 'var(--text-heading)' }}>{event.title}</div>
+            <div style={{ fontSize: isMobile ? 22 : 26, fontWeight: 600, color: 'var(--text-heading)' }}>{event.title}</div>
             <Badge status={badgeStatus(event.status)} />
           </div>
           <div style={{ fontSize: 14, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>

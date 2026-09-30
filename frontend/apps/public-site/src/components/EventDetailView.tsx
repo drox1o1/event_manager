@@ -85,16 +85,16 @@ export function EventDetailView({ event, autoBook }: EventDetailViewProps) {
 
   const hostCard = (
     <div style={{ background: 'var(--surface-card)', borderRadius: 18, border: '1px solid var(--border-default)', padding: 20 }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 12 }}>Host Details</div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 12 }}>Host Details</div>
       <div
         onClick={() => event.organiser && router.push(`/organisers/${event.organiser.id}`)}
         style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: event.organiser ? 'pointer' : 'default' }}
       >
-        <span style={{ width: 46, height: 46, borderRadius: 12, flex: 'none', background: event.organiser?.logo_url ? `center/cover no-repeat url(${event.organiser.logo_url})` : 'var(--gradient-brand)', color: '#fff', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ width: 46, height: 46, borderRadius: 12, flex: 'none', background: event.organiser?.logo_url ? `center/cover no-repeat url(${event.organiser.logo_url})` : 'var(--gradient-brand)', color: '#fff', fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {!event.organiser?.logo_url && (event.organiser?.org_name ?? 'S').charAt(0).toUpperCase()}
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, color: 'var(--text-heading)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.organiser?.org_name ?? 'Showtik'}</div>
+          <div style={{ fontWeight: 600, color: 'var(--text-heading)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{event.organiser?.org_name ?? 'Showtik'}</div>
           <div style={{ fontSize: 12.5, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}><Icon name="badge-check" size={13} color="var(--color-accent-secondary)" />Verified organiser</div>
         </div>
         {event.organiser && <Icon name="chevron-right" size={18} color="var(--text-subtle)" />}
@@ -112,7 +112,7 @@ export function EventDetailView({ event, autoBook }: EventDetailViewProps) {
             {!event.banner_image_url && (
               <>
                 <span aria-hidden style={{ position: 'absolute', top: '-30%', right: '-8%', width: '42%', height: '180%', background: 'var(--gradient-brand)', opacity: 0.55, transform: 'rotate(18deg)', borderRadius: 40 }} />
-                <div style={{ position: 'relative', fontFamily: 'var(--font-display)', fontSize: 'clamp(32px, 6vw, 72px)', fontWeight: 900, color: '#fff', textTransform: 'uppercase', lineHeight: 0.95, letterSpacing: '-0.03em', maxWidth: 800 }}>{event.title}</div>
+                <div style={{ position: 'relative', fontFamily: 'var(--font-display)', fontSize: 'clamp(32px, 6vw, 72px)', fontWeight: 600, color: '#fff', lineHeight: 1.08, letterSpacing: '-0.03em', maxWidth: 800 }}>{event.title}</div>
               </>
             )}
           </div>
@@ -123,13 +123,15 @@ export function EventDetailView({ event, autoBook }: EventDetailViewProps) {
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) 360px', gap: isMobile ? 28 : 48, marginTop: isMobile ? 20 : 32 }}>
           <div style={{ minWidth: 0 }}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-              {event.category && <span style={{ padding: '5px 12px', borderRadius: 999, background: 'var(--color-accent-tint)', color: 'var(--color-accent)', fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{event.category}</span>}
-              {event.location_type !== 'venue' && <span style={{ padding: '5px 12px', borderRadius: 999, background: 'var(--surface-accent-secondary-tint)', color: 'var(--color-accent-secondary)', fontSize: 12, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{event.location_type === 'online' ? 'Online' : 'Recorded'}</span>}
+              {(event.categories?.length ? event.categories : event.category ? [event.category] : []).map((c) => (
+                <a key={c} href={`/category/${encodeURIComponent(c)}`} style={{ padding: '5px 12px', borderRadius: 999, background: 'var(--color-accent-tint)', color: 'var(--color-accent)', fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', textDecoration: 'none' }}>{c}</a>
+              ))}
+              {event.location_type !== 'venue' && <span style={{ padding: '5px 12px', borderRadius: 999, background: 'var(--surface-accent-secondary-tint)', color: 'var(--color-accent-secondary)', fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{event.location_type === 'online' ? 'Online' : 'Recorded'}</span>}
             </div>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(30px, 4.6vw, 52px)', fontWeight: 900, lineHeight: 1, letterSpacing: '-0.025em', color: 'var(--text-heading)', margin: '0 0 14px' }}>{event.title}</h1>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(30px, 4.6vw, 52px)', fontWeight: 600, lineHeight: 1, letterSpacing: '-0.025em', color: 'var(--text-heading)', margin: '0 0 14px' }}>{event.title}</h1>
             <div onClick={() => event.organiser && router.push(`/organisers/${event.organiser.id}`)} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 15, color: 'var(--text-muted)', cursor: event.organiser ? 'pointer' : 'default', marginBottom: 22 }}>
               by
-              <span aria-hidden style={{ width: 28, height: 28, borderRadius: 8, flex: 'none', background: event.organiser?.logo_url ? `center/cover no-repeat url(${event.organiser.logo_url})` : 'var(--gradient-brand)', color: '#fff', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span aria-hidden style={{ width: 28, height: 28, borderRadius: 8, flex: 'none', background: event.organiser?.logo_url ? `center/cover no-repeat url(${event.organiser.logo_url})` : 'var(--gradient-brand)', color: '#fff', fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                 {!event.organiser?.logo_url && (event.organiser?.org_name ?? 'S').charAt(0).toUpperCase()}
               </span>
               <strong style={{ color: 'var(--text-heading)' }}>{event.organiser?.org_name ?? 'Showtik'}</strong>
@@ -211,13 +213,13 @@ export function EventDetailView({ event, autoBook }: EventDetailViewProps) {
                   <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14, border: '1px solid var(--border-default)', background: 'var(--surface-card)' }}>
                     <Icon name="ticket" size={18} color="var(--color-accent)" />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, color: 'var(--text-heading)' }}>{t.name}{t.group_name && <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}> · {t.group_name}</span>}
-                        {(t.min_age != null || t.max_age != null) && <span style={{ marginLeft: 8, fontSize: 11.5, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: 'var(--color-accent-tint)', color: 'var(--color-accent)', verticalAlign: 'middle' }}>{t.min_age != null && t.max_age != null ? `Age ${t.min_age}–${t.max_age}` : t.min_age != null ? `${t.min_age}+ years` : `Up to ${t.max_age} years`}</span>}
+                      <div style={{ fontWeight: 600, color: 'var(--text-heading)' }}>{t.name}{t.group_name && <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}> · {t.group_name}</span>}
+                        {(t.min_age != null || t.max_age != null) && <span style={{ marginLeft: 8, fontSize: 11.5, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--color-accent-tint)', color: 'var(--color-accent)', verticalAlign: 'middle' }}>{t.min_age != null && t.max_age != null ? `Age ${t.min_age}–${t.max_age}` : t.min_age != null ? `${t.min_age}+ years` : `Up to ${t.max_age} years`}</span>}
                       </div>
                       {t.description && <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>{t.description}</div>}
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontWeight: 800, color: 'var(--text-heading)' }}>{t.ticket_type === 'donation' ? 'Pay what you want' : formatINR(t.price)}</div>
+                      <div style={{ fontWeight: 600, color: 'var(--text-heading)' }}>{t.ticket_type === 'donation' ? 'Pay what you want' : formatINR(t.price)}</div>
                       <div style={{ fontSize: 12, color: left <= 0 || t.sale_status !== 'on_sale' ? 'var(--color-error)' : 'var(--text-subtle)' }}>{left <= 0 ? 'Sold out' : t.sale_status !== 'on_sale' ? 'Not on sale' : left <= 20 ? `${left} left` : 'Available'}</div>
                     </div>
                   </div>
@@ -232,7 +234,7 @@ export function EventDetailView({ event, autoBook }: EventDetailViewProps) {
             <div style={{ position: isMobile ? 'static' : 'sticky', top: 88, display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ background: 'var(--surface-card)', borderRadius: 18, border: '1px solid var(--border-default)', boxShadow: '0 12px 36px rgba(5,23,71,0.08)', padding: 22 }}>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Register for</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: 30, fontWeight: 900, color: allFree ? 'var(--color-success)' : 'var(--text-heading)', margin: '2px 0 4px', letterSpacing: '-0.02em' }}>{priceLabel}</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 30, fontWeight: 600, color: allFree ? 'var(--color-success)' : 'var(--text-heading)', margin: '2px 0 4px', letterSpacing: '-0.02em' }}>{priceLabel}</div>
                 <div style={{ fontSize: 13.5, color: 'var(--text-muted)', marginBottom: 18 }}>{formatEventDate(event.event_date)} · {event.city}</div>
                 <button type="button" disabled={!canBook} onClick={() => setBooking(true)} style={bookBtn(!canBook, true)}>
                   <Icon name="zap" size={17} />{canBook ? 'Register Now' : event.sold_out ? 'Sold out' : 'Tickets unavailable'}
@@ -249,7 +251,7 @@ export function EventDetailView({ event, autoBook }: EventDetailViewProps) {
         <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 50, display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'var(--surface-card)', borderTop: '1px solid var(--border-default)', boxShadow: '0 -8px 24px rgba(5,23,71,0.1)' }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Tickets</div>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, color: 'var(--text-heading)' }}>{priceLabel}</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 18, color: 'var(--text-heading)' }}>{priceLabel}</div>
           </div>
           <button type="button" onClick={() => setBooking(true)} style={{ ...bookBtn(false), width: 'auto', padding: '0 28px' }}><Icon name="zap" size={16} />Register Now</button>
         </div>
@@ -317,14 +319,14 @@ export function EventDetailView({ event, autoBook }: EventDetailViewProps) {
 function bookBtn(disabled: boolean, full = false): React.CSSProperties {
   return {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, width: full ? '100%' : 'auto', padding: full ? 0 : '0 26px',
-    borderRadius: 12, border: 'none', cursor: disabled ? 'not-allowed' : 'pointer', fontSize: 16, fontWeight: 700,
+    borderRadius: 12, border: 'none', cursor: disabled ? 'not-allowed' : 'pointer', fontSize: 16, fontWeight: 600,
     background: disabled ? 'var(--color-muted-bg)' : 'var(--color-accent)', color: disabled ? 'var(--text-subtle)' : '#fff',
     boxShadow: disabled ? 'none' : '0 8px 22px rgba(196,20,63,0.3)',
   };
 }
 
 function Heading({ children }: { children: React.ReactNode }) {
-  return <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 800, color: 'var(--text-heading)', margin: '0 0 16px', letterSpacing: '-0.01em' }}>{children}</h2>;
+  return <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 600, color: 'var(--text-heading)', margin: '0 0 16px', letterSpacing: '-0.01em' }}>{children}</h2>;
 }
 
 function InfoRow({ icon, children }: { icon: string; children: React.ReactNode }) {

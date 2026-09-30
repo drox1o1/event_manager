@@ -108,7 +108,7 @@ function MyEventsInner() {
                       {!r.banner_image_url && <Icon name="image" size={16} />}
                     </div>
                     <div>
-                      <div style={{ fontWeight: 700, color: 'var(--text-heading)' }}>{r.title}</div>
+                      <div style={{ fontWeight: 600, color: 'var(--text-heading)' }}>{r.title}</div>
                       <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>{formatEventDate(r.event_date)} · {r.city}</div>
                     </div>
                   </div>

@@ -58,6 +58,8 @@ class EventSummary(BaseModel):
     id: uuid.UUID
     title: str
     category: str | None = None
+    # Every category the event is listed under (primary first).
+    categories: list[str] = Field(default_factory=list)
     city: str
     event_date: dt.date
     price_from: Decimal | None = None
@@ -191,6 +193,8 @@ class EventCreateRequest(BaseModel):
 
     title: str = Field(min_length=3, max_length=200)
     category_id: uuid.UUID
+    # Optional second category (max 2 per event: primary + this one).
+    category_ids: list[uuid.UUID] = Field(default_factory=list, max_length=1)
     description: str = Field(min_length=20)
     event_date: dt.date
     event_time: dt.time
@@ -346,6 +350,7 @@ class EventUpdateRequest(BaseModel):
 
     title: str | None = Field(default=None, min_length=3, max_length=200)
     category_id: uuid.UUID | None = None
+    category_ids: list[uuid.UUID] | None = Field(default=None, max_length=1)
     description: str | None = Field(default=None, min_length=20)
     event_date: dt.date | None = None
     event_time: dt.time | None = None
