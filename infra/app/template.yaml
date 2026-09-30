@@ -43,6 +43,14 @@ Parameters:
   OrganiserPortalUrl:
     Type: String
     Default: https://host.showtik.in
+  AdminPanelUrl:
+    Type: String
+    Default: https://admin.showtik.in
+    Description: >
+      Used to build links in admin-facing emails (e.g. organiser-approval
+      notices). Defaults to prod's domain -- non-prod deploys (dev, PR
+      branches) should override this alongside PublicSiteUrl/
+      OrganiserPortalUrl, or admin email links silently point at prod.
 
 Conditions:
   HasDbSchema: !Not [!Equals [!Ref DbSchema, ""]]
@@ -944,6 +952,7 @@ Resources:
           EMAIL_FROM_NAME: Showtik
           PUBLIC_SITE_URL: !Ref PublicSiteUrl
           ORGANISER_PORTAL_URL: !Ref OrganiserPortalUrl
+          ADMIN_PANEL_URL: !Ref AdminPanelUrl
       Policies:
         - Statement:
             - Effect: Allow
