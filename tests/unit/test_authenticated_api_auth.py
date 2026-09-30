@@ -57,7 +57,7 @@ def test_forgot_password_issues_token_and_queues_email_for_known_organiser(monke
     get_session, _ = _fake_get_session(execute_scalar_one=organiser)
     monkeypatch.setattr("auth_routes.get_session", get_session)
     mock_publish = MagicMock()
-    monkeypatch.setattr("auth_routes.publish", mock_publish)
+    monkeypatch.setattr("auth_routes.publish_to_ses", mock_publish)
 
     from authenticated_api.handler import handler as api_handler
 
@@ -79,7 +79,7 @@ def test_forgot_password_responds_the_same_for_unknown_email(monkeypatch, mock_j
     get_session, _ = _fake_get_session(execute_scalar_one=None)
     monkeypatch.setattr("auth_routes.get_session", get_session)
     mock_publish = MagicMock()
-    monkeypatch.setattr("auth_routes.publish", mock_publish)
+    monkeypatch.setattr("auth_routes.publish_to_ses", mock_publish)
 
     from authenticated_api.handler import handler as api_handler
 
@@ -99,7 +99,7 @@ def test_reset_password_succeeds_with_valid_token(monkeypatch, mock_jwt_secret):
     original_hash = organiser.password_hash
     get_session, _ = _fake_get_session(get_return=organiser)
     monkeypatch.setattr("auth_routes.get_session", get_session)
-    monkeypatch.setattr("auth_routes.publish", MagicMock())
+    monkeypatch.setattr("auth_routes.publish_to_ses", MagicMock())
 
     token = issue_password_reset_token(organiser.id, "organiser")
 

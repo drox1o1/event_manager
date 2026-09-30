@@ -32,7 +32,7 @@ from common.helpers import (
     short_code,
     utcnow,
 )
-from common.messaging import publish
+from common.messaging import publish_to_ses
 from common.models import (
     AdminUser,
     Category,
@@ -660,7 +660,7 @@ def _notify(message: dict) -> None:
     """Best-effort: queue a confirmation email. The order is already
     committed, so a queue failure must never fail the checkout."""
     try:
-        publish(message)
+        publish_to_ses(message)
     except Exception:  # noqa: BLE001
         logger.exception("could not queue email", extra={"type": message.get("type")})
 

@@ -26,7 +26,7 @@ from common.auth import (
 )
 from common.db import get_session
 from common.helpers import ConflictError, utcnow
-from common.messaging import publish
+from common.messaging import publish_to_ses
 from common.models import AdminUser, Organiser, OrganiserStatus
 from common.schemas import (
     LoginRequest,
@@ -61,7 +61,7 @@ def organiser_signup():
         organiser_id = organiser.id
 
     verification_token = issue_email_verification_token(organiser_id)
-    publish(
+    publish_to_ses(
         {
             "type": "organiser_verification",
             "to": body.email,
@@ -132,7 +132,7 @@ def organiser_forgot_password():
         ).scalar_one_or_none()
         if organiser is not None:
             reset_token = issue_password_reset_token(organiser.id, "organiser")
-            publish(
+            publish_to_ses(
                 {
                     "type": "password_reset",
                     "to": organiser.email,
@@ -164,7 +164,7 @@ def organiser_reset_password():
     # Best-effort: a queue hiccup shouldn't fail a reset that already
     # succeeded -- the password is already changed at this point.
     try:
-        publish({"type": "password_changed", "to": email, "changed_at": utcnow().isoformat()})
+        publish_to_ses({"type": "password_changed", "to": email, "changed_at": utcnow().isoformat()})
     except Exception:  # noqa: BLE001
         logger.exception("could not queue password_changed notification")
 

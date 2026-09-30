@@ -21,7 +21,7 @@ def _client():
     return _sqs
 
 
-def publish(message: dict) -> None:
+def publish_to_ses(message: dict) -> None:
     """Queues an email-sender message. The only queue anything publishes to
     today -- if a second one (e.g. OrderCompletedQueue, currently wired to
     TicketGeneratorFunction but unused) needs a producer later, give it its
