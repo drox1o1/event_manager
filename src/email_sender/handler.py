@@ -387,8 +387,10 @@ def _registration_block(msg: dict, t: dict) -> tuple[str, str]:
     ]
     if t.get("pending"):
         bullet_rows.append(("Status", "Awaiting organiser approval"))
-    bullet_rows += [(d, None) for d in ()]  # no-op: keeps mypy-style shape obvious
-    extra = [(d, True) for d in t.get("details", [])]  # free-text hook, e.g. t-shirt size
+    extra_lines = t.get("details", [])  # free-text hook, e.g. t-shirt size
+    extra_html = "".join(
+        f'<div style="color:#888;font-size:12px;margin:0 0 4px">{_e(d)}</div>' for d in extra_lines
+    )
     html_body = (
         _p(f"Hi {_e(name)},")
         + _p(f"Thank you for registering for <strong>{_e(event_title)}</strong>.")
@@ -397,7 +399,7 @@ def _registration_block(msg: dict, t: dict) -> tuple[str, str]:
         + f'<p style="margin:0 0 4px;font-weight:700;color:#051747;font-family:{FONT_DISPLAY}">Event details</p>'
         + _p(f"Race category: <strong>{_e(t.get('tier'))}</strong>")
         + _bullets(bullet_rows)
-        + (f'<div style="margin:0 0 16px">{"".join(f"<div style=\"color:#888;font-size:12px;margin:0 0 4px\">{_e(d)}</div>" for d, _ in extra)}</div>' if extra else "")
+        + (f'<div style="margin:0 0 16px">{extra_html}</div>' if extra_lines else "")
         + (_muted(f"📍 {_e(msg.get('venue'))}") if msg.get("venue") else "")
     )
     text_body = (
@@ -408,7 +410,7 @@ def _registration_block(msg: dict, t: dict) -> tuple[str, str]:
         "Event details\n"
         f"Race category: {t.get('tier')}\n"
         f"{_text_bullets(bullet_rows)}\n"
-        + "".join(f"{d}\n" for d, _ in extra)
+        + "".join(f"{d}\n" for d in extra_lines)
         + (f"Venue: {msg.get('venue')}\n" if msg.get("venue") else "")
     )
     return html_body, text_body

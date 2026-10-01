@@ -78,8 +78,10 @@ def test_order_email_escapes_html_and_lists_every_ticket():
     _, html_body, text_body = _render(MESSAGES[7])
     assert "&lt;2026&gt;" in html_body
     assert "11111111" in html_body and "22222222" in html_body
-    assert "Awaiting approval" in html_body
-    assert "Brijesh (Full Marathon)" in text_body
+    assert "Hi Brijesh," in html_body and "Hi Asha," in html_body
+    assert "Race category: <strong>Full Marathon</strong>" in html_body
+    assert "Awaiting organiser approval" in html_body  # Asha's ticket is pending
+    assert "Booking ID: 11111111" in text_body and "Booking ID: 22222222" in text_body
 
 
 def _records(*bodies):
