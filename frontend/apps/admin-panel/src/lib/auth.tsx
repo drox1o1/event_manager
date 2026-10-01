@@ -2,18 +2,26 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
+import { adminApi, configureAuthRefresh } from '@showtik/api-client';
 
 // Admin session. Same JWT-bearer model as the organiser portal, but a
-// separate storage key and its own /admin/auth/login endpoint. No refresh
-// endpoint server-side yet, so the token expires after ~1h and the guard
-// bounces to /login.
+// separate storage key and its own /admin/auth/* endpoints. The access
+// token expires after ~1h; api-client's configureAuthRefresh (registered
+// below) transparently retries a 401 once via /admin/auth/refresh before
+// giving up and bouncing the guard to /login.
 
 const STORAGE_KEY = 'showtik.admin.token';
+const REFRESH_STORAGE_KEY = 'showtik.admin.refreshToken';
+
+interface Tokens {
+  access_token: string;
+  refresh_token: string;
+}
 
 interface AuthContextValue {
   token: string | null;
   ready: boolean;
-  setToken: (token: string | null) => void;
+  setTokens: (tokens: Tokens | null) => void;
   logout: () => void;
 }
 
@@ -23,20 +31,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setTokenState] = React.useState<string | null>(null);
   const [ready, setReady] = React.useState(false);
 
+  const setTokens = React.useCallback((next: Tokens | null) => {
+    if (next) {
+      window.localStorage.setItem(STORAGE_KEY, next.access_token);
+      window.localStorage.setItem(REFRESH_STORAGE_KEY, next.refresh_token);
+    } else {
+      window.localStorage.removeItem(STORAGE_KEY);
+      window.localStorage.removeItem(REFRESH_STORAGE_KEY);
+    }
+    setTokenState(next?.access_token ?? null);
+  }, []);
+
   React.useEffect(() => {
     setTokenState(window.localStorage.getItem(STORAGE_KEY));
     setReady(true);
-  }, []);
 
-  const setToken = React.useCallback((next: string | null) => {
-    if (next) window.localStorage.setItem(STORAGE_KEY, next);
-    else window.localStorage.removeItem(STORAGE_KEY);
-    setTokenState(next);
-  }, []);
+    configureAuthRefresh({
+      getRefreshToken: () => window.localStorage.getItem(REFRESH_STORAGE_KEY),
+      refresh: (refreshToken) => adminApi.refresh(refreshToken),
+      onRefreshed: (tokens) => setTokens(tokens),
+      onRefreshFailed: () => setTokens(null),
+    });
 
-  const logout = React.useCallback(() => setToken(null), [setToken]);
+    return () => configureAuthRefresh(null);
+  }, [setTokens]);
 
-  return <AuthContext.Provider value={{ token, ready, setToken, logout }}>{children}</AuthContext.Provider>;
+  const logout = React.useCallback(() => setTokens(null), [setTokens]);
+
+  return <AuthContext.Provider value={{ token, ready, setTokens, logout }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthContextValue {

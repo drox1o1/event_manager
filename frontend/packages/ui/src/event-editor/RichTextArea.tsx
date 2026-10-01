@@ -1,14 +1,19 @@
 'use client';
 
 import * as React from 'react';
+import Markdown from 'react-markdown';
 import { Icon } from '../components/icons/Icon';
 
-/** Description editor with a light formatting toolbar. Stores a tiny
- *  markdown subset (**bold**, _italic_, "- " bullets, "1. " numbered lists,
- *  "## " sub-headings) which <RichText> renders on the public event page. */
+/** Description editor with a light formatting toolbar plus a live preview
+ *  toggle. Stores plain CommonMark (bold, italic, "## " sub-headings, "- "
+ *  bullets, "1. " numbered lists) -- exactly the subset the toolbar buttons
+ *  below produce. <RichText> renders it, on this preview and on the public
+ *  event page, via the same component so there's no drift between what an
+ *  organiser sees while editing and what buyers see once published. */
 export function RichTextArea({ value, onChange, placeholder, error, rows = 12 }: { value: string; onChange: (v: string) => void; placeholder?: string; error?: boolean; rows?: number }) {
   const ref = React.useRef<HTMLTextAreaElement>(null);
   const [focus, setFocus] = React.useState(false);
+  const [preview, setPreview] = React.useState(false);
 
   const wrap = (marker: string) => {
     const el = ref.current;
@@ -42,78 +47,69 @@ export function RichTextArea({ value, onChange, placeholder, error, rows = 12 }:
   return (
     <div style={{ border: `1px solid ${error ? 'var(--color-error)' : focus ? 'var(--border-focus)' : 'var(--border-default)'}`, borderRadius: 'var(--radius-card)', background: 'var(--surface-card)', boxShadow: focus && !error ? 'var(--shadow-focus-ring)' : 'none', overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 2, padding: '8px 10px', borderBottom: '1px solid var(--border-default)' }}>
-        {tool('bold', 'Bold', () => wrap('**'))}
-        {tool('italic', 'Italic', () => wrap('_'))}
-        {tool('heading-2', 'Sub-heading', () => prefixLines('heading'))}
-        {tool('list-ordered', 'Numbered list', () => prefixLines('number'))}
-        {tool('list', 'Bulleted list', () => prefixLines('bullet'))}
+        {!preview && (
+          <>
+            {tool('bold', 'Bold', () => wrap('**'))}
+            {tool('italic', 'Italic', () => wrap('_'))}
+            {tool('heading-2', 'Sub-heading', () => prefixLines('heading'))}
+            {tool('list-ordered', 'Numbered list', () => prefixLines('number'))}
+            {tool('list', 'Bulleted list', () => prefixLines('bullet'))}
+          </>
+        )}
         <span style={{ flex: 1 }} />
-        <span style={{ fontSize: 12, color: 'var(--text-subtle)' }}>{value.length} characters</span>
+        {!preview && <span style={{ fontSize: 12, color: 'var(--text-subtle)' }}>{value.length} characters</span>}
+        {tool(preview ? 'pencil' : 'eye', preview ? 'Back to editing' : 'Preview', () => setPreview((p) => !p))}
       </div>
-      <textarea
-        ref={ref}
-        value={value}
-        rows={rows}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        onFocus={() => setFocus(true)}
-        onBlur={() => setFocus(false)}
-        style={{ width: '100%', border: 'none', outline: 'none', resize: 'vertical', padding: '14px 16px', fontFamily: 'var(--font-sans)', fontSize: 15, lineHeight: 1.6, color: 'var(--text-body)', background: 'transparent', boxSizing: 'border-box', minHeight: 220 }}
-      />
+      {preview ? (
+        <div style={{ padding: '14px 16px', minHeight: 220 }}>
+          {value.trim() ? <RichText text={value} /> : <span style={{ color: 'var(--text-subtle)', fontSize: 14 }}>Nothing to preview yet.</span>}
+        </div>
+      ) : (
+        <textarea
+          ref={ref}
+          value={value}
+          rows={rows}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={() => setFocus(true)}
+          onBlur={() => setFocus(false)}
+          style={{ width: '100%', border: 'none', outline: 'none', resize: 'vertical', padding: '14px 16px', fontFamily: 'var(--font-sans)', fontSize: 15, lineHeight: 1.6, color: 'var(--text-body)', background: 'transparent', boxSizing: 'border-box', minHeight: 220 }}
+        />
+      )}
     </div>
   );
 }
 
-function inline(text: string, keyPrefix: string): React.ReactNode[] {
-  // **bold** and _italic_ only; everything else is plain text (no HTML injection).
-  const parts: React.ReactNode[] = [];
-  const re = /(\*\*[^*]+\*\*|_[^_]+_)/g;
-  let last = 0;
-  let m: RegExpExecArray | null;
-  let i = 0;
-  while ((m = re.exec(text))) {
-    if (m.index > last) parts.push(text.slice(last, m.index));
-    const tok = m[0];
-    parts.push(tok.startsWith('**')
-      ? <strong key={`${keyPrefix}-${i++}`}>{tok.slice(2, -2)}</strong>
-      : <em key={`${keyPrefix}-${i++}`}>{tok.slice(1, -1)}</em>);
-    last = m.index + tok.length;
-  }
-  if (last < text.length) parts.push(text.slice(last));
-  return parts;
-}
+const heading: React.FC<{ children?: React.ReactNode }> = ({ children }) => (
+  <h4 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text-heading)', margin: '18px 0 8px' }}>{children}</h4>
+);
 
-/** Renders the RichTextArea markdown subset safely as React elements. */
+/** Renders the RichTextArea markdown subset -- restricted to exactly what
+ *  the toolbar above can produce (bold, italic, headings, lists). Extend
+ *  `allowedElements` alongside any new toolbar button, since react-markdown
+ *  otherwise happily renders the rest of CommonMark (links, tables, raw
+ *  HTML is excluded by default regardless -- see Options.allowElement in
+ *  react-markdown's own docs for how skipping an element works). */
 export function RichText({ text, style }: { text: string; style?: React.CSSProperties }) {
-  const blocks: React.ReactNode[] = [];
-  const lines = text.split('\n');
-  let list: { ordered: boolean; items: string[] } | null = null;
-  const flush = () => {
-    if (!list) return;
-    const Tag = list.ordered ? 'ol' : 'ul';
-    const k = `l${blocks.length}`;
-    blocks.push(<Tag key={k} style={{ margin: '0 0 14px', paddingLeft: 22 }}>{list.items.map((it, i) => <li key={i} style={{ marginBottom: 4 }}>{inline(it, `${k}-${i}`)}</li>)}</Tag>);
-    list = null;
-  };
-  lines.forEach((raw, idx) => {
-    const line = raw.trimEnd();
-    const bullet = line.match(/^\s*[-•]\s+(.*)$/);
-    const num = line.match(/^\s*\d+[.)]\s+(.*)$/);
-    if (bullet || num) {
-      const ordered = !!num;
-      if (!list || list.ordered !== ordered) { flush(); list = { ordered, items: [] }; }
-      list.items.push((bullet ? bullet[1] : num![1]));
-      return;
-    }
-    flush();
-    if (!line.trim()) return;
-    const h = line.match(/^#{1,3}\s+(.*)$/);
-    if (h) {
-      blocks.push(<h4 key={`h${idx}`} style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text-heading)', margin: '18px 0 8px' }}>{inline(h[1], `h${idx}`)}</h4>);
-    } else {
-      blocks.push(<p key={`p${idx}`} style={{ margin: '0 0 12px' }}>{inline(line, `p${idx}`)}</p>);
-    }
-  });
-  flush();
-  return <div style={{ fontSize: 15.5, lineHeight: 1.7, color: 'var(--text-body)', ...style }}>{blocks}</div>;
+  return (
+    <div style={{ fontSize: 15.5, lineHeight: 1.7, color: 'var(--text-body)', ...style }}>
+      <Markdown
+        allowedElements={['p', 'strong', 'em', 'ul', 'ol', 'li', 'h1', 'h2', 'h3']}
+        components={{
+          p: ({ children }: { children?: React.ReactNode }) => <p style={{ margin: '0 0 12px' }}>{children}</p>,
+          ul: ({ children }: { children?: React.ReactNode }) => <ul style={{ margin: '0 0 14px', paddingLeft: 22 }}>{children}</ul>,
+          // `start` must be forwarded -- react-markdown sets it so a numbered
+          // list interrupted by another list (e.g. bullets under each number)
+          // continues counting instead of every fragment restarting at 1.
+          ol: ({ children, start }: { children?: React.ReactNode; start?: number }) => <ol start={start} style={{ margin: '0 0 14px', paddingLeft: 22 }}>{children}</ol>,
+          li: ({ children }: { children?: React.ReactNode }) => <li style={{ marginBottom: 4 }}>{children}</li>,
+          h1: heading,
+          h2: heading,
+          h3: heading,
+        }}
+      >
+        {text}
+      </Markdown>
+    </div>
+  );
 }

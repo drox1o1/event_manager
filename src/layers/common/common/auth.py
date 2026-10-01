@@ -14,6 +14,7 @@ Role = Literal["organiser", "admin"]
 ACCESS_TOKEN_TTL_SECONDS = 60 * 60  # 1 hour
 REFRESH_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30  # 30 days
 EMAIL_VERIFY_TOKEN_TTL_SECONDS = 60 * 60 * 24  # 24 hours
+PASSWORD_RESET_TOKEN_TTL_SECONDS = 60 * 30  # 30 minutes -- matches the email copy in email_sender's _password_reset
 
 
 class InvalidTokenError(Exception):
@@ -66,6 +67,10 @@ def issue_refresh_token(subject_id: uuid.UUID, role: Role) -> str:
 
 def issue_email_verification_token(subject_id: uuid.UUID) -> str:
     return _issue_token(subject_id, "organiser", EMAIL_VERIFY_TOKEN_TTL_SECONDS, "email_verify")
+
+
+def issue_password_reset_token(subject_id: uuid.UUID, role: Role) -> str:
+    return _issue_token(subject_id, role, PASSWORD_RESET_TOKEN_TTL_SECONDS, "password_reset")
 
 
 def decode_token(token: str, expected_type: str = "access") -> dict:

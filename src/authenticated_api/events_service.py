@@ -21,7 +21,7 @@ from aws_lambda_powertools.event_handler.exceptions import (
 from common.cities import allowed_cities, canonical_city
 from common.db import get_session
 from common.helpers import ConflictError, ForbiddenError, parse_uuid, short_code
-from common.messaging import publish
+from common.messaging import publish_to_ses
 from common.models import (
     Category,
     Event,
@@ -668,7 +668,7 @@ def notify(message: dict) -> None:
     if not message.get("to"):
         return
     try:
-        publish("EMAIL_QUEUE_URL", message)
+        publish_to_ses(message)
     except Exception:  # noqa: BLE001
         logger.exception("could not queue email", extra={"type": message.get("type")})
 

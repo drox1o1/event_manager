@@ -244,10 +244,17 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
         const p0 = list[0];
         const answers = { ...p0.answers };
         if (nameField && empty(answers[nameField.id])) answers[nameField.id] = buyer.name.trim();
-        // Don't make the buyer type their mobile / email a second time.
+        // Don't make the buyer type their own mobile / email a second time --
+        // but only for a field that's actually asking for THEIR number. A
+        // phone-type field can just as easily be "Emergency Contact Number"
+        // or "Guardian's Mobile", which must stay someone else's number, so
+        // this only fires for a label that looks like it means the
+        // participant's own phone and doesn't look like it means someone
+        // else's.
+        const ownPhoneLabel = (label: string) => /\b(mobile|phone|contact)\b/i.test(label) && !/emergency|alternate|guardian|parent|next.?of.?kin|contact\s*person/i.test(label);
         for (const f of fields) {
           if (!empty(answers[f.id])) continue;
-          if (f.field_type === 'phone') answers[f.id] = buyer.phone;
+          if (f.field_type === 'phone' && ownPhoneLabel(f.label)) answers[f.id] = buyer.phone;
           else if (f.field_type === 'text' && /e-?mail/i.test(f.label)) answers[f.id] = buyer.email.trim();
         }
         const filled = nameField

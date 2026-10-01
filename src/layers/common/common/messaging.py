@@ -21,6 +21,10 @@ def _client():
     return _sqs
 
 
-def publish(queue_url_env_var: str, message: dict) -> None:
-    queue_url = os.environ[queue_url_env_var]
+def publish_to_ses(message: dict) -> None:
+    """Queues an email-sender message. The only queue anything publishes to
+    today -- if a second one (e.g. OrderCompletedQueue, currently wired to
+    TicketGeneratorFunction but unused) needs a producer later, give it its
+    own small function rather than re-adding a queue-name parameter here."""
+    queue_url = os.environ["EMAIL_QUEUE_URL"]
     _client().send_message(QueueUrl=queue_url, MessageBody=json.dumps(message, default=str))

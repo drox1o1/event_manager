@@ -23,6 +23,7 @@ import type {
   OrganiserEventListResponse,
   OrganiserSignupRequest,
   OrganiserSignupResponse,
+  StatusResponse,
   TicketTierCreateInput,
   TicketTiersCreateResponse,
   TokenResponse,
@@ -38,6 +39,26 @@ export function verifyEmail(token: string): Promise<{ status: string }> {
 
 export function login(body: LoginRequest): Promise<TokenResponse> {
   return apiFetch<TokenResponse>('/organiser/auth/login', { method: 'POST', body });
+}
+
+export function refresh(refreshToken: string): Promise<TokenResponse> {
+  return apiFetch<TokenResponse>('/organiser/auth/refresh', {
+    method: 'POST',
+    body: { refresh_token: refreshToken },
+  });
+}
+
+/** Always resolves the same way regardless of whether `email` has an
+ * account -- the backend never reveals which emails are registered. */
+export function forgotPassword(email: string): Promise<StatusResponse> {
+  return apiFetch<StatusResponse>('/organiser/auth/forgot-password', { method: 'POST', body: { email } });
+}
+
+export function resetPassword(token: string, newPassword: string): Promise<StatusResponse> {
+  return apiFetch<StatusResponse>('/organiser/auth/reset-password', {
+    method: 'POST',
+    body: { token, new_password: newPassword },
+  });
 }
 
 export function listMyEvents(token: string, params: { page?: number; pageSize?: number } = {}): Promise<OrganiserEventListResponse> {

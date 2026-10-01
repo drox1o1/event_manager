@@ -10,7 +10,7 @@ import { useAuth } from '@/lib/auth';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setToken } = useAuth();
+  const { setTokens } = useAuth();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
@@ -21,8 +21,8 @@ export default function LoginPage() {
     setSubmitting(true);
     setError(null);
     try {
-      const { access_token } = await organiserApi.login({ email, password });
-      setToken(access_token);
+      const tokens = await organiserApi.login({ email, password });
+      setTokens(tokens);
       router.replace('/dashboard');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not log in. Please try again.');
@@ -37,6 +37,7 @@ export default function LoginPage() {
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <Input label="Email" type="email" placeholder="you@organisation.com" value={email} onChange={(e) => setEmail(e.target.value)} />
         <Input label="Password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <Link href="/forgot-password" style={{ fontSize: 13, color: 'var(--text-link)', textDecoration: 'none', alignSelf: 'flex-end' }}>Forgot password?</Link>
         {error && <div style={{ fontSize: 13, color: 'var(--color-error)' }}>{error}</div>}
         <Button type="submit" fullWidth size="lg" loading={submitting}>Log in</Button>
       </form>

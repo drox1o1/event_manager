@@ -1,0 +1,9 @@
+{% extends "layout.html.jinja" %}
+{% import "_macros.html.jinja" as m %}
+{% block heading %}This event has been cancelled{% endblock %}
+{% block content %}
+{% call m.p() %}We're sorry — <strong>{{ event_title }}</strong> has been cancelled by the organiser.{% endcall %}
+{% if reason %}{% call m.p() %}<strong>Reason:</strong> {{ reason }}{% endcall %}{% endif %}
+{% call m.callout() %}{% if refund_amount %}A full refund of <strong>{{ refund_amount }}</strong> will be sent to your original payment method within 5–7 working days.{% else %}Any amount you paid will be refunded to your original payment method within 5–7 working days.{% endif %}{% endcall %}
+{% call m.p() %}{{ m.button("Discover other events", site()) }}{% endcall %}
+{% endblock %}

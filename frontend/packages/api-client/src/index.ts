@@ -1,4 +1,4 @@
-export { ApiError, apiFetch } from './http';
+export { ApiError, apiFetch, configureAuthRefresh } from './http';
 export type { RequestOptions } from './http';
 
 export * as publicApi from './public';

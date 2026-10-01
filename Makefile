@@ -15,13 +15,13 @@ DEPLOY_PROD_ARGS += --s3-bucket $(SAM_ARTIFACTS_BUCKET)
 endif
 
 .PHONY: help venv install lint format test check \
-	sam-validate sam-build deploy-prod deploy-branch teardown-branch api-url \
+	sam-validate sam-build deploy-prod deploy-dev deploy-branch teardown-branch api-url \
 	migrate-check migrate-upgrade migrate-drop-schema bootstrap-ci seed-admin \
 	frontend-install frontend-dev-public frontend-dev-organiser frontend-dev-admin frontend-build frontend-lint \
 	frontend-package frontend-sam-build frontend-deploy
 
 help:
-	@echo "venv install lint format test check sam-validate sam-build deploy-prod deploy-branch teardown-branch api-url migrate-check migrate-upgrade migrate-drop-schema bootstrap-ci seed-admin frontend-install frontend-dev-public frontend-dev-organiser frontend-dev-admin frontend-build frontend-lint frontend-package frontend-sam-build frontend-deploy" | tr ' ' '\n'
+	@echo "venv install lint format test check sam-validate sam-build deploy-prod deploy-dev deploy-branch teardown-branch api-url migrate-check migrate-upgrade migrate-drop-schema bootstrap-ci seed-admin frontend-install frontend-dev-public frontend-dev-organiser frontend-dev-admin frontend-build frontend-lint frontend-package frontend-sam-build frontend-deploy" | tr ' ' '\n'
 
 $(VENV_BIN)/activate:
 	$(PYTHON) -m venv $(VENV)
@@ -57,6 +57,22 @@ sam-build: install
 
 deploy-prod: sam-build
 	$(VENV_BIN)/sam deploy --config-file infra/app/samconfig.toml $(DEPLOY_PROD_ARGS)
+
+# The persistent dev stack (as opposed to deploy-branch's ephemeral
+# per-PR stacks) -- has its own stable custom domains (dev.showtik.in /
+# host-dev.showtik.in / admin-dev.showtik.in), so email links need those
+# explicitly; without this override they silently fall back to the
+# PublicSiteUrl/OrganiserPortalUrl/AdminPanelUrl parameter defaults, which
+# are prod's domains.
+deploy-dev: sam-build
+	$(VENV_BIN)/sam deploy \
+		--stack-name cyrokx-app-dev \
+		--s3-bucket "$(SAM_ARTIFACTS_BUCKET)" \
+		--region "$(REGION)" \
+		--capabilities CAPABILITY_IAM \
+		--parameter-overrides "Stage=dev PublicSiteUrl=https://dev.showtik.in OrganiserPortalUrl=https://host-dev.showtik.in AdminPanelUrl=https://admin-dev.showtik.in" \
+		--no-confirm-changeset \
+		--no-fail-on-empty-changeset
 
 deploy-branch: sam-build
 	@test -n "$(STAGE)" || (echo "STAGE is required, e.g. make deploy-branch STAGE=pr_foo" && exit 1)

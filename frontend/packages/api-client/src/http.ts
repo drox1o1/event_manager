@@ -37,6 +37,29 @@ export interface RequestOptions {
   query?: Record<string, string | number | undefined>;
 }
 
+interface RefreshedTokens {
+  access_token: string;
+  refresh_token: string;
+}
+
+interface AuthRefreshConfig {
+  getRefreshToken: () => string | null;
+  refresh: (refreshToken: string) => Promise<RefreshedTokens>;
+  onRefreshed: (tokens: RefreshedTokens) => void;
+  onRefreshFailed: () => void;
+}
+
+let authRefreshConfig: AuthRefreshConfig | null = null;
+
+/** Registers how apiFetch should recover from a 401: fetch a fresh access
+ * token and retry the request once. Each app's AuthProvider calls this once
+ * on mount with its own refresh endpoint + token storage -- api-client
+ * itself doesn't know about localStorage or which role it's serving. Pass
+ * `null` to disable (e.g. on logout). */
+export function configureAuthRefresh(config: AuthRefreshConfig | null): void {
+  authRefreshConfig = config;
+}
+
 function buildQuery(query?: RequestOptions['query']): string {
   if (!query) return '';
   const params = new URLSearchParams();
@@ -47,7 +70,7 @@ function buildQuery(query?: RequestOptions['query']): string {
   return qs ? `?${qs}` : '';
 }
 
-export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
+export async function apiFetch<T>(path: string, options: RequestOptions = {}, _isRetry = false): Promise<T> {
   const { method = 'GET', body, token, query } = options;
 
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -64,6 +87,23 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   const data = text ? JSON.parse(text) : undefined;
 
   if (!response.ok) {
+    // One retry after a silent refresh -- covers an access token that
+    // expired while the tab was backgrounded/asleep (the proactive path,
+    // if any, only fires on a timer and can miss that case). Never retries
+    // the refresh call itself or a request already on its retry.
+    if (response.status === 401 && token && authRefreshConfig && !_isRetry) {
+      const refreshToken = authRefreshConfig.getRefreshToken();
+      if (refreshToken) {
+        try {
+          const tokens = await authRefreshConfig.refresh(refreshToken);
+          authRefreshConfig.onRefreshed(tokens);
+          return apiFetch<T>(path, { ...options, token: tokens.access_token }, true);
+        } catch {
+          authRefreshConfig.onRefreshFailed();
+        }
+      }
+    }
+
     const message = (data && (data.message || data.detail)) || response.statusText;
     throw new ApiError(response.status, message);
   }
