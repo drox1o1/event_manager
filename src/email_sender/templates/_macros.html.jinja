@@ -24,3 +24,16 @@
 {% endif %}{% endfor %}
 </table>
 {% endmacro %}
+
+{# '• Label: value' lines -- div-based (not <ul>/<li>) since Outlook's Word
+   rendering engine adds its own bullet glyph on top of list markup. #}
+{% macro bullets(rows) %}
+<div style="margin:0 0 16px">
+{% for label, value in rows %}{% if value %}
+<div style="margin:0 0 6px;font-size:14px;line-height:1.5">&#8226;&nbsp;<strong>{{ label }}:</strong> {{ value }}</div>
+{% endif %}{% endfor %}
+</div>
+{% endmacro %}
+
+{# A divider between repeated blocks, e.g. one per participant in an order. #}
+{% macro divider() %}<div style="border-top:1px solid #eee;margin:20px 0"></div>{% endmacro %}
