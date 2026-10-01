@@ -98,7 +98,10 @@ export function RichText({ text, style }: { text: string; style?: React.CSSPrope
         components={{
           p: ({ children }: { children?: React.ReactNode }) => <p style={{ margin: '0 0 12px' }}>{children}</p>,
           ul: ({ children }: { children?: React.ReactNode }) => <ul style={{ margin: '0 0 14px', paddingLeft: 22 }}>{children}</ul>,
-          ol: ({ children }: { children?: React.ReactNode }) => <ol style={{ margin: '0 0 14px', paddingLeft: 22 }}>{children}</ol>,
+          // `start` must be forwarded -- react-markdown sets it so a numbered
+          // list interrupted by another list (e.g. bullets under each number)
+          // continues counting instead of every fragment restarting at 1.
+          ol: ({ children, start }: { children?: React.ReactNode; start?: number }) => <ol start={start} style={{ margin: '0 0 14px', paddingLeft: 22 }}>{children}</ol>,
           li: ({ children }: { children?: React.ReactNode }) => <li style={{ marginBottom: 4 }}>{children}</li>,
           h1: heading,
           h2: heading,
