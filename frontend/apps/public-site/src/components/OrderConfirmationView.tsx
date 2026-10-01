@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon, Button } from '@showtik/ui';
 import { publicApi, formatINR, formatDateTime, formatEventDate, formatTimestamp, ApiError } from '@showtik/api-client';
-import type { OrderDetail, OrderQueryCategory } from '@showtik/api-client';
+import type { OrderDetail, OrderQueryCategory, OrderTicket } from '@showtik/api-client';
 
 export interface OrderConfirmationViewProps {
   order: OrderDetail;
@@ -24,10 +24,11 @@ const APPROVAL: Record<string, { label: string; bg: string; fg: string }> = {
 };
 
 /** Order confirmation — one order (= one payment) with a separate ticket,
- *  ticket ID and QR token per participant, grouped by ticket type. */
+ *  ticket ID per participant, grouped by ticket type. */
 export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
   const router = useRouter();
   const [queryOpen, setQueryOpen] = React.useState(false);
+  const [viewing, setViewing] = React.useState<(OrderTicket & { item: OrderDetail['items'][number] }) | null>(null);
   const [queryType, setQueryType] = React.useState<OrderQueryCategory>('payment');
   const [message, setMessage] = React.useState('');
   const [queryState, setQueryState] = React.useState<'idle' | 'submitting' | 'done'>('idle');
@@ -102,16 +103,10 @@ export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
                 <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-accent)' }}>{t.item.ticket_tier_name}</div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 600, color: 'var(--text-heading)', margin: '4px 0 8px' }}>{t.attendee_name ?? order.buyer_name}</div>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', fontFamily: 'ui-monospace, monospace' }}>Ticket ID: <strong style={{ color: 'var(--text-heading)' }}>{t.ticket_code}</strong></div>
-                {t.attendee_answers.length > 0 && (
-                  <div style={{ marginTop: 8, fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                    {t.attendee_answers.map((a) => `${a.field_label}: ${Array.isArray(a.answer) ? a.answer.join(', ') : a.answer}`).join(' · ')}
-                  </div>
-                )}
                 <span style={{ display: 'inline-block', marginTop: 10, fontSize: 11.5, fontWeight: 600, padding: '3px 9px', borderRadius: 999, background: look.bg, color: look.fg }}>{look.label}</span>
               </div>
-              <div style={{ width: 96, flex: 'none', borderLeft: '2px dashed var(--border-default)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 10 }}>
-                <Icon name="qr-code" size={44} color={t.approval_status === 'approved' ? 'var(--text-heading)' : 'var(--text-subtle)'} />
-                <div style={{ fontSize: 9.5, color: 'var(--text-subtle)', fontFamily: 'ui-monospace, monospace', wordBreak: 'break-all', textAlign: 'center' }}>{t.qr_code_token.slice(0, 12)}…</div>
+              <div style={{ flex: 'none', borderLeft: '2px dashed var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 14px' }}>
+                <Button size="sm" variant="secondary" onClick={() => setViewing(t)}>View ticket</Button>
               </div>
             </div>
           );
@@ -131,17 +126,39 @@ export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
           <span style={{ fontWeight: 600 }}>Total</span>
           <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 600, color: 'var(--color-accent)' }}>{formatINR(order.total_amount)}</span>
         </div>
-        {order.form_responses.length > 0 && (
-          <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border-default)' }}>
-            {order.form_responses.map((r, i) => (
-              <div key={r.field_label + i} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, fontSize: 13.5, marginBottom: 6 }}>
-                <span style={{ color: 'var(--text-muted)' }}>{r.field_label}</span>
-                <span style={{ fontWeight: 600, textAlign: 'right' }}>{Array.isArray(r.answer) ? r.answer.join(', ') : r.answer}</span>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
+
+      {viewing && (
+        <div role="dialog" aria-modal="true" aria-label="Ticket" onClick={() => setViewing(null)} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(5,12,32,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(440px, 100%)', background: 'var(--surface-card)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 1px rgba(0,0,0,0.02), 0 8px 16px -4px rgba(0,0,0,0.04), 0 24px 32px -8px rgba(0,0,0,0.06)' }}>
+            <div style={{ background: 'var(--gradient-brand)', color: '#fff', padding: '20px 22px' }}>
+              <div style={{ fontSize: 18, fontWeight: 600, lineHeight: 1.25 }}>{order.event_title}</div>
+              <div style={{ fontSize: 13.5, opacity: 0.9, marginTop: 6 }}>
+                {order.occurrence_date ? formatEventDate(order.occurrence_date) : order.event_date ? formatDateTime(order.event_date, order.event_time ?? undefined) : ''}
+                {order.venue_name ? ` · ${order.venue_name}${order.city ? `, ${order.city}` : ''}` : ''}
+              </div>
+            </div>
+            <div style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>Category</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-heading)' }}>{viewing.item.ticket_tier_name}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>Participant</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-heading)' }}>{viewing.attendee_name ?? order.buyer_name}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>Ticket ID</div>
+                <div style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-heading)', fontFamily: 'var(--font-mono)' }}>{viewing.ticket_code}</div>
+              </div>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
+                <Button variant="ghost" onClick={() => setViewing(null)}>Close</Button>
+                <Button variant="secondary" onClick={() => window.print()}><Icon name="printer" size={16} />Print ticket</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 24 }}>
         <Button variant="secondary" onClick={() => window.print()}><Icon name="printer" size={16} />Print tickets</Button>

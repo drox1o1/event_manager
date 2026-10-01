@@ -380,8 +380,8 @@ def _order_confirmation(msg: dict) -> Rendered:
         + f'<table role="presentation" width="100%" style="margin:0 0 16px;font-size:14px">{rows}</table>'
         + _p(f"Order / payment ID: <strong style=\"font-family:monospace\">{_e(msg.get('order_code'))}</strong> · "
              f"Total: <strong style=\"font-family:{FONT_DISPLAY}\">{_e(msg.get('total'))}</strong>")
-        + _p(_button("View tickets & QR codes", url))
-        + _muted("Show the QR code on your phone at the entry gate. Each ticket can be scanned once.")
+        + _p(_button("View tickets", url))
+        + _muted("Show your ticket ID at the entry gate.")
     )
     text_rows = "\n".join(
         f"- {t['attendee_name']} ({t['tier']}): ticket {t['ticket_code']}"
@@ -443,7 +443,7 @@ def _event_reminder(msg: dict) -> Rendered:
         _layout("See you soon!", _p(f"Hi {_e(msg.get('buyer_name') or 'there')}, <strong>{_e(msg['event_title'])}</strong> is almost here.")
                 + _p(f"📅 {_e(when)}<br>📍 {_e(msg.get('venue'))}") + directions
                 + _p(_button("Open my tickets", url))
-                + _muted("Keep your QR code ready at the gate, and arrive a little early to beat the queue."),
+                + _muted("Keep your ticket ID ready at the gate, and arrive a little early to beat the queue."),
                 f"{when} · {msg.get('venue', '')}"),
         f"Reminder: {msg['event_title']} — {when}, {msg.get('venue')}.\nYour tickets: {url}",
     )

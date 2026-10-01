@@ -645,11 +645,6 @@ def _order_email(event: Event, order: Order, body: CheckoutRequest, subtotal: De
                 "tier": tier_name,
                 "ticket_code": _short_code(t.id),
                 "pending": t.approval_status == "pending",
-                # Participant's own registration answers (DOB, T-shirt...).
-                "details": [
-                    f"{a['field_label']}: {', '.join(a['answer']) if isinstance(a['answer'], list) else a['answer']}"
-                    for a in (t.attendee_answers or [])[:8]
-                ],
             }
             for t, tier_name in issued
         ],
