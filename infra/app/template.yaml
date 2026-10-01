@@ -1061,11 +1061,25 @@ Resources:
       QueueName: !Sub cyrokx-order-completed-${Stage}
       VisibilityTimeout: 60
 
+  # Catches messages email_sender has failed to deliver 5 times running (e.g.
+  # SES rejecting an unverified recipient while the account is in sandbox) --
+  # without this, those messages retried silently against EmailQueue's 60s
+  # visibility timeout until its 4-day retention expired, then vanished with
+  # no record anywhere that a customer's email was ever lost.
+  EmailDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub cyrokx-email-dlq-${Stage}
+      MessageRetentionPeriod: 1209600 # 14 days -- longer than the source queue, so a failure has time to actually get noticed
+
   EmailQueue:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: !Sub cyrokx-email-${Stage}
       VisibilityTimeout: 60
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt EmailDeadLetterQueue.Arn
+        maxReceiveCount: 5
 
   # --- S3 ---
 
