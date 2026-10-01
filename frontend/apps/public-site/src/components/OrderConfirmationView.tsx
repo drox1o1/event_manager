@@ -62,7 +62,7 @@ export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
         </p>
       </div>
 
-      <div style={{ borderRadius: 20, overflow: 'hidden', background: 'var(--surface-card)', boxShadow: '0 12px 36px rgba(5,23,71,0.1)', marginBottom: 24 }}>
+      <div style={{ borderRadius: 16, overflow: 'hidden', background: 'var(--surface-card)', border: '1px solid var(--border-default)', boxShadow: '0 2px 2px rgba(0,0,0,0.04)', marginBottom: 24 }}>
         <div style={{ position: 'relative', padding: '22px 24px', color: '#fff', background: order.banner_image_url ? `linear-gradient(90deg, rgba(5,23,71,0.95), rgba(5,23,71,0.65)), center/cover no-repeat url(${order.banner_image_url})` : 'var(--gradient-hero)' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, lineHeight: 1.1, marginBottom: 8 }}>{order.event_title}</div>
           <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', fontSize: 14, color: 'rgba(255,255,255,0.88)' }}>
@@ -70,13 +70,24 @@ export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
             {order.venue_name && <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Icon name="map-pin" size={15} />{order.venue_name}{order.city ? `, ${order.city}` : ''}</span>}
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 1, background: 'var(--border-default)' }}>
-          <Meta label="Order / Payment ID" value={order.order_code} mono />
-          <Meta label="Booked by" value={order.buyer_name} />
-          {order.payment_ref && <Meta label="Transaction ID" value={order.payment_ref} mono />}
-          <Meta label="Booked on" value={formatTimestamp(order.created_at)} />
-          <Meta label="Total paid" value={formatINR(order.total_amount)} accent />
-        </div>
+        {/* Even label/value rows (works for any number of fields), total as footer. */}
+        <dl style={{ margin: 0, padding: '6px 24px' }}>
+          {([
+            ['Order / Payment ID', order.order_code, true],
+            ['Booked by', order.buyer_name, false],
+            ...(order.payment_ref ? [['Transaction ID', order.payment_ref, true] as const] : []),
+            ['Booked on', formatTimestamp(order.created_at), false],
+          ] as const).map(([label, value, mono]) => (
+            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16, padding: '12px 0', borderBottom: '1px solid var(--border-default)' }}>
+              <dt style={{ fontSize: 14, color: 'var(--text-muted)' }}>{label}</dt>
+              <dd style={{ margin: 0, fontSize: 15, fontWeight: 500, color: 'var(--text-heading)', textAlign: 'right', fontFamily: mono ? 'var(--font-mono)' : undefined }}>{value}</dd>
+            </div>
+          ))}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16, padding: '14px 0 10px' }}>
+            <dt style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-heading)' }}>Total paid</dt>
+            <dd style={{ margin: 0, fontSize: 20, fontWeight: 600, color: 'var(--color-accent)' }}>{formatINR(order.total_amount)}</dd>
+          </div>
+        </dl>
         {order.online_url && (
           <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <Icon name="monitor-play" size={18} color="var(--color-accent-secondary)" />
@@ -129,7 +140,7 @@ export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
       </div>
 
       {viewing && (
-        <div role="dialog" aria-modal="true" aria-label="Ticket" onClick={() => setViewing(null)} style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(5,12,32,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+        <div role="dialog" aria-modal="true" aria-label="Ticket" onClick={() => setViewing(null)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(5,12,32,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(440px, 100%)', background: 'var(--surface-card)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 1px rgba(0,0,0,0.02), 0 8px 16px -4px rgba(0,0,0,0.04), 0 24px 32px -8px rgba(0,0,0,0.06)' }}>
             <div style={{ background: 'var(--gradient-brand)', color: '#fff', padding: '20px 22px' }}>
               <div style={{ fontSize: 18, fontWeight: 600, lineHeight: 1.25 }}>{order.event_title}</div>
@@ -200,15 +211,6 @@ export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function Meta({ label, value, mono, accent }: { label: string; value: string; mono?: boolean; accent?: boolean }) {
-  return (
-    <div style={{ background: 'var(--surface-card)', padding: '14px 20px' }}>
-      <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>{label}</div>
-      <div style={{ marginTop: 3, fontWeight: 600, color: accent ? 'var(--color-accent)' : 'var(--text-heading)', fontFamily: mono ? 'ui-monospace, monospace' : 'var(--font-display)', fontSize: 16 }}>{value}</div>
     </div>
   );
 }

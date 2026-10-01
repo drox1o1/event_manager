@@ -169,6 +169,20 @@ def _text_details(rows: list[tuple[str, object]]) -> str:
     return "\n".join(f"{label}: {value}" for label, value in rows if value not in (None, ""))
 
 
+def _bullets(rows: list[tuple[str, object]]) -> str:
+    """A '• Label: value' list -- div-based (not <ul>/<li>) since Outlook's
+    Word rendering engine adds its own bullet glyph on top of list markup."""
+    items = "".join(
+        f'<div style="margin:0 0 6px;font-size:14px;line-height:1.5">&#8226;&nbsp;<strong>{_e(label)}:</strong> {_e(value)}</div>'
+        for label, value in rows if value not in (None, "")
+    )
+    return f'<div style="margin:0 0 16px">{items}</div>'
+
+
+def _text_bullets(rows: list[tuple[str, object]]) -> str:
+    return "\n".join(f"- {label}: {value}" for label, value in rows if value not in (None, ""))
+
+
 def _when(msg: dict) -> str:
     return f"{msg.get('event_date', '')} {msg.get('event_time', '')}".strip()
 
@@ -360,39 +374,66 @@ def _payout_processed(msg: dict) -> Rendered:
 # --- bookings, payments & tickets (attendee) -------------------------------
 
 
+def _registration_block(msg: dict, t: dict) -> tuple[str, str]:
+    """(html, text) for one participant's registration-confirmation copy --
+    repeated per ticket, since each participant has their own race category
+    and booking ID."""
+    event_title = msg.get("event_title")
+    name = t.get("attendee_name") or msg.get("buyer_name") or "there"
+    bullet_rows = [
+        ("Event name", event_title),
+        ("Event date", _when(msg)),
+        ("Booking ID", t.get("ticket_code")),
+    ]
+    if t.get("pending"):
+        bullet_rows.append(("Status", "Awaiting organiser approval"))
+    bullet_rows += [(d, None) for d in ()]  # no-op: keeps mypy-style shape obvious
+    extra = [(d, True) for d in t.get("details", [])]  # free-text hook, e.g. t-shirt size
+    html_body = (
+        _p(f"Hi {_e(name)},")
+        + _p(f"Thank you for registering for <strong>{_e(event_title)}</strong>.")
+        + _p("We are pleased to confirm that your registration has been successfully completed. "
+             "Please find your registration details below:")
+        + f'<p style="margin:0 0 4px;font-weight:700;color:#051747;font-family:{FONT_DISPLAY}">Event details</p>'
+        + _p(f"Race category: <strong>{_e(t.get('tier'))}</strong>")
+        + _bullets(bullet_rows)
+        + (f'<div style="margin:0 0 16px">{"".join(f"<div style=\"color:#888;font-size:12px;margin:0 0 4px\">{_e(d)}</div>" for d, _ in extra)}</div>' if extra else "")
+        + (_muted(f"📍 {_e(msg.get('venue'))}") if msg.get("venue") else "")
+    )
+    text_body = (
+        f"Hi {name},\n\n"
+        f"Thank you for registering for {event_title}.\n\n"
+        "We are pleased to confirm that your registration has been successfully completed. "
+        "Please find your registration details below:\n\n"
+        "Event details\n"
+        f"Race category: {t.get('tier')}\n"
+        f"{_text_bullets(bullet_rows)}\n"
+        + "".join(f"{d}\n" for d, _ in extra)
+        + (f"Venue: {msg.get('venue')}\n" if msg.get("venue") else "")
+    )
+    return html_body, text_body
+
+
 def _order_confirmation(msg: dict) -> Rendered:
-    # Payment completed + tickets delivered.
+    # Payment completed + tickets delivered. One registration block per
+    # participant, each with its own race category and booking ID.
     url = f"{_site()}/order/{msg['order_id']}"
-    rows = ""
-    for t in msg.get("tickets", []):
-        pending = '<br><span style="color:#B45309;font-size:12px">Awaiting approval</span>' if t.get("pending") else ""
-        details = "".join(f'<br><span style="color:#888;font-size:12px">{_e(d)}</span>' for d in t.get("details", []))
-        rows += (
-            '<tr><td style="padding:10px 0;border-top:1px solid #eee">'
-            f'<strong>{_e(t["attendee_name"])}</strong><br><span style="color:#666;font-size:13px">{_e(t["tier"])}</span>{details}</td>'
-            '<td style="padding:10px 0;border-top:1px solid #eee;text-align:right;font-family:monospace">'
-            f"{_e(t['ticket_code'])}{pending}</td></tr>"
-        )
-    when = _when(msg)
-    body = (
-        _p(f"Hi {_e(msg.get('buyer_name'))}, you're going to <strong>{_e(msg.get('event_title'))}</strong>!")
-        + _p(f"📅 {_e(when)}<br>📍 {_e(msg.get('venue'))}")
-        + f'<table role="presentation" width="100%" style="margin:0 0 16px;font-size:14px">{rows}</table>'
-        + _p(f"Order / payment ID: <strong style=\"font-family:monospace\">{_e(msg.get('order_code'))}</strong> · "
-             f"Total: <strong style=\"font-family:{FONT_DISPLAY}\">{_e(msg.get('total'))}</strong>")
+    tickets = msg.get("tickets", [])
+    divider_html = '<div style="border-top:1px solid #eee;margin:20px 0"></div>'
+    blocks = [_registration_block(msg, t) for t in tickets]
+    body = divider_html.join(b[0] for b in blocks)
+    body += (
+        _p(f"Order / payment ID: <strong style=\"font-family:monospace\">{_e(msg.get('order_code'))}</strong> · "
+           f"Total: <strong style=\"font-family:{FONT_DISPLAY}\">{_e(msg.get('total'))}</strong>")
         + _p(_button("View tickets", url))
         + _muted("Show your ticket ID at the entry gate.")
     )
-    text_rows = "\n".join(
-        f"- {t['attendee_name']} ({t['tier']}): ticket {t['ticket_code']}"
-        + "".join(f"\n    {d}" for d in t.get("details", []))
-        for t in msg.get("tickets", [])
-    )
+    text_body = "\n---\n".join(b[1] for b in blocks)
+    text_body += f"\nOrder {msg.get('order_code')}, total {msg.get('total')}.\nTickets: {url}\n"
     return (
         f"Your tickets for {msg.get('event_title')}",
         _layout("Booking confirmed", body, f"Payment received — your tickets for {msg.get('event_title')} are inside."),
-        f"You're going to {msg.get('event_title')} ({when}, {msg.get('venue')}).\n{text_rows}\n"
-        f"Order {msg.get('order_code')}, total {msg.get('total')}.\nTickets: {url}",
+        text_body,
     )
 
 
