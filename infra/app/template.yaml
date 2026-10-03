@@ -135,6 +135,13 @@ Resources:
       FunctionName: !Sub cyrokx-public-api-${Stage}
       CodeUri: ../../src/public_api/
       Handler: handler.handler
+      # Longer than the 15s default because of /payments/payu/return, which
+      # makes an outbound verify call to PayU (8s) and, when a paid order can no
+      # longer be fulfilled, a refund call too -- two sequential 8s budgets that
+      # would otherwise time the buyer's redirect out into a 502. A timeout is a
+      # ceiling, not a reservation, so the browse routes are unaffected.
+      # Effectively 29s: API Gateway caps integration time there regardless.
+      Timeout: 30
       Layers:
         - !Ref CommonLayer
       VpcConfig:
