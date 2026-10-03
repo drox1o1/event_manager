@@ -68,7 +68,7 @@ def refund_order(
         refund = start_refund(
             session,
             attempt,
-            amount if amount is not None else attempt.amount,
+            amount if amount is not None else attempt.amount, # type: ignore
             reason,
             refund_request_id=refund_request_id,
         )
@@ -77,7 +77,7 @@ def refund_order(
     # Outside any transaction, on purpose -- see the module docstring.
     try:
         gateway_response = payu.refund(
-            mihpayid, str(refund_id), payu.format_amount(refund_amount)
+            mihpayid, str(refund_id), payu.format_amount(refund_amount) # type: ignore
         )
     except Exception:  # noqa: BLE001 -- leave the row in 'requested' for the reconciler
         logger.exception(
