@@ -21,6 +21,7 @@ from aws_lambda_powertools.event_handler.exceptions import (
 from common.cities import allowed_cities, canonical_city
 from common.db import get_session
 from common.helpers import ConflictError, ForbiddenError, parse_uuid, short_code
+from common.inventory import committed_counts
 from common.messaging import publish_to_ses
 from common.models import (
     Category,
@@ -354,13 +355,20 @@ def update_tier_impl(event_id: str, tier_id: str, body: TicketTierUpdate, organi
     tier = session.get(TicketTier, parse_uuid(tier_id))
     if tier is None or tier.event_id != event_uuid:
         raise NotFoundError("Ticket not found")
-    if tier.quantity_sold > 0:
-        # A super admin may correct price/type after sales (already-issued
-        # tickets keep the price they were bought at, on their order item).
-        if organiser_id is not None and (body.price != tier.price or body.ticket_type != tier.ticket_type):
-            raise ConflictError("Price and ticket type can't change after tickets have been sold -- contact Showtik support")
-        if body.quantity_total < tier.quantity_sold:
-            raise ConflictError(f"Quantity can't go below the {tier.quantity_sold} already sold")
+    # A super admin may correct price/type after sales (already-issued tickets
+    # keep the price they were bought at, on their order item).
+    if (
+        tier.quantity_sold > 0
+        and organiser_id is not None
+        and (body.price != tier.price or body.ticket_type != tier.ticket_type)
+    ):
+        raise ConflictError("Price and ticket type can't change after tickets have been sold -- contact Showtik support")
+    # Held seats count towards the floor, not just sold ones: shrinking capacity
+    # below what in-flight payments are holding would guarantee an oversell when
+    # those payments confirm, and the buyer would have to be refunded.
+    committed = committed_counts(session, [tier]).get(tier.id, tier.quantity_sold)
+    if committed > 0 and body.quantity_total < committed:
+        raise ConflictError(f"Quantity can't go below the {committed} already sold or held")
     for field, value in body.model_dump().items():
         setattr(tier, field, value)
     session.flush()

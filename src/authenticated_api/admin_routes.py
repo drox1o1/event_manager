@@ -7,7 +7,9 @@ exposes scoped to the caller's own events.
 import events_service as svc
 from app import app
 from app import parse_request_body as _parse_body
+from aws_lambda_powertools import Logger
 from aws_lambda_powertools.event_handler.exceptions import BadRequestError, NotFoundError
+from common import refunds
 from common.db import get_session
 from common.helpers import (
     ConflictError,
@@ -25,7 +27,6 @@ from common.models import (
     OrderQuery,
     Organiser,
     OrganiserStatus,
-    PaymentStatus,
     RefundRequest,
     RefundStatus,
 )
@@ -48,6 +49,8 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from uploads import upload_url
+
+logger = Logger(child=True)
 
 # --- Admin moderation (authenticated) ---
 
@@ -643,6 +646,18 @@ def list_refunds():
 
 @app.post("/admin/refunds/<refund_id>/approve")
 def approve_refund(refund_id: str):
+    """Approve a buyer's refund request and actually return the money.
+
+    Two statuses come back, because they mean different things and used to be
+    conflated. `status` is the admin decision, recorded immediately.
+    `gateway_status` is where the money is: PayU settles refunds
+    asynchronously, so the best this can report is `pending` -- the order only
+    becomes REFUNDED once PayU accepts, and the reconciler confirms it later.
+
+    The gateway call happens after this transaction commits. Holding an
+    8-second outbound request inside it would pin the one connection this
+    Lambda has and stall unrelated work.
+    """
     admin_id = require_admin_id()
     refund_uuid = parse_uuid(refund_id)
 
@@ -656,10 +671,31 @@ def approve_refund(refund_id: str):
         refund.status = RefundStatus.APPROVED
         refund.resolved_at = utcnow()
         refund.resolved_by = admin_id
-        if refund.order:
-            refund.order.payment_status = PaymentStatus.REFUNDED
+        # payment_status is deliberately NOT set here -- common.refunds owns it,
+        # and only once PayU has accepted. Marking an order REFUNDED before the
+        # gateway agrees is how a refund comes to look done while the money is
+        # still ours.
+        order_id = refund.order.id if refund.order else None
 
-    return {"refund_request_id": refund_id, "status": RefundStatus.APPROVED.value}
+    gateway_status = refunds.NO_PAYMENT
+    if order_id is not None:
+        gateway_status = refunds.refund_order(
+            order_id, reason="Refund approved by Showtik support", refund_request_id=refund_uuid
+        )
+    if gateway_status == refunds.NO_PAYMENT:
+        # Free orders, and anything from before the gateway existed here, have
+        # no captured payment to reverse. The decision still stands; there is
+        # simply no money to move.
+        logger.info(
+            "refund approved with no gateway payment to reverse",
+            extra={"refund_request_id": refund_id, "order_id": str(order_id)},
+        )
+
+    return {
+        "refund_request_id": refund_id,
+        "status": RefundStatus.APPROVED.value,
+        "gateway_status": gateway_status,
+    }
 
 
 @app.post("/admin/refunds/<refund_id>/reject")
