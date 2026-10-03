@@ -4,8 +4,13 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon, Input, Button, Radio, Checkbox, PhoneInput, DateInput, INDIAN_MOBILE_RE, useIsMobile } from '@showtik/ui';
 import { publicApi, formatINR, formatEventDate, ApiError } from '@showtik/api-client';
-import type { EventDetail, FormField, TicketTierSummary } from '@showtik/api-client';
+import type { EventDetail, FormField, PayUFormPayload, TicketTierSummary } from '@showtik/api-client';
+import { PayURedirectForm, PayURedirectNotice } from './PayURedirectForm';
 
+// A form-filling nudge only -- it reserves nothing, and never did. The real
+// ten-minute hold on the seats is taken server-side at checkout, once the buyer
+// submits. So a buyer who takes their time here is not actually holding stock,
+// and the countdown they see is not the countdown that matters.
 const HOLD_SECONDS = 10 * 60;
 // Money amounts in the booking UI: ₹0 rather than formatINR's "Free".
 const money = (n: number) => (n === 0 ? '₹0' : formatINR(n));
@@ -54,7 +59,10 @@ function emptyParticipant(): Participant {
 }
 
 function saleState(t: TicketTierSummary): { available: boolean; reason?: string; remaining: number } {
-  const remaining = t.quantity_total - t.quantity_sold;
+  // quantity_available, not total - sold: seats held by buyers mid-payment are
+  // not on sale, and offering them leads to a 409 after the buyer has filled in
+  // every participant.
+  const remaining = t.quantity_available;
   if (t.sale_status !== 'on_sale') return { available: false, reason: 'Not on sale', remaining };
   if (remaining <= 0) return { available: false, reason: 'Sold out', remaining };
   return { available: true, remaining };
@@ -97,6 +105,9 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
   const [holdLeft, setHoldLeft] = React.useState(HOLD_SECONDS);
   const [submitting, setSubmitting] = React.useState(false);
   const [apiError, setApiError] = React.useState<string | null>(null);
+  // Set once checkout has reserved the tickets; rendering it POSTs to PayU.
+  const [payu, setPayu] = React.useState<PayUFormPayload | null>(null);
+  const [payAmount, setPayAmount] = React.useState<string>('');
   const bodyRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -272,7 +283,7 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
     if (!agree) { setBuyerErrors((b) => ({ ...b, agree: 'Please accept the terms to continue' })); return; }
     setSubmitting(true); setApiError(null);
     try {
-      const { order_id } = await publicApi.checkout(event.id, {
+      const result = await publicApi.checkout(event.id, {
         buyer_name: buyer.name.trim(),
         buyer_email: buyer.email.trim(),
         buyer_phone: `+91${buyer.phone}`,
@@ -292,7 +303,17 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
           })),
         })),
       });
-      router.push(`/order/${order_id}`);
+      if (!result.payment_required || !result.payu) {
+        // Nothing to pay (free or donation-at-zero): the order is already
+        // settled server-side and its tickets exist, so go straight there.
+        router.push(`/order/${result.order_id}`);
+        return;
+      }
+      // Hand off to PayU. `submitting` stays true so the CTA can't be clicked
+      // again while the form below is posting -- a second click would open a
+      // second transaction.
+      setPayu(result.payu);
+      setPayAmount(result.amount);
     } catch (err) {
       setApiError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');
       setSubmitting(false);
@@ -321,12 +342,18 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
           <button type="button" aria-label="Close" onClick={onClose} style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><Icon name="x" size={22} /></button>
         </div>
 
-        {step !== 'select' && (
+        {step !== 'select' && !payu && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px', background: holdLeft < 60 ? 'var(--status-error-bg)' : 'var(--surface-accent-secondary-tint)', fontSize: 14, color: 'var(--text-heading)', fontWeight: 600 }}>
             <Icon name="timer" size={16} /> Holding your spot for {mm}:{ss} mins
           </div>
         )}
 
+        {payu ? (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <PayURedirectNotice amount={payAmount} />
+            <PayURedirectForm payu={payu} />
+          </div>
+        ) : (
         <div ref={bodyRef} style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '18px 16px' : '22px 24px' }}>
           {step === 'select' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -477,6 +504,10 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
                     <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 3 }}>{(people[t.id] ?? []).map(nameOf).filter(Boolean).join(', ')}</div>
                   </div>
                 ))}
+                {/* TODO(fees): read this from checkout's booking_fee once the
+                    platform commission is wired up server-side. The server is
+                    the authority on what is owed -- this total is a preview, and
+                    the amount actually charged comes back from checkout. */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13.5, color: 'var(--text-muted)', paddingTop: 10, borderTop: '1px solid var(--border-default)' }}><span>Booking fee</span><span>₹0</span></div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 8 }}>
                   <span style={{ fontWeight: 600 }}>Total</span>
@@ -492,7 +523,9 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
             </div>
           )}
         </div>
+        )}
 
+        {!payu && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 22px', borderTop: '1px solid var(--border-default)', background: 'var(--surface-card)' }}>
           <div style={{ fontSize: 15, color: 'var(--text-muted)' }}>Qty : <strong style={{ color: 'var(--color-accent-secondary)', fontSize: 17 }}>{totalQty}</strong></div>
           <div style={{ fontSize: 15, color: 'var(--text-muted)' }}>Total : <strong style={{ color: 'var(--color-accent-secondary)', fontSize: 17 }}>{money(total)}</strong></div>
@@ -501,6 +534,7 @@ export function BookingModal({ event, onClose }: { event: EventDetail; onClose: 
           {step === 'buyer' && <Button onClick={proceedFromBuyer} style={{ minWidth: isMobile ? 120 : 180 }}>Continue <Icon name="chevron-right" size={16} /></Button>}
           {step === 'attendees' && <Button onClick={pay} loading={submitting} style={{ minWidth: isMobile ? 120 : 200 }}>{total > 0 ? `Pay ${formatINR(total)}` : 'Confirm registration'}</Button>}
         </div>
+        )}
       </div>
     </div>
   );

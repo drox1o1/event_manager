@@ -4,7 +4,8 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon, Button } from '@showtik/ui';
 import { publicApi, formatINR, formatDateTime, formatEventDate, formatTimestamp, ApiError } from '@showtik/api-client';
-import type { OrderDetail, OrderQueryCategory, OrderTicket } from '@showtik/api-client';
+import type { OrderDetail, OrderQueryCategory, OrderTicket, PayUFormPayload } from '@showtik/api-client';
+import { PayURedirectForm, PayURedirectNotice } from './PayURedirectForm';
 
 export interface OrderConfirmationViewProps {
   order: OrderDetail;
@@ -23,9 +24,143 @@ const APPROVAL: Record<string, { label: string; bg: string; fg: string }> = {
   rejected: { label: 'Not approved', bg: 'var(--status-error-bg)', fg: 'var(--status-error-text)' },
 };
 
-/** Order confirmation — one order (= one payment) with a separate ticket,
- *  ticket ID per participant, grouped by ticket type. */
+/** Order page — branches on payment_status, because an order now exists before
+ *  its money does.
+ *
+ *  `pending` means the buyer is (or was) at PayU and nothing is confirmed yet;
+ *  `failed` means it definitively didn't go through, and the participant details
+ *  are still on the order so the payment can simply be retried. Only `success`
+ *  reaches the confirmation below, which is the only state where tickets exist. */
 export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
+  if (order.payment_status === 'pending') return <PaymentPending order={order} />;
+  if (order.payment_status === 'failed') return <PaymentFailed order={order} />;
+  return <OrderConfirmed order={order} />;
+}
+
+/** Waiting on PayU. Polls rather than asking the buyer to refresh, since the
+ *  webhook usually lands within seconds -- but gives up rather than spinning
+ *  forever, because the reconciler will settle it either way and the
+ *  confirmation email is the real backstop. */
+function PaymentPending({ order }: OrderConfirmationViewProps) {
+  const router = useRouter();
+  const [gaveUp, setGaveUp] = React.useState(false);
+
+  React.useEffect(() => {
+    let attempts = 0;
+    const timer = setInterval(async () => {
+      attempts += 1;
+      const fresh = await publicApi.getOrder(order.order_id).catch(() => null);
+      if (fresh && fresh.payment_status !== 'pending') {
+        clearInterval(timer);
+        // Re-runs the force-dynamic server component rather than threading
+        // fresh state through, so every branch renders from one source.
+        router.refresh();
+        return;
+      }
+      if (attempts >= 24) { // ~2 minutes at 5s
+        clearInterval(timer);
+        setGaveUp(true);
+      }
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [order.order_id, router]);
+
+  return (
+    <StatusPage
+      icon="hourglass"
+      tone="warning"
+      heading={gaveUp ? 'Still confirming your payment' : 'Confirming your payment'}
+      body={
+        gaveUp
+          ? 'This is taking longer than usual. Your bank may still be processing it — we’ll email you as soon as it’s confirmed, and no further action is needed.'
+          : 'Please don’t close this page. This usually takes a few seconds.'
+      }
+      order={order}
+    />
+  );
+}
+
+/** Definitively failed. Retrying reuses this order, so the buyer doesn't
+ *  re-enter every participant — on a multi-runner booking that's a lot of
+ *  typing to lose to a declined card. */
+function PaymentFailed({ order }: OrderConfirmationViewProps) {
+  const [payu, setPayu] = React.useState<PayUFormPayload | null>(null);
+  const [retrying, setRetrying] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const retry = async () => {
+    setRetrying(true);
+    setError(null);
+    try {
+      const result = await publicApi.retryPayment(order.order_id);
+      if (result.payu) setPayu(result.payu);
+      else setError('This order can’t be paid online. Please book again.');
+    } catch (err) {
+      // A 409 here usually means the tickets went while the buyer was away.
+      setError(err instanceof ApiError ? err.message : 'Could not restart the payment. Please try again.');
+      setRetrying(false);
+    }
+  };
+
+  if (payu) {
+    return (
+      <div style={{ fontFamily: 'var(--font-sans)', maxWidth: 820, margin: '0 auto', padding: 'clamp(28px, 6vw, 56px) 16px' }}>
+        <PayURedirectNotice amount={order.total_amount} />
+        <PayURedirectForm payu={payu} />
+      </div>
+    );
+  }
+
+  return (
+    <StatusPage
+      icon="circle-x"
+      tone="error"
+      heading="Your payment didn’t go through"
+      body="No tickets were issued and you haven’t been charged. If money was debited, it’s refunded automatically within 5–7 working days."
+      order={order}
+      action={
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+          <Button onClick={retry} loading={retrying} style={{ minWidth: 220 }}>Try payment again</Button>
+          {error && <div role="alert" style={{ color: 'var(--color-error)', fontSize: 14, fontWeight: 600, maxWidth: 420 }}>{error}</div>}
+          <a href={`/events/${order.event_id}`} style={{ fontSize: 14, color: 'var(--text-muted)' }}>Back to the event</a>
+        </div>
+      }
+    />
+  );
+}
+
+/** Shared chrome for the non-success states: the order is real and worth
+ *  showing, there just aren't tickets to list yet. */
+function StatusPage({
+  icon, tone, heading, body, order, action,
+}: {
+  icon: string;
+  tone: 'warning' | 'error';
+  heading: string;
+  body: string;
+  order: OrderDetail;
+  action?: React.ReactNode;
+}) {
+  const bg = tone === 'error' ? 'var(--status-error-bg)' : 'var(--status-warning-bg)';
+  const fg = tone === 'error' ? 'var(--status-error-text)' : 'var(--status-warning-text)';
+  return (
+    <div style={{ fontFamily: 'var(--font-sans)', maxWidth: 640, margin: '0 auto', padding: 'clamp(28px, 6vw, 56px) clamp(16px, 4vw, 32px)', textAlign: 'center' }}>
+      <div style={{ width: 68, height: 68, borderRadius: '50%', background: bg, color: fg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
+        <Icon name={icon} size={32} />
+      </div>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(26px, 5vw, 36px)', fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-heading)', margin: '0 0 10px' }}>{heading}</h1>
+      <p style={{ fontSize: 15.5, color: 'var(--text-muted)', margin: '0 0 24px', lineHeight: 1.6 }}>{body}</p>
+      <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 6, padding: '14px 20px', borderRadius: 12, border: '1px solid var(--border-default)', background: 'var(--surface-card)', fontSize: 14, marginBottom: 24 }}>
+        <div><span style={{ color: 'var(--text-muted)' }}>Event</span> <strong style={{ color: 'var(--text-heading)' }}>{order.event_title}</strong></div>
+        <div><span style={{ color: 'var(--text-muted)' }}>Order</span> <strong style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-heading)' }}>{order.order_code}</strong></div>
+        <div><span style={{ color: 'var(--text-muted)' }}>Amount</span> <strong style={{ color: 'var(--text-heading)' }}>{formatINR(order.total_amount)}</strong></div>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function OrderConfirmed({ order }: OrderConfirmationViewProps) {
   const router = useRouter();
   const [queryOpen, setQueryOpen] = React.useState(false);
   const [viewing, setViewing] = React.useState<(OrderTicket & { item: OrderDetail['items'][number] }) | null>(null);
@@ -36,6 +171,9 @@ export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
 
   const tickets = order.items.flatMap((item) => item.tickets.map((t, idx) => ({ ...t, item, idx })));
   const pending = tickets.some((t) => t.approval_status === 'pending');
+  // A refunded order keeps its tickets as a record, so the page still lists
+  // them -- but it must not read as a live booking.
+  const refunded = order.payment_status === 'refunded';
 
   const submitQuery = async () => {
     if (message.trim().length < 5) { setQueryError('Please describe your query in a few words.'); return; }
@@ -53,12 +191,18 @@ export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
   return (
     <div style={{ fontFamily: 'var(--font-sans)', maxWidth: 820, margin: '0 auto', padding: 'clamp(28px, 6vw, 56px) clamp(16px, 4vw, 32px)' }}>
       <div className="no-print" style={{ textAlign: 'center', marginBottom: 32 }}>
-        <div style={{ width: 68, height: 68, borderRadius: '50%', background: 'var(--status-success-bg)', color: 'var(--color-success)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
-          <Icon name="party-popper" size={32} />
+        <div style={{ width: 68, height: 68, borderRadius: '50%', background: refunded ? 'var(--status-warning-bg)' : 'var(--status-success-bg)', color: refunded ? 'var(--status-warning-text)' : 'var(--color-success)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
+          <Icon name={refunded ? 'rotate-ccw' : 'party-popper'} size={32} />
         </div>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(32px, 6vw, 48px)', fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-heading)', margin: '0 0 8px' }}>You&apos;re going!</h1>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(32px, 6vw, 48px)', fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-heading)', margin: '0 0 8px' }}>
+          {refunded ? 'This booking was refunded' : "You're going!"}
+        </h1>
         <p style={{ fontSize: 15.5, color: 'var(--text-muted)', margin: 0 }}>
-          {tickets.length} ticket{tickets.length === 1 ? '' : 's'} booked · confirmation sent to <strong style={{ color: 'var(--text-body)' }}>{order.buyer_email}</strong>
+          {refunded ? (
+            <>Your refund is on its way to the original payment method — usually 5–7 working days. These tickets are no longer valid for entry.</>
+          ) : (
+            <>{tickets.length} ticket{tickets.length === 1 ? '' : 's'} booked · confirmation sent to <strong style={{ color: 'var(--text-body)' }}>{order.buyer_email}</strong></>
+          )}
         </p>
       </div>
 
