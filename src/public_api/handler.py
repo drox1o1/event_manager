@@ -1,27 +1,31 @@
 """public-api Lambda -- unauthenticated routes: browse, event detail,
-checkout, and order lookup.
+checkout, the PayU return, and order lookup.
 
-Only status=LIVE events are ever returned publicly. The Razorpay webhook is
-still follow-up work (payment_webhook is a stub) -- checkout here is a
-synchronous **test-mode** stand-in: no real gateway credentials are
-available, so it marks the order paid and issues tickets immediately instead
-of going through the real checkout -> webhook -> queue -> ticket_generator
-pipeline. Swap this out once real Razorpay integration lands.
+Only status=LIVE events are ever returned publicly.
+
+Checkout reserves rather than sells: it writes a PENDING order holding the
+seats for ten minutes, snapshots the resolved ticket plan, and returns the form
+the browser POSTs to PayU. Tickets are issued in common.settlement, which is
+also reached by the payment_webhook Lambda and the reconciler -- any one of the
+three may be the only one that arrives, so all of them converge on the same
+idempotent writer. Zero-total orders skip PayU entirely and settle in-request.
 """
 
 from __future__ import annotations
 
 import datetime as dt
-import secrets
+import os
+import urllib.parse
 from decimal import Decimal
 
 from aws_lambda_powertools import Logger
-from aws_lambda_powertools.event_handler import APIGatewayRestResolver, CORSConfig
+from aws_lambda_powertools.event_handler import APIGatewayRestResolver, CORSConfig, Response
 from aws_lambda_powertools.event_handler.exceptions import (
     BadRequestError,
     NotFoundError,
 )
 from aws_lambda_powertools.utilities.typing import LambdaContext
+from common import payu
 from common.cities import DEFAULT_CITIES
 from common.db import get_session
 from common.helpers import (
@@ -32,6 +36,7 @@ from common.helpers import (
     short_code,
     utcnow,
 )
+from common.inventory import availability, is_sold_out
 from common.messaging import publish_to_ses
 from common.models import (
     AdminUser,
@@ -52,12 +57,12 @@ from common.models import (
     PaymentStatus,
     RefundRequest,
     SitePage,
-    Ticket,
     TicketTier,
 )
 from common.schemas import (
     CategorySummary,
     CheckoutRequest,
+    CheckoutResponse,
     EventDetail,
     EventSummary,
     FormFieldResponse,
@@ -68,7 +73,13 @@ from common.schemas import (
     TicketTierSummary,
     normalize_indian_mobile,
 )
-from sqlalchemy import or_, select
+from common.settlement import (
+    create_attempt,
+    hold_expiry,
+    settle_free_order,
+    settle_order,
+)
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
 logger = Logger()
@@ -77,6 +88,16 @@ app = APIGatewayRestResolver(
 )
 
 MAX_PAGE_SIZE = 50
+
+# Caps retries on one order so a loop can't hammer PayU indefinitely. Generous
+# enough that a buyer fixing a declined card a few times never hits it.
+MAX_PAYMENT_ATTEMPTS = 5
+
+# Checkout is unauthenticated and now reserves real inventory, which makes it a
+# denial primitive: holding every seat for ten minutes on repeat would make an
+# event unbookable. Capping concurrent live holds per buyer email blunts the
+# cheap version of that without inconveniencing anyone genuine.
+MAX_LIVE_HOLDS_PER_BUYER = 3
 
 
 def _parse_body(model):
@@ -91,8 +112,33 @@ def _price_from(tiers) -> float | None:
     return min(prices) if prices else None
 
 
-def _sold_out(tiers) -> bool:
-    return bool(tiers) and all(t.quantity_sold >= t.quantity_total for t in tiers)
+def _tier_summary(tier: TicketTier, available: dict) -> TicketTierSummary:
+    """Serialise a tier for public consumption.
+
+    Note the asymmetry with the organiser-facing views in authenticated_api,
+    which report quantity_sold alone: an organiser wants to know what has truly
+    sold, while a buyer needs to know what they can actually book. Both numbers
+    are here and honest, rather than one field meaning different things to
+    different readers.
+    """
+    remaining = available.get(tier.id, 0)
+    return TicketTierSummary.model_validate(
+        tier,
+        update={
+            "quantity_available": remaining,
+            "quantity_held": max(0, tier.quantity_total - tier.quantity_sold - remaining),
+        },
+    )
+
+
+def _availability_for(session, events) -> dict:
+    """Bookable units for every tier across these events, in one query.
+
+    Threaded explicitly through the serialisers rather than looked up per event,
+    because the public site renders whole pages of events and a per-event lookup
+    would be an N+1 on the busiest routes there are.
+    """
+    return availability(session, [t for e in events for t in e.ticket_tiers])
 
 
 @app.get("/events")
@@ -121,7 +167,8 @@ def list_events():
 
     with get_session() as session:
         events = session.execute(query).scalars().all()
-        results = [_event_summary_dict(e) for e in events]
+        available = _availability_for(session, events)
+        results = [_event_summary_dict(e, available) for e in events]
 
     return {"events": results, "page": page, "page_size": page_size}
 
@@ -145,6 +192,7 @@ def get_event(event_id: str):
             raise NotFoundError("Event not found")
 
         tiers = sorted(event.ticket_tiers, key=lambda t: (t.sort_order, t.created_at))
+        available = _availability_for(session, [event])
         detail = EventDetail(
             id=event.id,
             title=event.title,
@@ -153,14 +201,14 @@ def get_event(event_id: str):
             city=event.city,
             event_date=event.event_date,
             price_from=_price_from(event.ticket_tiers),
-            sold_out=_sold_out(event.ticket_tiers),
+            sold_out=is_sold_out(event.ticket_tiers, available),
             description=event.description,
             event_time=event.event_time,
             venue_name=event.venue_name,
             venue_address=event.venue_address,
             banner_image_url=event.banner_image_url,
             gallery_images=[img.image_url for img in sorted(event.images, key=lambda i: i.sort_order)],
-            ticket_tiers=[TicketTierSummary.model_validate(t) for t in tiers],
+            ticket_tiers=[_tier_summary(t, available) for t in tiers],
             location_type=event.location_type,
             end_date=event.end_date,
             end_time=event.end_time,
@@ -283,7 +331,7 @@ def _category_names(e: Event) -> list[str]:
     return ([primary] if primary else []) + [c.name for c in extras]
 
 
-def _event_summary_dict(e: Event) -> dict:
+def _event_summary_dict(e: Event, available: dict) -> dict:
     return EventSummary(
         id=e.id,
         title=e.title,
@@ -292,7 +340,7 @@ def _event_summary_dict(e: Event) -> dict:
         city=e.city,
         event_date=e.event_date,
         price_from=_price_from(e.ticket_tiers),
-        sold_out=_sold_out(e.ticket_tiers),
+        sold_out=is_sold_out(e.ticket_tiers, available),
         event_time=e.event_time,
         venue_name=e.venue_name,
         banner_image_url=e.banner_image_url,
@@ -300,8 +348,8 @@ def _event_summary_dict(e: Event) -> dict:
     ).model_dump(mode="json")
 
 
-def _featured_dict(e: Event) -> dict:
-    base = _event_summary_dict(e)
+def _featured_dict(e: Event, available: dict) -> dict:
+    base = _event_summary_dict(e, available)
     base.update(
         {
             "headline": e.featured_headline or e.title,
@@ -378,6 +426,9 @@ def get_homepage():
             else [(t, title, mode, None) for (t, title, mode) in _DEFAULT_SECTIONS]
         )
 
+        # Sections hold Event objects while being assembled and are serialised
+        # in one pass at the end, so holds for every event on the page resolve
+        # in a single query instead of one per section.
         auto_offset = 0
         out_sections = []
         for section_type, title, mode, section in specs:
@@ -387,9 +438,7 @@ def get_homepage():
             elif mode == HomepageSectionMode.CURATED.value and section is not None:
                 ordered = sorted(section.events, key=lambda e: e.sort_order)
                 block["events"] = [
-                    _event_summary_dict(curated_by_id[e.event_id])
-                    for e in ordered
-                    if e.event_id in curated_by_id
+                    curated_by_id[e.event_id] for e in ordered if e.event_id in curated_by_id
                 ]
             elif section is not None and section.category_id is not None:
                 # Category row ("Marathon"): that category's soonest live events.
@@ -410,11 +459,11 @@ def get_homepage():
                     .scalars()
                     .all()
                 )
-                block["events"] = [_event_summary_dict(e) for e in rows]
+                block["events"] = list(rows)
             else:  # auto event row
                 window = live_pool[auto_offset : auto_offset + 4]
                 auto_offset += 4
-                block["events"] = [_event_summary_dict(e) for e in window]
+                block["events"] = list(window)
             out_sections.append(block)
 
         hero = {
@@ -444,10 +493,16 @@ def get_homepage():
             .all()
         )
 
+        on_page = [e for b in out_sections for e in b.get("events", [])] + list(featured)
+        available = _availability_for(session, on_page)
+        for block in out_sections:
+            if "events" in block:
+                block["events"] = [_event_summary_dict(e, available) for e in block["events"]]
+
         return {
             "hero": hero,
             "banner": banner,
-            "featured": [_featured_dict(e) for e in featured],
+            "featured": [_featured_dict(e, available) for e in featured],
             "sections": out_sections,
         }
 
@@ -475,6 +530,7 @@ def get_organiser_page(organiser_id: str):
             .scalars()
             .all()
         )
+        available = _availability_for(session, events)
         return {
             "id": str(organiser.id),
             "org_name": organiser.org_name,
@@ -485,7 +541,7 @@ def get_organiser_page(organiser_id: str):
             "instagram_url": organiser.instagram_url,
             "city": organiser.city,
             "member_since": organiser.created_at.isoformat(),
-            "events": [_event_summary_dict(e) for e in events],
+            "events": [_event_summary_dict(e, available) for e in events],
         }
 
 
@@ -495,13 +551,20 @@ _utcnow = utcnow
 
 @app.post("/events/<event_id>/checkout")
 def checkout(event_id: str):
-    """TEST-MODE checkout -- see module docstring. Marks the order paid and
-    issues tickets synchronously; no real payment gateway is involved.
+    """Reserve tickets and hand the buyer off to PayU.
 
-    One order (= one payment id) can span several ticket types. Every ticket
-    issued is its own row with its own id, and -- when the buyer supplied
-    them -- its own participant name/contact and registration-form answers
-    (e.g. a Full Marathon runner and a Half Marathon runner in one payment)."""
+    Nothing is sold here. The order is written PENDING with a 10-minute hold on
+    the seats, the fully-resolved ticket plan is snapshotted onto it, and the
+    response carries the form the browser must POST to PayU. Tickets appear
+    only once money is confirmed, in common.settlement.
+
+    Zero-total orders (free or donation-at-zero tiers) never reach PayU, which
+    can't process them: they settle inside this request and the response says
+    no payment is required.
+
+    One order can span several ticket types. Every ticket issued is its own row
+    with its own participant name/contact and registration-form answers (e.g. a
+    Full Marathon runner and a Half Marathon runner in one payment)."""
     event_uuid = _parse_uuid(event_id)
     body = _parse_body(CheckoutRequest)
 
@@ -513,16 +576,23 @@ def checkout(event_id: str):
         tier_ids = [item.ticket_tier_id for item in body.items]
         if len(tier_ids) != len(set(tier_ids)):
             raise BadRequestError("Each ticket type may appear only once per order")
+        # Ordered lock: reserve, settle and retry all lock these same rows, and
+        # unordered multi-row locks deadlock under concurrency. One ordering,
+        # everywhere -- see common.inventory.
         tiers_by_id = {
             t.id: t
             for t in session.execute(
                 select(TicketTier)
                 .where(TicketTier.id.in_(tier_ids), TicketTier.event_id == event_uuid)
+                .order_by(TicketTier.id)
                 .with_for_update()
             )
             .scalars()
             .all()
         }
+        # Counted after the lock, never before: locking a tier row doesn't stop
+        # another transaction inserting a pending hold against it.
+        available = availability(session, tiers_by_id.values())
 
         fields = sorted(event.form_fields, key=lambda f: f.sort_order)
         now = _utcnow()
@@ -542,7 +612,7 @@ def checkout(event_id: str):
                 raise BadRequestError(
                     f"'{tier.name}' can be booked {tier.min_per_order}-{tier.max_per_order} per order"
                 )
-            if tier.quantity_sold + item.quantity > tier.quantity_total:
+            if item.quantity > available.get(tier.id, 0):
                 raise ConflictError(f"Not enough '{tier.name}' tickets remaining")
             if item.attendees and len(item.attendees) != item.quantity:
                 raise BadRequestError(f"Enter details for all {item.quantity} '{tier.name}' participant(s)")
@@ -564,49 +634,54 @@ def checkout(event_id: str):
             if not _is_occurrence(event, body.occurrence_date):
                 raise BadRequestError("That date isn't one of this event's sessions")
 
-        issued: list[tuple[Ticket, str]] = []
+        _check_hold_quota(session, event_uuid, body.buyer_email)
+
+        # TODO(fees): read PlatformSettings.buyer_fee_enabled / commission_pct
+        #   here and set booking_fee from the platform's commission. Kept at 0
+        #   deliberately for now -- but note the total below is the figure the
+        #   PayU hash binds, so it must always be computed here and never by
+        #   the client.
+        booking_fee = Decimal("0")
+        total = subtotal + booking_fee
+
         order = Order(
             event_id=event_uuid,
             buyer_name=body.buyer_name,
             buyer_email=body.buyer_email,
             buyer_phone=body.buyer_phone,
             subtotal=subtotal,
-            booking_fee=Decimal("0"),
-            total_amount=subtotal,
-            payment_status=PaymentStatus.SUCCESS,
-            payment_gateway_ref="TEST-MODE",
+            booking_fee=booking_fee,
+            total_amount=total,
+            payment_status=PaymentStatus.PENDING,
             occurrence_date=body.occurrence_date if event.schedule_type == "recurring" else None,
         )
         session.add(order)
         session.flush()
 
+        # OrderItem rows exist from here on, before any money has moved: the
+        # held-inventory count is a join over them, so a hold that lived only
+        # inside the JSON snapshot would be invisible to every availability
+        # read. Tickets, which mean "really paid for", still come later.
+        plan: list[dict] = []
         for item in body.items:
             tier = tiers_by_id[item.ticket_tier_id]
-            order_item = OrderItem(
-                order_id=order.id,
-                ticket_tier_id=tier.id,
-                quantity=item.quantity,
-                unit_price=unit_prices[tier.id],
-            )
-            session.add(order_item)
-            session.flush()
-            tier.quantity_sold += item.quantity
-            for idx in range(item.quantity):
-                attendee = item.attendees[idx] if item.attendees else None
-                who = f"{tier.name} #{idx + 1} ({attendee.name})" if attendee else f"{tier.name} #{idx + 1}"
-                answers = _validated_answers(fields, attendee.form_responses, who) if attendee else None
-                _check_age(tier, fields, answers, order.occurrence_date or event.event_date, who)
-                ticket = Ticket(
-                        order_item_id=order_item.id,
-                        qr_code_token=secrets.token_urlsafe(24),
-                        attendee_name=attendee.name if attendee else body.buyer_name,
-                        attendee_email=(attendee.email if attendee and attendee.email else None),
-                        attendee_phone=(attendee.phone if attendee and attendee.phone else None),
-                        attendee_answers=answers,
-                        approval_status="pending" if tier.requires_approval else "approved",
+            session.add(
+                OrderItem(
+                    order_id=order.id,
+                    ticket_tier_id=tier.id,
+                    quantity=item.quantity,
+                    unit_price=unit_prices[tier.id],
                 )
-                session.add(ticket)
-                issued.append((ticket, tier.name))
+            )
+            plan.extend(
+                _resolve_tickets(item, tier, fields, body, order.occurrence_date or event.event_date)
+            )
+
+        # Everything the form said, resolved and validated now, so settlement
+        # is pure INSERTs. If this stored the raw request instead, an organiser
+        # adding a required field mid-payment would make a *paid* order
+        # unissuable.
+        order.pending_items = plan
 
         # Buyer-level answers (legacy single-form checkout, used when no
         # per-participant details were sent).
@@ -614,46 +689,285 @@ def checkout(event_id: str):
             _persist_form_responses(session, event, order, body)
 
         session.flush()
-        order_id = order.id
-        try:
-            email = _order_email(event, order, body, subtotal, issued)
-        except Exception:  # noqa: BLE001 -- never let email rendering fail a paid order
-            logger.exception("could not build order email")
-            email = None
 
-    if email:
-        _notify(email)
-    return {"order_id": str(order_id), "payment_status": PaymentStatus.SUCCESS.value}, 201
+        if total == 0:
+            # PayU can't take a zero-amount transaction, and there is nothing
+            # to wait for -- settle in-request so the buyer lands on a finished
+            # order page exactly as they always have.
+            result = settle_free_order(session, order)
+            response = _checkout_response(order, payment_required=False)
+        else:
+            order.reserved_until = hold_expiry()
+            attempt = create_attempt(session, order, total)
+            result = None
+            response = _checkout_response(
+                order,
+                payment_required=True,
+                payu=_payu_form(order, attempt, event),
+            )
+
+    # Outside the transaction: a queue hiccup must not undo a settled order.
+    if result is not None:
+        _notify_all(result.emails)
+    return response, 201
 
 
-def _order_email(event: Event, order: Order, body: CheckoutRequest, subtotal: Decimal, issued: list) -> dict:
-    return {
-        "type": "order_confirmation",
-        "to": body.buyer_email,
-        "buyer_name": body.buyer_name,
-        "order_id": str(order.id),
-        "order_code": _short_code(order.id),
-        "event_title": event.title,
-        "event_date": (order.occurrence_date or event.event_date).isoformat(),
-        "event_time": event.event_time.strftime("%I:%M %p").lstrip("0"),
-        "venue": f"{event.venue_name}, {event.city}" if event.location_type == "venue" else "Online",
-        "total": "Free" if subtotal == 0 else f"Rs. {subtotal:,.2f}",
-        "buyer_phone": order.buyer_phone,
-        "tickets": [
+@app.post("/orders/<order_id>/payu/retry")
+def retry_payment(order_id: str):
+    """Start a fresh PayU transaction for an order whose payment didn't land.
+
+    Deliberately reuses the order rather than making the buyer re-enter every
+    participant: a multi-runner marathon booking is a lot of typing to lose to
+    a declined card. The stored plan is replayed untouched -- re-validating it
+    here would reintroduce exactly the mid-payment-edit problem that storing a
+    resolved plan exists to prevent.
+    """
+    order_uuid = _parse_uuid(order_id)
+
+    with get_session() as session:
+        order = session.execute(
+            select(Order).where(Order.id == order_uuid).with_for_update()
+        ).scalar_one_or_none()
+        if order is None:
+            raise NotFoundError("Order not found")
+        if order.payment_status in (PaymentStatus.SUCCESS, PaymentStatus.REFUNDED):
+            raise ConflictError("This order is already paid")
+        if not order.pending_items or order.total_amount == 0:
+            # Orders predating PayU have no stored plan; free orders have
+            # nothing to pay. Neither can be retried.
+            raise ConflictError("This order can't be paid online")
+        if len(order.payment_attempts) >= MAX_PAYMENT_ATTEMPTS:
+            raise ConflictError("Too many payment attempts for this order. Please book again.")
+
+        event = session.get(Event, order.event_id)
+        if event is None or event.status != EventStatus.LIVE:
+            raise ConflictError("This event is no longer on sale")
+
+        items = list(order.order_items)
+        tiers_by_id = {
+            t.id: t
+            for t in session.execute(
+                select(TicketTier)
+                .where(TicketTier.id.in_([i.ticket_tier_id for i in items]))
+                .order_by(TicketTier.id)
+                .with_for_update()
+            ).scalars().all()
+        }
+        # Excluding this order's own hold, or it would compete with itself.
+        available = availability(session, tiers_by_id.values(), exclude_order_id=order.id)
+        for item in items:
+            if item.quantity > available.get(item.ticket_tier_id, 0):
+                tier = tiers_by_id.get(item.ticket_tier_id)
+                raise ConflictError(
+                    f"Not enough '{tier.name if tier else 'ticket'}' tickets remaining"
+                )
+
+        order.payment_status = PaymentStatus.PENDING
+        order.reserved_until = hold_expiry()
+        attempt = create_attempt(session, order, order.total_amount)
+        session.flush()
+        response = _checkout_response(
+            order, payment_required=True, payu=_payu_form(order, attempt, event)
+        )
+
+    return response, 201
+
+
+@app.post("/payments/payu/return")
+def payu_return():
+    """Where PayU sends the buyer's browser back, success or failure.
+
+    PayU's posted `status` is read only for logging: the verdict comes from our
+    own server-to-server verify call, because anything that travelled through a
+    browser is a claim rather than a fact. The hash check below proves the
+    payload is genuinely PayU's; the verify call proves what actually happened.
+
+    Always redirects, even when verification fails -- the buyer must land
+    somewhere sensible, and the webhook or the reconciler will settle an order
+    this request couldn't.
+    """
+    # PayU posts form-encoded, so json_body (and _parse_body) would raise.
+    # keep_blank_values is load-bearing: dropped blank udfs change the hash.
+    posted = dict(urllib.parse.parse_qsl(app.current_event.decoded_body or "", keep_blank_values=True))
+    txnid = posted.get("txnid", "")
+    order_id = posted.get("udf1") or ""
+
+    if not payu.verify_response(posted):
+        logger.error(
+            "payu return failed hash verification -- not settling",
+            extra={"txnid": txnid, "payu_status": posted.get("status")},
+        )
+        return _redirect_to_order(order_id)
+
+    logger.info("payu return verified", extra={"txnid": txnid, "payu_status": posted.get("status")})
+    result = _settle_from_gateway(txnid, posted)
+    return _redirect_to_order(order_id or (str(result.order_id) if result and result.order_id else ""))
+
+
+def _settle_from_gateway(txnid: str, posted: dict):
+    """Ask PayU what really happened, then settle. Shared by the return route
+    and anything else holding a verified callback.
+
+    The verify call deliberately happens before the session opens: an 8-second
+    outbound request inside a transaction would hold row locks on a pool of one.
+    """
+    if not txnid:
+        return None
+    try:
+        verified = payu.transaction_status(payu.verify_payment(txnid), txnid) or {}
+    except Exception:  # noqa: BLE001 -- fall back to the posted claim rather than losing the payment
+        logger.exception("payu verify_payment failed; relying on the posted status", extra={"txnid": txnid})
+        verified = {}
+
+    status = verified.get("status") or posted.get("status")
+    with get_session() as session:
+        result = settle_order(
+            session,
+            txnid,
+            status=status,
+            mihpayid=verified.get("mihpayid") or posted.get("mihpayid"),
+            mode=verified.get("mode") or posted.get("mode"),
+            error_code=verified.get("error_code") or posted.get("error"),
+            error_message=verified.get("error_Message") or posted.get("error_Message"),
+            gateway_amount=verified.get("amt") or posted.get("amount"),
+            raw={"verified": verified, "posted": posted},
+        )
+
+    _notify_all(result.emails)
+    if result.refund_needed:
+        _refund_unfulfillable_order(result)
+    return result
+
+
+def _refund_unfulfillable_order(result) -> None:
+    """Money arrived for tickets that can no longer be issued, so give it back
+    without waiting for anyone to ask. Best-effort: a failure here leaves the
+    refund row in 'requested' for the reconciler to retry, which is why it must
+    never propagate and turn a settled payment into a 500."""
+    try:
+        from common.refunds import refund_order  # local import: avoids a cycle at module load
+
+        refund_order(
+            result.order_id,
+            reason="Tickets sold out before your payment was confirmed",
+        )
+    except Exception:  # noqa: BLE001
+        logger.exception("could not start automatic refund", extra={"order_id": str(result.order_id)})
+
+
+def _redirect_to_order(order_id: str) -> Response:
+    """303, not 302: the browser arrived by POST, and only 303 is specified to
+    turn that into a GET. A re-POSTed redirect would hit the Next.js order route
+    and get a 405.
+
+    The target is built from our own env var plus the order id and never from
+    anything PayU sent -- this endpoint is unauthenticated, so echoing a
+    supplied URL would make it an open redirect.
+    """
+    base = os.environ.get("PUBLIC_SITE_URL", "").rstrip("/")
+    try:
+        destination = f"{base}/order/{parse_uuid(order_id)}" if order_id else base or "/"
+    except NotFoundError:
+        logger.warning("payu return carried an unusable order reference", extra={"udf1": order_id})
+        destination = base or "/"
+    return Response(status_code=303, content_type="text/plain", headers={"Location": destination}, body="")
+
+
+def _check_hold_quota(session, event_id, buyer_email: str) -> None:
+    """Refuse a buyer who is already sitting on several live holds for this event.
+
+    See MAX_LIVE_HOLDS_PER_BUYER: this endpoint is unauthenticated and now
+    reserves inventory, so without a cap one script can keep an event sold out
+    indefinitely at no cost.
+    """
+    live_holds = session.execute(
+        select(func.count())
+        .select_from(Order)
+        .where(
+            Order.event_id == event_id,
+            Order.buyer_email == buyer_email,
+            Order.payment_status == PaymentStatus.PENDING,
+            Order.reserved_until.isnot(None),
+            Order.reserved_until > _utcnow(),
+        )
+    ).scalar_one()
+    if live_holds >= MAX_LIVE_HOLDS_PER_BUYER:
+        raise ConflictError(
+            "You already have tickets held for this event. Finish or abandon that payment first."
+        )
+
+
+def _resolve_tickets(item, tier: TicketTier, fields, body: CheckoutRequest, on: dt.date) -> list[dict]:
+    """Validate one line item's participants and flatten them into the stored
+    ticket plan -- one entry per ticket that will eventually be issued.
+
+    All the validation that can reject a booking happens here, at checkout,
+    while there is still a buyer on the other end to show an error to.
+    """
+    out = []
+    for idx in range(item.quantity):
+        attendee = item.attendees[idx] if item.attendees else None
+        who = f"{tier.name} #{idx + 1} ({attendee.name})" if attendee else f"{tier.name} #{idx + 1}"
+        answers = _validated_answers(fields, attendee.form_responses, who) if attendee else None
+        _check_age(tier, fields, answers, on, who)
+        out.append(
             {
-                "attendee_name": t.attendee_name,
-                "tier": tier_name,
-                "ticket_code": _short_code(t.id),
-                "pending": t.approval_status == "pending",
+                "ticket_tier_id": str(tier.id),
+                "tier_name": tier.name,
+                "attendee_name": attendee.name if attendee else body.buyer_name,
+                "attendee_email": attendee.email if attendee and attendee.email else None,
+                "attendee_phone": attendee.phone if attendee and attendee.phone else None,
+                "answers": answers,
+                "approval_status": "pending" if tier.requires_approval else "approved",
             }
-            for t, tier_name in issued
-        ],
-    }
+        )
+    return out
+
+
+def _payu_form(order: Order, attempt, event: Event) -> dict:
+    """The hidden-form payload the browser POSTs to PayU.
+
+    surl/furl are derived from the incoming request rather than configured, so
+    every PR-branch stack returns to its own API with no extra parameter to
+    forget. PayU sends the buyer to the same endpoint either way -- our own
+    verify call decides the outcome, not which URL they came back through.
+    """
+    request_context = app.current_event.request_context
+    return_url = f"https://{request_context.domain_name}/{request_context.stage}/payments/payu/return"
+    return payu.payment_form(
+        txnid=attempt.txnid,
+        amount=payu.format_amount(order.total_amount),
+        product_info=event.title,
+        first_name=order.buyer_name,
+        email=order.buyer_email,
+        # PayU wants bare 10 digits; normalize_indian_mobile stores +91XXXXXXXXXX.
+        phone=order.buyer_phone.removeprefix("+91"),
+        order_id=str(order.id),
+        surl=return_url,
+        furl=return_url,
+    )
+
+
+def _checkout_response(order: Order, *, payment_required: bool, payu: dict | None = None) -> dict:
+    return CheckoutResponse(
+        order_id=order.id,
+        payment_status=order.payment_status.value,
+        payment_required=payment_required,
+        subtotal=f"{order.subtotal:.2f}",
+        booking_fee=f"{order.booking_fee:.2f}",
+        amount=f"{order.total_amount:.2f}",
+        payu=payu,
+    ).model_dump(mode="json")
+
+
+def _notify_all(messages: list[dict]) -> None:
+    for message in messages:
+        _notify(message)
 
 
 def _notify(message: dict) -> None:
-    """Best-effort: queue a confirmation email. The order is already
-    committed, so a queue failure must never fail the checkout."""
+    """Best-effort: queue an email. The order is already committed, so a queue
+    failure must never fail the request that produced it."""
     try:
         publish_to_ses(message)
     except Exception:  # noqa: BLE001

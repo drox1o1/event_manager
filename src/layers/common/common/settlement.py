@@ -443,14 +443,15 @@ def start_refund(
     return refund
 
 
-def complete_refund(session, refund_id: uuid.UUID, gateway_response: dict) -> list[dict]:
+def complete_refund(
+    session, refund_id: uuid.UUID, gateway_response: dict
+) -> tuple[str, list[dict]]:
     """Record PayU's answer to a refund request and release the inventory.
 
-    Accepted means *queued*, never "money returned" -- PayU settles refunds
-    asynchronously, so the status stops at `pending` and only the reconciler
-    promotes it to `confirmed`.
-
-    Returns emails for the caller to publish after commit.
+    Returns `(status, emails)`. Accepted means *queued*, never "money
+    returned" -- PayU settles refunds asynchronously, so the status stops at
+    `pending` and only the reconciler promotes it to `confirmed`. Emails are
+    returned for the caller to publish after commit.
     """
     refund = session.execute(
         select(PaymentRefund).where(PaymentRefund.id == refund_id).with_for_update()
@@ -464,7 +465,7 @@ def complete_refund(session, refund_id: uuid.UUID, gateway_response: dict) -> li
             "payu rejected a refund request",
             extra={"refund_id": str(refund.id), "message": gateway_response.get("msg")},
         )
-        return []
+        return refund.status, []
 
     refund.status = "pending"
     refund.gateway_refund_id = str(
@@ -482,7 +483,7 @@ def complete_refund(session, refund_id: uuid.UUID, gateway_response: dict) -> li
         emails.append(_refund_issued_email(order, refund))
     except Exception:  # noqa: BLE001
         logger.exception("could not build refund_issued email", extra={"order_id": str(order.id)})
-    return emails
+    return refund.status, emails
 
 
 def _release_refunded_inventory(session, order: Order) -> None:

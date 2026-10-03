@@ -25,7 +25,9 @@ def _api_event(method, path, body=None):
         "pathParameters": None,
         "body": json.dumps(body) if body is not None else None,
         "isBase64Encoded": False,
-        "requestContext": {"authorizer": {}},
+        # domainName/stage are what the PayU return URL is built from, so each
+        # deployed stack points back at its own API with no extra config.
+        "requestContext": {"authorizer": {}, "domainName": "api.test.example", "stage": "test"},
     }
 
 
@@ -34,6 +36,23 @@ def _fake_session(get_return=None, execute_all=None):
     session.get.return_value = get_return
     if execute_all is not None:
         session.execute.return_value.scalars.return_value.all.return_value = execute_all
+    # Checkout reads two aggregates besides the tier rows, each via a distinct
+    # result method, so they can be stubbed independently: held-seat counts
+    # (.all()) and this buyer's live holds (.scalar_one()). Default both to
+    # "nothing held", which is what these form-validation tests assume.
+    session.execute.return_value.all.return_value = []
+    session.execute.return_value.scalar_one.return_value = 0
+
+    # Primary keys come from a column default applied at INSERT, so without
+    # this every added row keeps id=None -- and the PayU handoff legitimately
+    # needs the order's id before the transaction closes.
+    def _flush():
+        for call in session.add.call_args_list:
+            added = call.args[0]
+            if getattr(added, "id", None) is None:
+                added.id = uuid.uuid4()
+
+    session.flush.side_effect = _flush
 
     @contextmanager
     def _get_session():

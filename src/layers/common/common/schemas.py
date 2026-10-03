@@ -57,7 +57,15 @@ class TicketTierSummary(BaseModel):
     name: str
     price: Decimal
     quantity_total: int
+    # Confirmed sales only -- deliberately excludes seats held by in-flight
+    # payments, so this number never overstates what has actually been sold.
     quantity_sold: int
+    # What a buyer can actually book right now: total, minus confirmed sales,
+    # minus seats held by other buyers currently paying. This -- not
+    # quantity_total - quantity_sold -- is what the public site must show, or
+    # it invites a booking that checkout then rejects with a 409.
+    quantity_available: int = 0
+    quantity_held: int = 0
     ticket_type: str = "paid"
     description: str | None = None
     min_per_order: int = 1
@@ -274,7 +282,7 @@ class CategoriesReplaceRequest(BaseModel):
     categories: list[CategoryInput] = Field(min_length=1, max_length=100)
 
 
-# --- Checkout (public, test-mode -- see public_api/handler.py::checkout) ---
+# --- Checkout (public -- see public_api/handler.py::checkout) ---
 
 _INDIAN_MOBILE_RE = re.compile(r"(?:\+?91)?([6-9]\d{9})")
 
@@ -338,6 +346,39 @@ class CheckoutRequest(BaseModel):
         if normalized is None:
             raise ValueError("must be a 10-digit number")
         return normalized
+
+
+class PayUFormPayload(BaseModel):
+    """Where the browser must POST, and what it must send.
+
+    Opaque to the frontend on purpose: it renders `fields` as hidden inputs
+    verbatim and submits. Nothing client-side computes or edits any of it --
+    the hash covers the amount, so a single altered character is rejected by
+    PayU.
+    """
+
+    action: str
+    fields: dict[str, str]
+
+
+class CheckoutResponse(BaseModel):
+    """Shared by checkout and retry-payment.
+
+    `payment_required` is what the frontend branches on rather than inferring
+    from the amount: a zero-total order is already settled by the time this is
+    returned, and should go straight to the order page.
+
+    The money fields are strings straight from the server because the server is
+    the authority on them -- the client must never re-derive what is owed.
+    """
+
+    order_id: uuid.UUID
+    payment_status: str
+    payment_required: bool
+    subtotal: str
+    booking_fee: str
+    amount: str
+    payu: PayUFormPayload | None = None
 
 
 class RefundRequestCreate(BaseModel):

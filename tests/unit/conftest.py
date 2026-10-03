@@ -1,5 +1,5 @@
-"""Shared fixtures. DB and JWT secrets are always mocked -- these tests never
-touch a real AWS account or database."""
+"""Shared fixtures. DB, JWT and PayU secrets are always mocked -- these tests
+never touch a real AWS account or database."""
 
 from unittest.mock import MagicMock
 
@@ -16,15 +16,6 @@ def _base_env(monkeypatch):
     monkeypatch.setenv("PUBLIC_SITE_URL", "https://test.showtik.in")
 
 
-@pytest.fixture(autouse=True)
-def _reset_secrets_cache():
-    import common.secrets as secrets_module
-
-    secrets_module._cache.clear()
-    yield
-    secrets_module._cache.clear()
-
-
 # PayU's sandbox credentials. Hashes in test_payu.py are computed against
 # these, so changing them means recomputing every expected digest.
 PAYU_TEST_CREDENTIALS = {
@@ -34,16 +25,25 @@ PAYU_TEST_CREDENTIALS = {
 }
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def mock_payu_secret(monkeypatch):
-    """common.payu reads its merchant key/salt from Secrets Manager on first
-    use (then caches it) -- this patches that fetch to the sandbox values."""
+    """Stub common.secrets' Secrets Manager fetch to the PayU sandbox values.
+
+    Autouse because any paid checkout now needs a merchant key to build its
+    handoff form, and a test that reached real Secrets Manager would fail on
+    whatever credentials happen to be in the environment. Cleared around every
+    test since the loader caches per execution environment.
+    """
     import json
 
+    import common.secrets as secrets_module
+
+    secrets_module._cache.clear()
     mock_client = MagicMock()
     mock_client.get_secret_value.return_value = {"SecretString": json.dumps(PAYU_TEST_CREDENTIALS)}
     monkeypatch.setattr("common.secrets.boto3.client", lambda *a, **kw: mock_client)
-    return mock_client
+    yield mock_client
+    secrets_module._cache.clear()
 
 
 @pytest.fixture(autouse=True)
