@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import datetime as dt
 import os
-import urllib.parse
 from decimal import Decimal
 
 from aws_lambda_powertools import Logger
@@ -59,6 +58,7 @@ from common.models import (
     SitePage,
     TicketTier,
 )
+from common.payu_callback import handle_callback, parse_callback, publish_all
 from common.schemas import (
     CategorySummary,
     CheckoutRequest,
@@ -77,7 +77,6 @@ from common.settlement import (
     create_attempt,
     hold_expiry,
     settle_free_order,
-    settle_order,
 )
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
@@ -708,7 +707,7 @@ def checkout(event_id: str):
 
     # Outside the transaction: a queue hiccup must not undo a settled order.
     if result is not None:
-        _notify_all(result.emails)
+        publish_all(result.emails)
     return response, 201
 
 
@@ -786,73 +785,13 @@ def payu_return():
     somewhere sensible, and the webhook or the reconciler will settle an order
     this request couldn't.
     """
-    # PayU posts form-encoded, so json_body (and _parse_body) would raise.
-    # keep_blank_values is load-bearing: dropped blank udfs change the hash.
-    posted = dict(urllib.parse.parse_qsl(app.current_event.decoded_body or "", keep_blank_values=True))
-    txnid = posted.get("txnid", "")
-    order_id = posted.get("udf1") or ""
+    posted = parse_callback(app.current_event.decoded_body)
+    result = handle_callback(posted, source="browser_return")
 
-    if not payu.verify_response(posted):
-        logger.error(
-            "payu return failed hash verification -- not settling",
-            extra={"txnid": txnid, "payu_status": posted.get("status")},
-        )
-        return _redirect_to_order(order_id)
-
-    logger.info("payu return verified", extra={"txnid": txnid, "payu_status": posted.get("status")})
-    result = _settle_from_gateway(txnid, posted)
-    return _redirect_to_order(order_id or (str(result.order_id) if result and result.order_id else ""))
-
-
-def _settle_from_gateway(txnid: str, posted: dict):
-    """Ask PayU what really happened, then settle. Shared by the return route
-    and anything else holding a verified callback.
-
-    The verify call deliberately happens before the session opens: an 8-second
-    outbound request inside a transaction would hold row locks on a pool of one.
-    """
-    if not txnid:
-        return None
-    try:
-        verified = payu.transaction_status(payu.verify_payment(txnid), txnid) or {}
-    except Exception:  # noqa: BLE001 -- fall back to the posted claim rather than losing the payment
-        logger.exception("payu verify_payment failed; relying on the posted status", extra={"txnid": txnid})
-        verified = {}
-
-    status = verified.get("status") or posted.get("status")
-    with get_session() as session:
-        result = settle_order(
-            session,
-            txnid,
-            status=status,
-            mihpayid=verified.get("mihpayid") or posted.get("mihpayid"),
-            mode=verified.get("mode") or posted.get("mode"),
-            error_code=verified.get("error_code") or posted.get("error"),
-            error_message=verified.get("error_Message") or posted.get("error_Message"),
-            gateway_amount=verified.get("amt") or posted.get("amount"),
-            raw={"verified": verified, "posted": posted},
-        )
-
-    _notify_all(result.emails)
-    if result.refund_needed:
-        _refund_unfulfillable_order(result)
-    return result
-
-
-def _refund_unfulfillable_order(result) -> None:
-    """Money arrived for tickets that can no longer be issued, so give it back
-    without waiting for anyone to ask. Best-effort: a failure here leaves the
-    refund row in 'requested' for the reconciler to retry, which is why it must
-    never propagate and turn a settled payment into a 500."""
-    try:
-        from common.refunds import refund_order  # local import: avoids a cycle at module load
-
-        refund_order(
-            result.order_id,
-            reason="Tickets sold out before your payment was confirmed",
-        )
-    except Exception:  # noqa: BLE001
-        logger.exception("could not start automatic refund", extra={"order_id": str(result.order_id)})
+    # udf1 carries the order id so the buyer can be sent to their order page
+    # even when the payload failed verification and nothing was settled.
+    order_id = posted.get("udf1") or (str(result.order_id) if result and result.order_id else "")
+    return _redirect_to_order(order_id)
 
 
 def _redirect_to_order(order_id: str) -> Response:
@@ -958,11 +897,6 @@ def _checkout_response(order: Order, *, payment_required: bool, payu: dict | Non
         amount=f"{order.total_amount:.2f}",
         payu=payu,
     ).model_dump(mode="json")
-
-
-def _notify_all(messages: list[dict]) -> None:
-    for message in messages:
-        _notify(message)
 
 
 def _notify(message: dict) -> None:
