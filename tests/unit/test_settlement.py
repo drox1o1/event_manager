@@ -521,6 +521,32 @@ def test_a_free_order_settles_through_the_same_code(session, event, tier):
 # --- helpers ---
 
 
+def test_attempt_status_round_trips_as_a_plain_string(session, event, tier):
+    """These statuses live on VARCHAR columns, not Postgres enum types, so they
+    must be StrEnum rather than the (str, Enum) style used elsewhere in the
+    models: a (str, Enum) member stringifies to 'AttemptStatus.SUCCESS', and
+    anything coercing on the way to the column would store that instead.
+
+    Asserting the value read back is the bare word is what stops this quietly
+    reverting to the house style.
+    """
+    from common.models import AttemptStatus
+    from common.settlement import settle_order
+
+    order = _pending_order(session, event, tier)
+    attempt = _attempt(session, order)
+    settle_order(session, attempt.txnid, status="success", mihpayid="mih1")
+    session.commit()
+    session.expire_all()
+
+    stored = session.execute(
+        select(PaymentAttempt.status).where(PaymentAttempt.id == attempt.id)
+    ).scalar_one()
+    assert stored == "success"
+    assert str(AttemptStatus.SUCCESS) == "success"
+    assert f"{AttemptStatus.INITIATED}" == "initiated"
+
+
 def test_a_new_txnid_fits_payus_field(session):
     from common.settlement import new_txnid
 

@@ -33,6 +33,46 @@ class RefundStatus(str, enum.Enum):
     REJECTED = "rejected"
 
 
+# The two below are StrEnum, unlike every other enum in this package, and the
+# difference is deliberate. The others are backed by real Postgres enum types
+# and bound through SQLAlchemy's Enum(..., values_callable=...), which reads
+# .value explicitly. These live on plain VARCHAR columns (see 0011: ALTER TYPE
+# ... ADD VALUE can't run inside Alembic's transaction, so gateway vocabulary
+# shouldn't cost a migration) -- and a (str, Enum) member stringifies to
+# "AttemptStatus.SUCCESS", so any str() coercion on the way to a String column
+# would quietly store that instead of "success". StrEnum stringifies to its
+# value, which removes the trap rather than relying on nobody tripping it.
+
+
+class AttemptStatus(enum.StrEnum):
+    """PayU's verdict on one transaction.
+
+    PENDING is PayU's own "still deciding", not our order's PENDING -- a
+    transaction can sit here while the buyer is on their bank's 3DS page.
+    """
+
+    INITIATED = "initiated"  # handed to PayU, nothing heard back yet
+    SUCCESS = "success"
+    FAILURE = "failure"
+    PENDING = "pending"
+    CANCELLED = "cancelled"
+
+
+class RefundProgress(enum.StrEnum):
+    """Where a refund has got to at PayU.
+
+    Distinct from RefundStatus, which records the admin's decision on a buyer's
+    request. Conflating the two is how a refund comes to look settled while the
+    money is still ours: APPROVED means someone said yes, CONFIRMED means PayU
+    actually returned it.
+    """
+
+    REQUESTED = "requested"  # written down; the gateway call hasn't succeeded yet
+    PENDING = "pending"  # queued at PayU, which settles refunds asynchronously
+    CONFIRMED = "confirmed"  # money returned, as reported by PayU
+    FAILED = "failed"  # PayU refused the request
+
+
 class Order(Base):
     __tablename__ = "orders"
 
@@ -137,7 +177,7 @@ class PaymentAttempt(Base):
     # What was actually hashed and sent to PayU. The amount that comes back
     # must equal this exactly, or the response is not for what we asked.
     amount: Mapped[Numeric] = mapped_column(Numeric(10, 2), nullable=False)
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="initiated")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default=AttemptStatus.INITIATED)
     mihpayid: Mapped[str | None] = mapped_column(String(100), nullable=True)  # PayU's id; required to refund
     mode: Mapped[str | None] = mapped_column(String(20), nullable=True)
     error_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
@@ -169,7 +209,7 @@ class PaymentRefund(Base):
     )
     amount: Mapped[Numeric] = mapped_column(Numeric(10, 2), nullable=False)
     reason: Mapped[str] = mapped_column(Text, nullable=False)
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="requested")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default=RefundProgress.REQUESTED)
     gateway_refund_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     gateway_response: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

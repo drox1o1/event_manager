@@ -29,7 +29,14 @@ from common import payu
 from common.db import get_session
 from common.helpers import utcnow
 from common.messaging import publish_to_ses
-from common.models import Order, PaymentAttempt, PaymentRefund, PaymentStatus
+from common.models import (
+    AttemptStatus,
+    Order,
+    PaymentAttempt,
+    PaymentRefund,
+    PaymentStatus,
+    RefundProgress,
+)
 from common.payu_callback import OVERSOLD_REFUND_REASON
 from common.refunds import refund_order
 from common.settlement import settle_order
@@ -83,7 +90,7 @@ def _stale_attempt_txnids() -> list[str]:
                 select(PaymentAttempt.txnid)
                 .join(Order, Order.id == PaymentAttempt.order_id)
                 .where(
-                    PaymentAttempt.status == "initiated",
+                    PaymentAttempt.status == AttemptStatus.INITIATED,
                     Order.payment_status == PaymentStatus.PENDING,
                     PaymentAttempt.created_at < now - dt.timedelta(minutes=MIN_AGE_MINUTES),
                     PaymentAttempt.created_at > now - dt.timedelta(hours=MAX_AGE_HOURS),
@@ -136,7 +143,7 @@ def _reconcile_refunds(summary: dict) -> None:
     for refund_id, order_id, mihpayid, status in _open_refunds():
         summary["refunds_checked"] += 1
         try:
-            if status == "requested":
+            if status == RefundProgress.REQUESTED:
                 refund_order(order_id, reason=OVERSOLD_REFUND_REASON)
                 continue
             if _confirm_refund(refund_id, mihpayid):
@@ -151,7 +158,7 @@ def _open_refunds() -> list[tuple]:
             (row.id, row.attempt.order_id, row.attempt.mihpayid, row.status)
             for row in session.execute(
                 select(PaymentRefund)
-                .where(PaymentRefund.status.in_(("requested", "pending")))
+                .where(PaymentRefund.status.in_((RefundProgress.REQUESTED, RefundProgress.PENDING)))
                 .order_by(PaymentRefund.created_at.asc())
                 .limit(BATCH_SIZE)
             ).scalars()
@@ -168,9 +175,9 @@ def _confirm_refund(refund_id, mihpayid: str | None) -> bool:
 
     with get_session() as session:
         refund = session.get(PaymentRefund, refund_id)
-        if refund is None or refund.status == "confirmed":
+        if refund is None or refund.status == RefundProgress.CONFIRMED:
             return False
-        refund.status = "confirmed"
+        refund.status = RefundProgress.CONFIRMED
         refund.confirmed_at = utcnow()
     logger.info("refund confirmed by payu", extra={"refund_id": str(refund_id)})
     return True

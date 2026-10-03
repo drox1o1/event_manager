@@ -30,16 +30,16 @@ from aws_lambda_powertools import Logger
 from . import payu
 from .db import get_session
 from .messaging import publish_to_ses
+from .models import RefundProgress
 from .settlement import complete_refund, start_refund, successful_attempt
 
 logger = Logger(child=True)
 
-# No successful PayU transaction to refund against. Free orders and everything
-# created before this integration (payment_gateway_ref = 'TEST-MODE') land here,
-# so callers can keep a human decision while reporting that no money moved.
+# The one outcome that isn't a RefundProgress: there was no successful PayU
+# transaction to refund against at all. Free orders, and everything created
+# before this integration (payment_gateway_ref = 'TEST-MODE'), land here -- so a
+# caller can keep a human decision while reporting that no money moved.
 NO_PAYMENT = "no_payment"
-REQUESTED = "requested"
-FAILED = "failed"
 
 
 def refund_order(
@@ -84,7 +84,7 @@ def refund_order(
             "payu refund call failed; left pending for reconciliation",
             extra={"order_id": str(order_id), "refund_id": str(refund_id)},
         )
-        return REQUESTED
+        return RefundProgress.REQUESTED
 
     with get_session() as session:
         status, emails = complete_refund(session, refund_id, gateway_response)

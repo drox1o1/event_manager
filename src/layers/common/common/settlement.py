@@ -43,11 +43,13 @@ from . import payu
 from .helpers import short_code, utcnow
 from .inventory import availability
 from .models import (
+    AttemptStatus,
     Event,
     Order,
     PaymentAttempt,
     PaymentRefund,
     PaymentStatus,
+    RefundProgress,
     Ticket,
     TicketTier,
 )
@@ -59,8 +61,8 @@ HOLD_MINUTES = 10
 # How PayU's vocabulary maps onto a verdict. Anything unrecognised is treated
 # as "no verdict yet" and left for the reconciler rather than guessed at --
 # guessing failure would release a hold on a payment that is still in flight.
-_SUCCESS_STATUSES = frozenset({"success", "captured"})
-_FAILURE_STATUSES = frozenset({"failure", "failed", "cancelled", "usercancelled", "cancel"})
+_SUCCESS_STATUSES = frozenset({AttemptStatus.SUCCESS, "captured"})
+_FAILURE_STATUSES = frozenset({AttemptStatus.FAILURE, "failed", AttemptStatus.CANCELLED, "usercancelled", "cancel"})
 
 # Outcomes. Only SETTLED and FAILED represent a state change this call made.
 SETTLED = "settled"
@@ -105,9 +107,9 @@ def classify_status(raw_status: str | None) -> str | None:
         return None
     normalised = str(raw_status).strip().lower().replace(" ", "").replace("_", "")
     if normalised in _SUCCESS_STATUSES:
-        return "success"
+        return AttemptStatus.SUCCESS
     if normalised in _FAILURE_STATUSES:
-        return "failure"
+        return AttemptStatus.FAILURE
     return None
 
 
@@ -181,11 +183,11 @@ def settle_order(
                 "expected": str(attempt.amount), "gateway": gateway_amount,
             },
         )
-        attempt.status = "failure"
+        attempt.status = AttemptStatus.FAILURE
         attempt.error_message = f"amount mismatch: expected {attempt.amount}, gateway sent {gateway_amount}"
         return SettlementResult(AMOUNT_MISMATCH, order.id, attempt.id)
 
-    if verdict == "failure":
+    if verdict == AttemptStatus.FAILURE:
         return _settle_failure(session, order, attempt)
     return _settle_success(session, order, attempt)
 
@@ -200,7 +202,7 @@ def _settle_failure(session, order: Order, attempt: PaymentAttempt) -> Settlemen
     before reaching this point -- so a simultaneous success and failure are
     serialised, and whichever order they land in, success wins.
     """
-    attempt.status = "failure"
+    attempt.status = AttemptStatus.FAILURE
     attempt.settled_at = utcnow()
     order.payment_status = PaymentStatus.FAILED
     order.reserved_until = None  # the hold is pointless now; a retry takes a fresh one
@@ -214,7 +216,7 @@ def _settle_failure(session, order: Order, attempt: PaymentAttempt) -> Settlemen
 
 
 def _settle_success(session, order: Order, attempt: PaymentAttempt) -> SettlementResult:
-    attempt.status = "success"
+    attempt.status = AttemptStatus.SUCCESS
     attempt.settled_at = utcnow()
     order.payment_gateway_ref = attempt.mihpayid or order.payment_gateway_ref
 
@@ -436,7 +438,7 @@ def start_refund(
         refund_request_id=refund_request_id,
         amount=amount,
         reason=reason,
-        status="requested",
+        status=RefundProgress.REQUESTED,
     )
     session.add(refund)
     session.flush()
@@ -460,14 +462,14 @@ def complete_refund(
 
     accepted = str(gateway_response.get("status", "")) in ("1", "True", "true")
     if not accepted:
-        refund.status = "failed"
+        refund.status = RefundProgress.FAILED
         logger.error(
             "payu rejected a refund request",
             extra={"refund_id": str(refund.id), "message": gateway_response.get("msg")},
         )
         return refund.status, []
 
-    refund.status = "pending"
+    refund.status = RefundProgress.PENDING
     refund.gateway_refund_id = str(
         gateway_response.get("request_id") or gateway_response.get("mihpayid") or ""
     ) or None
@@ -522,7 +524,7 @@ def successful_attempt(session, order_id: uuid.UUID) -> PaymentAttempt | None:
         select(PaymentAttempt)
         .where(
             PaymentAttempt.order_id == order_id,
-            PaymentAttempt.status == "success",
+            PaymentAttempt.status == AttemptStatus.SUCCESS,
             PaymentAttempt.mihpayid.isnot(None),
         )
         .order_by(PaymentAttempt.created_at.desc())
@@ -564,7 +566,7 @@ def create_attempt(session, order: Order, amount: Decimal, *, txnid: str | None 
         order_id=order.id,
         txnid=txnid or new_txnid(),
         amount=Decimal(payu.format_amount(amount)),
-        status="initiated",
+        status=AttemptStatus.INITIATED,
     )
     session.add(attempt)
     session.flush()
