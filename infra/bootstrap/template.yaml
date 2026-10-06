@@ -225,6 +225,11 @@ Resources:
             - states:TagResource
           Resource:
             - !Sub arn:aws:states:${AWS::Region}:${AWS::AccountId}:stateMachine:cyrokx-*
+        # cyrokx-banners-* (images, public via CloudFront) and cyrokx-exports-*
+        # (registration exports, private, presigned-GET only) -- ExportsBucket
+        # is the first bucket this policy manages with a LifecycleConfiguration,
+        # hence PutLifecycleConfiguration/GetLifecycleConfiguration alongside the
+        # banners-era actions.
         - Sid: S3AppBucket
           Effect: Allow
           Action:
@@ -232,10 +237,16 @@ Resources:
             - s3:DeleteBucket
             - s3:PutBucketPolicy
             - s3:PutEncryptionConfiguration
+            - s3:GetEncryptionConfiguration
             - s3:PutBucketPublicAccessBlock
+            - s3:GetBucketPublicAccessBlock
             - s3:PutBucketCORS
+            - s3:GetBucketCORS
+            - s3:PutLifecycleConfiguration
+            - s3:GetLifecycleConfiguration
           Resource:
             - arn:aws:s3:::cyrokx-banners-*
+            - arn:aws:s3:::cyrokx-exports-*
         - Sid: IamForLambdaExecutionRoles
           Effect: Allow
           Action:
