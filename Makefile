@@ -9,9 +9,18 @@ REGION ?= ap-south-1
 SAM_ARTIFACTS_BUCKET ?= cyrokx-sam-artifacts-aps1-REPLACE_WITH_ACCOUNT_ID
 STACK_NAME ?= cyrokx-app-$(subst _,-,$(STAGE))
 
+PAYU_ENVIRONMENT ?=
+
 DEPLOY_PROD_ARGS :=
 ifneq ($(SAM_ARTIFACTS_BUCKET),cyrokx-sam-artifacts-aps1-REPLACE_WITH_ACCOUNT_ID)
 DEPLOY_PROD_ARGS += --s3-bucket $(SAM_ARTIFACTS_BUCKET)
+endif
+# Unset = samconfig.toml's "Stage=prod" applies on its own, and the template's
+# own PayUEnvironment default (sandbox) governs. Only pass this to flip prod to
+# live PayU credentials once they're actually in cyrokx/payu:
+#   make deploy-prod PAYU_ENVIRONMENT=live
+ifneq ($(PAYU_ENVIRONMENT),)
+DEPLOY_PROD_ARGS += --parameter-overrides "Stage=prod PayUEnvironment=$(PAYU_ENVIRONMENT)"
 endif
 
 .PHONY: help venv install lint format test check \

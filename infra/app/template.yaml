@@ -51,14 +51,36 @@ Parameters:
       notices). Defaults to prod's domain -- non-prod deploys (dev, PR
       branches) should override this alongside PublicSiteUrl/
       OrganiserPortalUrl, or admin email links silently point at prod.
+  PayUEnvironment:
+    Type: String
+    Default: sandbox
+    AllowedValues: [sandbox, live]
+    Description: >
+      Only meaningful on prod (Stage=prod) -- every other stage always gets
+      sandbox credentials regardless of this value, so a dev or PR stack can
+      never read the live merchant key. Defaults to sandbox so a plain prod
+      deploy never silently goes live: switch this to "live" explicitly
+      (e.g. `make deploy-prod PAYU_ENVIRONMENT=live`) once real PayU merchant
+      credentials have been put in cyrokx/payu. Until then, prod paid
+      checkout hands buyers to PayU's sandbox -- real cards are declined
+      there, so no real payment succeeds either way; this only changes which
+      failure the buyer sees.
 
 Conditions:
   HasDbSchema: !Not [!Equals [!Ref DbSchema, ""]]
   HasBucketStage: !Not [!Equals [!Ref BucketStage, ""]]
-  # Gates which PayU secret is wired in and whether the reconciler's schedule
-  # runs. Both matter: every open PR deploys a full stack, so an unconditional
-  # schedule would mean N reconcilers polling PayU and the shared RDS at once.
+  # Gates whether the reconciler's schedule runs. Every open PR deploys a full
+  # stack, so an unconditional schedule would mean N reconcilers polling PayU
+  # and the shared RDS at once.
   IsProd: !Equals [!Ref Stage, prod]
+  # Which PayU secret gets wired in. True only for prod with PayUEnvironment
+  # explicitly set to "live" -- every other combination (non-prod, or prod
+  # left on its sandbox default) resolves to the test secret, so there is
+  # exactly one way to put live credentials in front of real buyers: an
+  # explicit, visible parameter, not an implicit consequence of Stage=prod.
+  ProdWantsLivePayU: !And
+    - !Condition IsProd
+    - !Equals [!Ref PayUEnvironment, live]
 
 Globals:
   Function:
@@ -156,7 +178,7 @@ Resources:
           DB_SCHEMA: !If [HasDbSchema, !Ref DbSchema, !Ref AWS::NoValue]
           EMAIL_QUEUE_URL: !Ref EmailQueue
           PAYU_SECRET_ARN: !If
-            - IsProd
+            - ProdWantsLivePayU
             - !ImportValue cyrokx-network-data-PayUSecretArn
             - !ImportValue cyrokx-network-data-PayUTestSecretArn
           # Where the PayU return route sends the buyer afterwards. Built from
@@ -167,12 +189,13 @@ Resources:
         - Statement:
             - Effect: Allow
               Action: secretsmanager:GetSecretValue
-              # The IsProd branch is what makes a dev or PR stack physically
-              # unable to read the live merchant key, not merely configured not to.
+              # The ProdWantsLivePayU branch is what makes a dev or PR stack --
+              # and prod left on its sandbox default -- physically unable to
+              # read the live merchant key, not merely configured not to.
               Resource:
                 - !ImportValue cyrokx-network-data-AppDbSecretArn
                 - !If
-                  - IsProd
+                  - ProdWantsLivePayU
                   - !ImportValue cyrokx-network-data-PayUSecretArn
                   - !ImportValue cyrokx-network-data-PayUTestSecretArn
         - SQSSendMessagePolicy:
@@ -318,7 +341,7 @@ Resources:
           BANNERS_CDN_DOMAIN: !GetAtt BannersDistribution.DomainName
           # Admin refund approval calls PayU to actually return the money.
           PAYU_SECRET_ARN: !If
-            - IsProd
+            - ProdWantsLivePayU
             - !ImportValue cyrokx-network-data-PayUSecretArn
             - !ImportValue cyrokx-network-data-PayUTestSecretArn
       Policies:
@@ -329,7 +352,7 @@ Resources:
                 - !ImportValue cyrokx-network-data-AppDbSecretArn
                 - !ImportValue cyrokx-network-data-JwtSigningSecretArn
                 - !If
-                  - IsProd
+                  - ProdWantsLivePayU
                   - !ImportValue cyrokx-network-data-PayUSecretArn
                   - !ImportValue cyrokx-network-data-PayUTestSecretArn
         - SQSSendMessagePolicy:
@@ -618,7 +641,7 @@ Resources:
           BANNERS_CDN_DOMAIN: !GetAtt BannersDistribution.DomainName
           # Admin refund approval calls PayU to actually return the money.
           PAYU_SECRET_ARN: !If
-            - IsProd
+            - ProdWantsLivePayU
             - !ImportValue cyrokx-network-data-PayUSecretArn
             - !ImportValue cyrokx-network-data-PayUTestSecretArn
       Policies:
@@ -629,7 +652,7 @@ Resources:
                 - !ImportValue cyrokx-network-data-AppDbSecretArn
                 - !ImportValue cyrokx-network-data-JwtSigningSecretArn
                 - !If
-                  - IsProd
+                  - ProdWantsLivePayU
                   - !ImportValue cyrokx-network-data-PayUSecretArn
                   - !ImportValue cyrokx-network-data-PayUTestSecretArn
         - SQSSendMessagePolicy:
@@ -1003,7 +1026,7 @@ Resources:
           DB_SCHEMA: !If [HasDbSchema, !Ref DbSchema, !Ref AWS::NoValue]
           EMAIL_QUEUE_URL: !Ref EmailQueue
           PAYU_SECRET_ARN: !If
-            - IsProd
+            - ProdWantsLivePayU
             - !ImportValue cyrokx-network-data-PayUSecretArn
             - !ImportValue cyrokx-network-data-PayUTestSecretArn
       Policies:
@@ -1013,7 +1036,7 @@ Resources:
               Resource:
                 - !ImportValue cyrokx-network-data-AppDbSecretArn
                 - !If
-                  - IsProd
+                  - ProdWantsLivePayU
                   - !ImportValue cyrokx-network-data-PayUSecretArn
                   - !ImportValue cyrokx-network-data-PayUTestSecretArn
         - SQSSendMessagePolicy:
@@ -1057,7 +1080,7 @@ Resources:
           DB_SCHEMA: !If [HasDbSchema, !Ref DbSchema, !Ref AWS::NoValue]
           EMAIL_QUEUE_URL: !Ref EmailQueue
           PAYU_SECRET_ARN: !If
-            - IsProd
+            - ProdWantsLivePayU
             - !ImportValue cyrokx-network-data-PayUSecretArn
             - !ImportValue cyrokx-network-data-PayUTestSecretArn
       Policies:
@@ -1067,7 +1090,7 @@ Resources:
               Resource:
                 - !ImportValue cyrokx-network-data-AppDbSecretArn
                 - !If
-                  - IsProd
+                  - ProdWantsLivePayU
                   - !ImportValue cyrokx-network-data-PayUSecretArn
                   - !ImportValue cyrokx-network-data-PayUTestSecretArn
         - SQSSendMessagePolicy:
