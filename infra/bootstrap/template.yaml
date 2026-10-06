@@ -123,6 +123,12 @@ Resources:
             - lambda:UpdateFunctionCode
             - lambda:UpdateFunctionConfiguration
             - lambda:DeleteFunction
+            # ReservedConcurrentExecutions (PaymentReconcilerFunction) is a
+            # separate API from UpdateFunctionConfiguration and needs its own
+            # grant -- SAM calls this during both create and update.
+            - lambda:PutFunctionConcurrency
+            - lambda:DeleteFunctionConcurrency
+            - lambda:GetFunctionConcurrency
             - lambda:GetFunction
             - lambda:GetFunctionConfiguration
             - lambda:AddPermission
