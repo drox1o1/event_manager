@@ -239,9 +239,10 @@ export function replaceFormFields(token: string, eventId: string, fields: FormFi
 }
 
 /** One page of registrations -- see organiserApi.listAttendees for why this is
- *  cursor-paginated rather than returning everything at once. */
-export function listAttendees(token: string, eventId: string, cursor?: string): Promise<AttendeeListResponse> {
-  return apiFetch<AttendeeListResponse>(`/admin/events/${eventId}/attendees`, { token, query: { cursor } });
+ *  cursor-paginated rather than returning everything at once, and for what
+ *  `limit` is for. */
+export function listAttendees(token: string, eventId: string, cursor?: string, limit?: number): Promise<AttendeeListResponse> {
+  return apiFetch<AttendeeListResponse>(`/admin/events/${eventId}/attendees`, { token, query: { cursor, limit } });
 }
 
 /** Registration export (every form field + transaction columns) as CSV or Excel. */

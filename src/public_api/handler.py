@@ -121,12 +121,13 @@ def _tier_summary(tier: TicketTier, available: dict) -> TicketTierSummary:
     different readers.
     """
     remaining = available.get(tier.id, 0)
-    return TicketTierSummary.model_validate(
-        tier,
+    # model_validate() has no `update` kwarg -- that's model_copy()'s. Validate
+    # the ORM object first, then layer the computed fields on with a copy.
+    return TicketTierSummary.model_validate(tier).model_copy(
         update={
             "quantity_available": remaining,
             "quantity_held": max(0, tier.quantity_total - tier.quantity_sold - remaining),
-        },
+        }
     )
 
 
