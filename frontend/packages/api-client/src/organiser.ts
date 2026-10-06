@@ -104,8 +104,12 @@ export function createBannerUploadUrl(token: string, eventId: string, contentTyp
   });
 }
 
-export function listAttendees(token: string, eventId: string): Promise<AttendeeListResponse> {
-  return apiFetch<AttendeeListResponse>(`/organiser/events/${eventId}/attendees`, { token });
+/** One page of registrations. The list is cursor-paginated server-side (a
+ *  popular event's full attendee list can exceed the API's response size
+ *  limit), so callers that want everything must follow next_cursor until it's
+ *  null -- see listAllAttendees in RegistrationsView. */
+export function listAttendees(token: string, eventId: string, cursor?: string): Promise<AttendeeListResponse> {
+  return apiFetch<AttendeeListResponse>(`/organiser/events/${eventId}/attendees`, { token, query: { cursor } });
 }
 
 /** Registration export (every form field + transaction columns) as CSV or Excel. */

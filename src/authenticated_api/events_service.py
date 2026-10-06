@@ -8,6 +8,7 @@ admin".
 
 import base64
 import csv
+import datetime as dt
 import io
 import uuid
 from decimal import ROUND_HALF_UP, Decimal
@@ -37,6 +38,7 @@ from common.models import (
     Ticket,
     TicketTier,
 )
+from common.pagination import DEFAULT_PAGE_SIZE, CursorField, InvalidCursorError, paginate
 from common.schemas import (
     EventCreateRequest,
     EventImagesReplaceRequest,
@@ -442,49 +444,91 @@ def replace_images_impl(event_id: str, body: EventImagesReplaceRequest, organise
     return {"images": [img.image_url for img in body.images]}
 
 
-def attendees_impl(event_id: str, organiser_id: uuid.UUID | None) -> dict:
+def parse_limit(raw: str | None, default: int = DEFAULT_PAGE_SIZE) -> int:
+    """A query-string `limit` for a cursor-paginated list. Bounds are enforced
+    again inside paginate() itself; this only turns a bad value into a 400
+    instead of a 500 from int()."""
+    if raw is None or raw == "":
+        return default
+    try:
+        return int(raw)
+    except ValueError as exc:
+        raise BadRequestError("limit must be an integer") from exc
+
+
+_ATTENDEE_CURSOR_FIELDS = [
+    # Ordered by the purchasing order's created_at, matching what the UI
+    # labels "purchased_at" -- Ticket itself carries no timestamp of its own.
+    # Ticket.id is an arbitrary but stable tiebreaker: unique and immutable,
+    # so pages stay consistent even though it has no meaning on its own.
+    CursorField(Order.created_at, extract=lambda t: t.order_item.order.created_at, parse=dt.datetime.fromisoformat),
+    CursorField(Ticket.id, extract=lambda t: t.id, parse=uuid.UUID),
+]
+
+
+def attendees_impl(
+    event_id: str,
+    organiser_id: uuid.UUID | None,
+    *,
+    cursor: str | None = None,
+    limit: int = DEFAULT_PAGE_SIZE,
+) -> dict:
+    """One page of an event's registrations, newest purchase first.
+
+    Cursor-paginated rather than returned whole: a popular event's attendee
+    list, with every registration-form answer inlined per ticket, can exceed
+    Lambda's 6MB response cap -- which doesn't fail gracefully, it fails as an
+    opaque 502 with the organiser unable to load the page at all. Keyset
+    pagination (see common.pagination) rather than page/page_size because this
+    list keeps growing while an organiser might be mid-page: a new sale
+    between two OFFSET-paginated requests shifts every row after it, so a page
+    can silently skip or repeat an attendee.
+    """
     event_uuid = parse_uuid(event_id)
     with get_session() as session:
         load_event_for(session, event_uuid, organiser_id)
-        orders = (
-            session.execute(
-                select(Order)
-                .where(Order.event_id == event_uuid, Order.payment_status == PaymentStatus.SUCCESS)
-                .options(
-                    selectinload(Order.order_items).selectinload(OrderItem.ticket_tier),
-                    selectinload(Order.order_items).selectinload(OrderItem.tickets),
-                )
-                .order_by(Order.created_at.desc())
+        query = (
+            select(Ticket)
+            .join(OrderItem, Ticket.order_item_id == OrderItem.id)
+            .join(Order, OrderItem.order_id == Order.id)
+            .where(Order.event_id == event_uuid, Order.payment_status == PaymentStatus.SUCCESS)
+            .options(
+                selectinload(Ticket.order_item).selectinload(OrderItem.order),
+                selectinload(Ticket.order_item).selectinload(OrderItem.ticket_tier),
             )
-            .scalars()
-            .all()
+            .order_by(Order.created_at.desc(), Ticket.id.desc())
         )
+        try:
+            page = paginate(session, query, _ATTENDEE_CURSOR_FIELDS, cursor=cursor, limit=limit)
+        except InvalidCursorError as exc:
+            raise BadRequestError(str(exc)) from exc
+
         attendees = [
             {
                 "ticket_id": str(ticket.id),
                 "ticket_code": short_code(ticket.id),
-                "order_id": str(order.id),
-                "order_code": short_code(order.id),
-                "buyer_name": order.buyer_name,
-                "buyer_email": order.buyer_email,
-                "buyer_phone": order.buyer_phone,
-                "attendee_name": ticket.attendee_name or order.buyer_name,
+                "order_id": str(ticket.order_item.order.id),
+                "order_code": short_code(ticket.order_item.order.id),
+                "buyer_name": ticket.order_item.order.buyer_name,
+                "buyer_email": ticket.order_item.order.buyer_email,
+                "buyer_phone": ticket.order_item.order.buyer_phone,
+                "attendee_name": ticket.attendee_name or ticket.order_item.order.buyer_name,
                 "attendee_email": ticket.attendee_email,
                 "attendee_phone": ticket.attendee_phone,
                 "attendee_answers": ticket.attendee_answers or [],
-                "ticket_tier": oi.ticket_tier.name if oi.ticket_tier else None,
-                "ticket_tier_id": str(oi.ticket_tier_id),
-                "unit_price": str(oi.unit_price),
+                "ticket_tier": ticket.order_item.ticket_tier.name if ticket.order_item.ticket_tier else None,
+                "ticket_tier_id": str(ticket.order_item.ticket_tier_id),
+                "unit_price": str(ticket.order_item.unit_price),
                 "checked_in": ticket.checked_in,
                 "approval_status": ticket.approval_status,
-                "occurrence_date": order.occurrence_date.isoformat() if order.occurrence_date else None,
-                "purchased_at": order.created_at.isoformat(),
+                "occurrence_date": ticket.order_item.order.occurrence_date.isoformat()
+                if ticket.order_item.order.occurrence_date
+                else None,
+                "purchased_at": ticket.order_item.order.created_at.isoformat(),
             }
-            for order in orders
-            for oi in order.order_items
-            for ticket in oi.tickets
+            for ticket in page.items
         ]
-    return {"attendees": attendees}
+    return {"attendees": attendees, "next_cursor": page.next_cursor}
 
 
 EXPORT_FORMATS = ("csv", "xlsx")

@@ -10,10 +10,28 @@ import { EmptyState } from '../components/feedback/EmptyState';
 import { Notice, errMessage } from './ui';
 
 export interface RegistrationsApi {
-  listAttendees(token: string, eventId: string): Promise<AttendeeListResponse>;
+  listAttendees(token: string, eventId: string, cursor?: string): Promise<AttendeeListResponse>;
   exportAttendees(token: string, eventId: string, format: RegistrationExportFormat, status?: string): Promise<RegistrationExport>;
   approveTicket(token: string, eventId: string, ticketId: string): Promise<unknown>;
   rejectTicket(token: string, eventId: string, ticketId: string): Promise<unknown>;
+}
+
+/** Walks every page of a cursor-paginated attendee list and concatenates them.
+ *
+ *  The list is paginated server-side purely so one response can't exceed the
+ *  API's size limit on a popular event -- this view still works on the whole
+ *  list at once (search/filter/tier are all client-side below), so it hides
+ *  the paging from the rest of the component rather than turning this into
+ *  infinite scroll. */
+async function listAllAttendees(api: RegistrationsApi, token: string, eventId: string): Promise<Attendee[]> {
+  const all: Attendee[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await api.listAttendees(token, eventId, cursor);
+    all.push(...page.attendees);
+    cursor = page.next_cursor ?? undefined;
+  } while (cursor);
+  return all;
 }
 
 function answerText(a: string | string[]): string {
@@ -75,7 +93,7 @@ export function RegistrationsView({ api, token, eventId }: { api: RegistrationsA
   };
 
   const load = React.useCallback(() => {
-    api.listAttendees(token, eventId).then((r) => setRows(r.attendees)).catch((err) => setError(errMessage(err, 'Could not load registrations.')));
+    listAllAttendees(api, token, eventId).then(setRows).catch((err) => setError(errMessage(err, 'Could not load registrations.')));
   }, [api, token, eventId]);
   React.useEffect(load, [load]);
 

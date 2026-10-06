@@ -238,8 +238,10 @@ export function replaceFormFields(token: string, eventId: string, fields: FormFi
   return apiFetch<FormFieldsResponse>(`/admin/events/${eventId}/form-fields`, { method: 'PUT', body: { fields }, token });
 }
 
-export function listAttendees(token: string, eventId: string): Promise<AttendeeListResponse> {
-  return apiFetch<AttendeeListResponse>(`/admin/events/${eventId}/attendees`, { token });
+/** One page of registrations -- see organiserApi.listAttendees for why this is
+ *  cursor-paginated rather than returning everything at once. */
+export function listAttendees(token: string, eventId: string, cursor?: string): Promise<AttendeeListResponse> {
+  return apiFetch<AttendeeListResponse>(`/admin/events/${eventId}/attendees`, { token, query: { cursor } });
 }
 
 /** Registration export (every form field + transaction columns) as CSV or Excel. */

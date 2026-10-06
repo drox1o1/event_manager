@@ -647,6 +647,9 @@ export type OrganiserProfileUpdate = Partial<Pick<OrganiserProfile,
 
 export interface AttendeeListResponse {
   attendees: Attendee[];
+  /** Opaque -- pass back verbatim as the `cursor` query param for the next
+   *  page. null means this was the last page. */
+  next_cursor: string | null;
 }
 
 export type RegistrationExportFormat = 'csv' | 'xlsx';
