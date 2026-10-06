@@ -284,12 +284,14 @@ def admin_replace_form_fields(event_id: str):
 
 @app.get("/admin/events/<event_id>/attendees")
 def admin_list_attendees(event_id: str):
-    """Registrations list, or with ?format=csv|xlsx (&status=) the export file."""
+    """Registrations list (cursor-paginated: ?cursor=, &limit=), or with
+    ?format=csv|xlsx (&status=) the export file."""
     require_admin_id()
     params = app.current_event.query_string_parameters or {}
     if params.get("format"):
         return svc.export_attendees_impl(event_id, None, params["format"], params.get("status"))
-    return svc.attendees_impl(event_id, None)
+    limit = svc.parse_limit(params.get("limit"))
+    return svc.attendees_impl(event_id, None, cursor=params.get("cursor"), limit=limit)
 
 
 @app.post("/admin/events/<event_id>/tickets/<ticket_id>/approve")

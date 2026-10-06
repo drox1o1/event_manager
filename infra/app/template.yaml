@@ -1064,8 +1064,15 @@ Resources:
       CodeUri: ../../src/payment_reconciler/
       Handler: handler.handler
       Timeout: 300
-      # Never two at once against the same rows.
-      ReservedConcurrentExecutions: 1
+      # No ReservedConcurrentExecutions: this account's entire Lambda
+      # concurrency pool is 10, account-wide (AWS enforces a floor of 10
+      # unreserved, so there is no room to reserve any right now -- a real
+      # scaling concern of its own, separate from this function). Safe to go
+      # without it regardless: settle_order's row-level locking (SELECT ...
+      # FOR UPDATE on the payment_attempts/orders rows) already makes two
+      # concurrent reconciler runs settle the same row safely, which is the
+      # same property the idempotency tests in test_settlement.py check. This
+      # was defense-in-depth, not a correctness requirement.
       Layers:
         - !Ref CommonLayer
       VpcConfig:

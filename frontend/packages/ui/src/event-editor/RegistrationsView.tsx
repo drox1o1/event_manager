@@ -10,10 +10,45 @@ import { EmptyState } from '../components/feedback/EmptyState';
 import { Notice, errMessage } from './ui';
 
 export interface RegistrationsApi {
-  listAttendees(token: string, eventId: string): Promise<AttendeeListResponse>;
+  listAttendees(token: string, eventId: string, cursor?: string, limit?: number): Promise<AttendeeListResponse>;
   exportAttendees(token: string, eventId: string, format: RegistrationExportFormat, status?: string): Promise<RegistrationExport>;
   approveTicket(token: string, eventId: string, ticketId: string): Promise<unknown>;
   rejectTicket(token: string, eventId: string, ticketId: string): Promise<unknown>;
+}
+
+// The server's own cap (common.pagination.MAX_PAGE_SIZE) -- asked for
+// explicitly so this walks the fewest possible round trips. A real event can
+// carry several thousand registrations (one live marathon has 3,000+), where
+// the previous default of 100/page meant 30+ sequential authenticated
+// requests -- each paying the JWT authorizer's own invocation on top --
+// before anything rendered. That read as "pagination doesn't work": a static
+// "Loading…" for the better part of a minute is indistinguishable from hung.
+const MAX_PAGE_SIZE = 500;
+
+/** Walks every page of a cursor-paginated attendee list, handing back each
+ *  page as it arrives so the caller can render progressively rather than
+ *  blocking on the full walk.
+ *
+ *  The list is paginated server-side purely so one response can't exceed the
+ *  API's size limit on a popular event -- this view still works on the whole
+ *  list at once (search/filter/tier are all client-side below), so paging is
+ *  hidden from the rest of the component rather than turning this into
+ *  infinite scroll; it just no longer hides the first several seconds of it
+ *  behind a blank screen. */
+async function listAllAttendees(
+  api: RegistrationsApi,
+  token: string,
+  eventId: string,
+  onPage: (soFar: Attendee[]) => void
+): Promise<void> {
+  const all: Attendee[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await api.listAttendees(token, eventId, cursor, MAX_PAGE_SIZE);
+    all.push(...page.attendees);
+    onPage(all.slice());
+    cursor = page.next_cursor ?? undefined;
+  } while (cursor);
 }
 
 function answerText(a: string | string[]): string {
@@ -48,6 +83,7 @@ const APPROVAL: Record<string, { bg: string; fg: string; label: string }> = {
  *  filter by ticket type, and export everything (server-built CSV / Excel). */
 export function RegistrationsView({ api, token, eventId }: { api: RegistrationsApi; token: string; eventId: string }) {
   const [rows, setRows] = React.useState<Attendee[] | null>(null);
+  const [stillLoading, setStillLoading] = React.useState(false);
   const [query, setQuery] = React.useState('');
   const [tier, setTier] = React.useState('');
   const [onlyPending, setOnlyPending] = React.useState(false);
@@ -75,7 +111,14 @@ export function RegistrationsView({ api, token, eventId }: { api: RegistrationsA
   };
 
   const load = React.useCallback(() => {
-    api.listAttendees(token, eventId).then((r) => setRows(r.attendees)).catch((err) => setError(errMessage(err, 'Could not load registrations.')));
+    // Only blank the screen on the true first load. A reload after
+    // approve/reject keeps the current rows visible (and usable) while the
+    // fresh pages come in, rather than flashing the whole list away to
+    // re-fetch something that, for a large event, takes several seconds.
+    setStillLoading(true);
+    listAllAttendees(api, token, eventId, setRows)
+      .catch((err) => setError(errMessage(err, 'Could not load registrations.')))
+      .finally(() => setStillLoading(false));
   }, [api, token, eventId]);
   React.useEffect(load, [load]);
 
@@ -89,6 +132,11 @@ export function RegistrationsView({ api, token, eventId }: { api: RegistrationsA
   };
 
   if (rows === null && !error) return <div style={{ padding: 40, color: 'var(--text-muted)' }}>Loading…</div>;
+  // Rows render as soon as the first page arrives; a large event keeps
+  // fetching further pages behind this, so the counts below are provisional
+  // until it settles -- say so, or a still-growing "247 participants" reads
+  // as a finished number rather than one still climbing.
+  const loadingMore = stillLoading && rows !== null;
   const all = rows ?? [];
   const tiers = Array.from(new Set(all.map((r) => r.ticket_tier ?? ''))).filter(Boolean);
   const q = query.toLowerCase();
@@ -115,6 +163,12 @@ export function RegistrationsView({ api, token, eventId }: { api: RegistrationsA
           </div>
         ))}
       </div>
+
+      {loadingMore && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
+          <Icon name="loader" size={14} />Still loading more registrations — counts above will keep climbing.
+        </div>
+      )}
 
       {error && <div style={{ marginBottom: 16 }}><Notice tone="error">{error}</Notice></div>}
 

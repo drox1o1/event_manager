@@ -104,8 +104,14 @@ export function createBannerUploadUrl(token: string, eventId: string, contentTyp
   });
 }
 
-export function listAttendees(token: string, eventId: string): Promise<AttendeeListResponse> {
-  return apiFetch<AttendeeListResponse>(`/organiser/events/${eventId}/attendees`, { token });
+/** One page of registrations. The list is cursor-paginated server-side (a
+ *  popular event's full attendee list can exceed the API's response size
+ *  limit), so callers that want everything must follow next_cursor until it's
+ *  null -- see listAllAttendees in RegistrationsView. `limit` lets a caller
+ *  that wants everything ask for the server's max page size up front, rather
+ *  than paying for many small round trips serially. */
+export function listAttendees(token: string, eventId: string, cursor?: string, limit?: number): Promise<AttendeeListResponse> {
+  return apiFetch<AttendeeListResponse>(`/organiser/events/${eventId}/attendees`, { token, query: { cursor, limit } });
 }
 
 /** Registration export (every form field + transaction columns) as CSV or Excel. */
