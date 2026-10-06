@@ -93,12 +93,17 @@ def test_order_email_escapes_html_and_lists_every_ticket():
     _, html_body, text_body = _render(MESSAGES[7])
     assert "&lt;2026&gt;" in html_body
     assert "11111111" in html_body and "22222222" in html_body
-    assert "Awaiting approval" in html_body
-    # Plain-text body is auto-derived from the HTML (tags stripped), so each
-    # ticket's fields land on their own line rather than one hand-authored
-    # "name (tier)" phrase -- still readable, just not identical formatting.
-    assert "Brijesh" in text_body and "Full Marathon" in text_body
-    assert "Awaiting approval" in text_body
+    # One registration-confirmation block per participant -- own greeting,
+    # race category, and booking ID -- since each ticket in an order can
+    # belong to a different person and category.
+    assert "Hi Brijesh," in html_body and "Hi Asha," in html_body
+    assert "Race category: <strong>Full Marathon</strong>" in html_body
+    assert "Race category: <strong>Half Marathon</strong>" in html_body
+    assert "Awaiting organiser approval" in html_body  # Asha's ticket is pending
+    # Plain-text body is auto-derived from the HTML (tags stripped).
+    assert "Hi Brijesh," in text_body and "Hi Asha," in text_body
+    assert "Booking ID: 11111111" in text_body and "Booking ID: 22222222" in text_body
+    assert "Awaiting organiser approval" in text_body
 
 
 def _records(*bodies):
