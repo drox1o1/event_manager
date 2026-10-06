@@ -16,6 +16,7 @@ import uuid
 import boto3
 from app import app
 from aws_lambda_powertools.event_handler.exceptions import BadRequestError
+from botocore.config import Config
 
 _s3_client = None
 
@@ -23,16 +24,22 @@ _s3_client = None
 def _s3():
     global _s3_client
     if _s3_client is None:
-        # region_name explicitly, not left to default resolution: without it,
-        # boto3 signs presigned URLs against S3's legacy global endpoint
-        # (bucket.s3.amazonaws.com) regardless of where the bucket actually
-        # lives. For a bucket outside us-east-1, S3 answers a GET against that
-        # host with a 307 to the real regional endpoint -- but the presigned
-        # signature covers the *original* host, so following that redirect
-        # (which curl and most HTTP clients do automatically) gets a
-        # SignatureDoesNotMatch, confirmed live against ExportsBucket in
-        # ap-south-1. AWS_REGION is always set in the Lambda environment.
-        _s3_client = boto3.client("s3", region_name=os.environ.get("AWS_REGION", "ap-south-1"))
+        # region_name alone is NOT enough, confirmed by hitting
+        # SignatureDoesNotMatch against ExportsBucket in ap-south-1 even with
+        # it set: botocore's default S3 config still presigns against the
+        # legacy global endpoint (bucket.s3.amazonaws.com) for any bucket
+        # outside us-east-1 unless addressing_style/signature_version are
+        # also pinned here. A GET against that global host 307-redirects to
+        # the real regional endpoint, but the signature covers the *original*
+        # host -- and curl, browsers, and most HTTP clients follow redirects
+        # automatically, carrying the now-invalid signature with them.
+        # Verified locally: only this combination actually produces
+        # bucket.s3.<region>.amazonaws.com, the host SigV4 ends up signing.
+        _s3_client = boto3.client(
+            "s3",
+            region_name=os.environ.get("AWS_REGION", "ap-south-1"),
+            config=Config(s3={"addressing_style": "virtual"}, signature_version="s3v4"),
+        )
     return _s3_client
 
 
