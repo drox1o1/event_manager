@@ -33,6 +33,46 @@ class RefundStatus(str, enum.Enum):
     REJECTED = "rejected"
 
 
+# The two below are StrEnum, unlike every other enum in this package, and the
+# difference is deliberate. The others are backed by real Postgres enum types
+# and bound through SQLAlchemy's Enum(..., values_callable=...), which reads
+# .value explicitly. These live on plain VARCHAR columns (see 0011: ALTER TYPE
+# ... ADD VALUE can't run inside Alembic's transaction, so gateway vocabulary
+# shouldn't cost a migration) -- and a (str, Enum) member stringifies to
+# "AttemptStatus.SUCCESS", so any str() coercion on the way to a String column
+# would quietly store that instead of "success". StrEnum stringifies to its
+# value, which removes the trap rather than relying on nobody tripping it.
+
+
+class AttemptStatus(enum.StrEnum):
+    """PayU's verdict on one transaction.
+
+    PENDING is PayU's own "still deciding", not our order's PENDING -- a
+    transaction can sit here while the buyer is on their bank's 3DS page.
+    """
+
+    INITIATED = "initiated"  # handed to PayU, nothing heard back yet
+    SUCCESS = "success"
+    FAILURE = "failure"
+    PENDING = "pending"
+    CANCELLED = "cancelled"
+
+
+class RefundProgress(enum.StrEnum):
+    """Where a refund has got to at PayU.
+
+    Distinct from RefundStatus, which records the admin's decision on a buyer's
+    request. Conflating the two is how a refund comes to look settled while the
+    money is still ours: APPROVED means someone said yes, CONFIRMED means PayU
+    actually returned it.
+    """
+
+    REQUESTED = "requested"  # written down; the gateway call hasn't succeeded yet
+    PENDING = "pending"  # queued at PayU, which settles refunds asynchronously
+    CONFIRMED = "confirmed"  # money returned, as reported by PayU
+    FAILED = "failed"  # PayU refused the request
+
+
 class Order(Base):
     __tablename__ = "orders"
 
@@ -50,6 +90,15 @@ class Order(Base):
         default=PaymentStatus.PENDING,
     )
     payment_gateway_ref: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # 0011: the inventory hold taken at checkout. NULL means no hold applies
+    # (free, settled or failed orders). An expired hold simply stops counting
+    # against availability -- see common.inventory -- so nothing sweeps these.
+    # A lapsed hold is NOT evidence the payment failed: only PayU decides that.
+    reserved_until: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # 0011: the resolved ticket plan snapshotted at checkout, replayed verbatim
+    # at settlement. Resolved (not the raw request) on purpose -- see the 0011
+    # migration docstring.
+    pending_items: Mapped[list[dict] | None] = mapped_column(JSONB, nullable=True)
     occurrence_date: Mapped[dt.date | None] = mapped_column(Date, nullable=True)  # recurring events (0006)
     # 0009: reserved for promo codes (not built yet) so exports have a fixed shape.
     discount_amount: Mapped[Numeric] = mapped_column(Numeric(10, 2), nullable=False, default=0)
@@ -62,6 +111,9 @@ class Order(Base):
     )
     refund_requests: Mapped[list["RefundRequest"]] = relationship(back_populates="order")
     form_responses: Mapped[list["OrderFormResponse"]] = relationship(
+        back_populates="order", cascade="all, delete-orphan"
+    )
+    payment_attempts: Mapped[list["PaymentAttempt"]] = relationship(
         back_populates="order", cascade="all, delete-orphan"
     )
 
@@ -104,6 +156,66 @@ class OrderFormResponse(Base):
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     order: Mapped["Order"] = relationship(back_populates="form_responses")
+
+
+class PaymentAttempt(Base):
+    """One PayU transaction (0011). `txnid` is the idempotency key every
+    settlement path looks an order up by -- the browser return, the webhook,
+    and the scheduled reconciler all converge on the same row.
+
+    A retry on a failed order creates a *new* attempt with a new txnid rather
+    than reusing this one, so the full history stays readable when a buyer
+    says they were charged twice. `status` deliberately holds PayU's own
+    vocabulary as plain text rather than a Postgres enum -- see 0011.
+    """
+
+    __tablename__ = "payment_attempts"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    order_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("orders.id"), nullable=False)
+    txnid: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    # What was actually hashed and sent to PayU. The amount that comes back
+    # must equal this exactly, or the response is not for what we asked.
+    amount: Mapped[Numeric] = mapped_column(Numeric(10, 2), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default=AttemptStatus.INITIATED)
+    mihpayid: Mapped[str | None] = mapped_column(String(100), nullable=True)  # PayU's id; required to refund
+    mode: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    error_code: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    gateway_response: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    settled_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    order: Mapped["Order"] = relationship(back_populates="payment_attempts")
+    refunds: Mapped[list["PaymentRefund"]] = relationship(back_populates="attempt")
+
+
+class PaymentRefund(Base):
+    """A refund in flight at PayU (0011). Refunds there are asynchronous: the
+    API call only queues one, so `status` moves requested -> pending ->
+    confirmed as the reconciler follows it up.
+
+    `refund_request_id` is NULL when the system initiated the refund itself --
+    a payment that confirmed after its hold had lapsed, for a tier that sold
+    out in the meantime. Nobody asked for that one; we owe it anyway.
+    """
+
+    __tablename__ = "payment_refunds"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    attempt_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("payment_attempts.id"), nullable=False)
+    refund_request_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("refund_requests.id"), nullable=True
+    )
+    amount: Mapped[Numeric] = mapped_column(Numeric(10, 2), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default=RefundProgress.REQUESTED)
+    gateway_refund_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    gateway_response: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    confirmed_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    attempt: Mapped["PaymentAttempt"] = relationship(back_populates="refunds")
 
 
 class RefundRequest(Base):

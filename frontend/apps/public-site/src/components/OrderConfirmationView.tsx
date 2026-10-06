@@ -4,7 +4,8 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon, Button } from '@showtik/ui';
 import { publicApi, formatINR, formatDateTime, formatEventDate, formatTimestamp, ApiError } from '@showtik/api-client';
-import type { OrderDetail, OrderQueryCategory } from '@showtik/api-client';
+import type { OrderDetail, OrderQueryCategory, OrderTicket, PayUFormPayload } from '@showtik/api-client';
+import { PayURedirectForm, PayURedirectNotice } from './PayURedirectForm';
 
 export interface OrderConfirmationViewProps {
   order: OrderDetail;
@@ -23,11 +24,146 @@ const APPROVAL: Record<string, { label: string; bg: string; fg: string }> = {
   rejected: { label: 'Not approved', bg: 'var(--status-error-bg)', fg: 'var(--status-error-text)' },
 };
 
-/** Order confirmation — one order (= one payment) with a separate ticket,
- *  ticket ID and QR token per participant, grouped by ticket type. */
+/** Order page — branches on payment_status, because an order now exists before
+ *  its money does.
+ *
+ *  `pending` means the buyer is (or was) at PayU and nothing is confirmed yet;
+ *  `failed` means it definitively didn't go through, and the participant details
+ *  are still on the order so the payment can simply be retried. Only `success`
+ *  reaches the confirmation below, which is the only state where tickets exist. */
 export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
+  if (order.payment_status === 'pending') return <PaymentPending order={order} />;
+  if (order.payment_status === 'failed') return <PaymentFailed order={order} />;
+  return <OrderConfirmed order={order} />;
+}
+
+/** Waiting on PayU. Polls rather than asking the buyer to refresh, since the
+ *  webhook usually lands within seconds -- but gives up rather than spinning
+ *  forever, because the reconciler will settle it either way and the
+ *  confirmation email is the real backstop. */
+function PaymentPending({ order }: OrderConfirmationViewProps) {
+  const router = useRouter();
+  const [gaveUp, setGaveUp] = React.useState(false);
+
+  React.useEffect(() => {
+    let attempts = 0;
+    const timer = setInterval(async () => {
+      attempts += 1;
+      const fresh = await publicApi.getOrder(order.order_id).catch(() => null);
+      if (fresh && fresh.payment_status !== 'pending') {
+        clearInterval(timer);
+        // Re-runs the force-dynamic server component rather than threading
+        // fresh state through, so every branch renders from one source.
+        router.refresh();
+        return;
+      }
+      if (attempts >= 24) { // ~2 minutes at 5s
+        clearInterval(timer);
+        setGaveUp(true);
+      }
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [order.order_id, router]);
+
+  return (
+    <StatusPage
+      icon="hourglass"
+      tone="warning"
+      heading={gaveUp ? 'Still confirming your payment' : 'Confirming your payment'}
+      body={
+        gaveUp
+          ? 'This is taking longer than usual. Your bank may still be processing it — we’ll email you as soon as it’s confirmed, and no further action is needed.'
+          : 'Please don’t close this page. This usually takes a few seconds.'
+      }
+      order={order}
+    />
+  );
+}
+
+/** Definitively failed. Retrying reuses this order, so the buyer doesn't
+ *  re-enter every participant — on a multi-runner booking that's a lot of
+ *  typing to lose to a declined card. */
+function PaymentFailed({ order }: OrderConfirmationViewProps) {
+  const [payu, setPayu] = React.useState<PayUFormPayload | null>(null);
+  const [retrying, setRetrying] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const retry = async () => {
+    setRetrying(true);
+    setError(null);
+    try {
+      const result = await publicApi.retryPayment(order.order_id);
+      if (result.payu) setPayu(result.payu);
+      else setError('This order can’t be paid online. Please book again.');
+    } catch (err) {
+      // A 409 here usually means the tickets went while the buyer was away.
+      setError(err instanceof ApiError ? err.message : 'Could not restart the payment. Please try again.');
+      setRetrying(false);
+    }
+  };
+
+  if (payu) {
+    return (
+      <div style={{ fontFamily: 'var(--font-sans)', maxWidth: 820, margin: '0 auto', padding: 'clamp(28px, 6vw, 56px) 16px' }}>
+        <PayURedirectNotice amount={order.total_amount} />
+        <PayURedirectForm payu={payu} />
+      </div>
+    );
+  }
+
+  return (
+    <StatusPage
+      icon="circle-x"
+      tone="error"
+      heading="Your payment didn’t go through"
+      body="No tickets were issued and you haven’t been charged. If money was debited, it’s refunded automatically within 5–7 working days."
+      order={order}
+      action={
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
+          <Button onClick={retry} loading={retrying} style={{ minWidth: 220 }}>Try payment again</Button>
+          {error && <div role="alert" style={{ color: 'var(--color-error)', fontSize: 14, fontWeight: 600, maxWidth: 420 }}>{error}</div>}
+          <a href={`/events/${order.event_id}`} style={{ fontSize: 14, color: 'var(--text-muted)' }}>Back to the event</a>
+        </div>
+      }
+    />
+  );
+}
+
+/** Shared chrome for the non-success states: the order is real and worth
+ *  showing, there just aren't tickets to list yet. */
+function StatusPage({
+  icon, tone, heading, body, order, action,
+}: {
+  icon: string;
+  tone: 'warning' | 'error';
+  heading: string;
+  body: string;
+  order: OrderDetail;
+  action?: React.ReactNode;
+}) {
+  const bg = tone === 'error' ? 'var(--status-error-bg)' : 'var(--status-warning-bg)';
+  const fg = tone === 'error' ? 'var(--status-error-text)' : 'var(--status-warning-text)';
+  return (
+    <div style={{ fontFamily: 'var(--font-sans)', maxWidth: 640, margin: '0 auto', padding: 'clamp(28px, 6vw, 56px) clamp(16px, 4vw, 32px)', textAlign: 'center' }}>
+      <div style={{ width: 68, height: 68, borderRadius: '50%', background: bg, color: fg, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
+        <Icon name={icon} size={32} />
+      </div>
+      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(26px, 5vw, 36px)', fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-heading)', margin: '0 0 10px' }}>{heading}</h1>
+      <p style={{ fontSize: 15.5, color: 'var(--text-muted)', margin: '0 0 24px', lineHeight: 1.6 }}>{body}</p>
+      <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 6, padding: '14px 20px', borderRadius: 12, border: '1px solid var(--border-default)', background: 'var(--surface-card)', fontSize: 14, marginBottom: 24 }}>
+        <div><span style={{ color: 'var(--text-muted)' }}>Event</span> <strong style={{ color: 'var(--text-heading)' }}>{order.event_title}</strong></div>
+        <div><span style={{ color: 'var(--text-muted)' }}>Order</span> <strong style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-heading)' }}>{order.order_code}</strong></div>
+        <div><span style={{ color: 'var(--text-muted)' }}>Amount</span> <strong style={{ color: 'var(--text-heading)' }}>{formatINR(order.total_amount)}</strong></div>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function OrderConfirmed({ order }: OrderConfirmationViewProps) {
   const router = useRouter();
   const [queryOpen, setQueryOpen] = React.useState(false);
+  const [viewing, setViewing] = React.useState<(OrderTicket & { item: OrderDetail['items'][number] }) | null>(null);
   const [queryType, setQueryType] = React.useState<OrderQueryCategory>('payment');
   const [message, setMessage] = React.useState('');
   const [queryState, setQueryState] = React.useState<'idle' | 'submitting' | 'done'>('idle');
@@ -35,6 +171,9 @@ export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
 
   const tickets = order.items.flatMap((item) => item.tickets.map((t, idx) => ({ ...t, item, idx })));
   const pending = tickets.some((t) => t.approval_status === 'pending');
+  // A refunded order keeps its tickets as a record, so the page still lists
+  // them -- but it must not read as a live booking.
+  const refunded = order.payment_status === 'refunded';
 
   const submitQuery = async () => {
     if (message.trim().length < 5) { setQueryError('Please describe your query in a few words.'); return; }
@@ -52,16 +191,22 @@ export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
   return (
     <div style={{ fontFamily: 'var(--font-sans)', maxWidth: 820, margin: '0 auto', padding: 'clamp(28px, 6vw, 56px) clamp(16px, 4vw, 32px)' }}>
       <div className="no-print" style={{ textAlign: 'center', marginBottom: 32 }}>
-        <div style={{ width: 68, height: 68, borderRadius: '50%', background: 'var(--status-success-bg)', color: 'var(--color-success)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
-          <Icon name="party-popper" size={32} />
+        <div style={{ width: 68, height: 68, borderRadius: '50%', background: refunded ? 'var(--status-warning-bg)' : 'var(--status-success-bg)', color: refunded ? 'var(--status-warning-text)' : 'var(--color-success)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
+          <Icon name={refunded ? 'rotate-ccw' : 'party-popper'} size={32} />
         </div>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(32px, 6vw, 48px)', fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-heading)', margin: '0 0 8px' }}>You&apos;re going!</h1>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(32px, 6vw, 48px)', fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--text-heading)', margin: '0 0 8px' }}>
+          {refunded ? 'This booking was refunded' : "You're going!"}
+        </h1>
         <p style={{ fontSize: 15.5, color: 'var(--text-muted)', margin: 0 }}>
-          {tickets.length} ticket{tickets.length === 1 ? '' : 's'} booked · confirmation sent to <strong style={{ color: 'var(--text-body)' }}>{order.buyer_email}</strong>
+          {refunded ? (
+            <>Your refund is on its way to the original payment method — usually 5–7 working days. These tickets are no longer valid for entry.</>
+          ) : (
+            <>{tickets.length} ticket{tickets.length === 1 ? '' : 's'} booked · confirmation sent to <strong style={{ color: 'var(--text-body)' }}>{order.buyer_email}</strong></>
+          )}
         </p>
       </div>
 
-      <div style={{ borderRadius: 20, overflow: 'hidden', background: 'var(--surface-card)', boxShadow: '0 12px 36px rgba(5,23,71,0.1)', marginBottom: 24 }}>
+      <div style={{ borderRadius: 16, overflow: 'hidden', background: 'var(--surface-card)', border: '1px solid var(--border-default)', boxShadow: '0 2px 2px rgba(0,0,0,0.04)', marginBottom: 24 }}>
         <div style={{ position: 'relative', padding: '22px 24px', color: '#fff', background: order.banner_image_url ? `linear-gradient(90deg, rgba(5,23,71,0.95), rgba(5,23,71,0.65)), center/cover no-repeat url(${order.banner_image_url})` : 'var(--gradient-hero)' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontSize: 24, fontWeight: 600, lineHeight: 1.1, marginBottom: 8 }}>{order.event_title}</div>
           <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', fontSize: 14, color: 'rgba(255,255,255,0.88)' }}>
@@ -69,13 +214,24 @@ export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
             {order.venue_name && <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Icon name="map-pin" size={15} />{order.venue_name}{order.city ? `, ${order.city}` : ''}</span>}
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 1, background: 'var(--border-default)' }}>
-          <Meta label="Order / Payment ID" value={order.order_code} mono />
-          <Meta label="Booked by" value={order.buyer_name} />
-          {order.payment_ref && <Meta label="Transaction ID" value={order.payment_ref} mono />}
-          <Meta label="Booked on" value={formatTimestamp(order.created_at)} />
-          <Meta label="Total paid" value={formatINR(order.total_amount)} accent />
-        </div>
+        {/* Even label/value rows (works for any number of fields), total as footer. */}
+        <dl style={{ margin: 0, padding: '6px 24px' }}>
+          {([
+            ['Order / Payment ID', order.order_code, true],
+            ['Booked by', order.buyer_name, false],
+            ...(order.payment_ref ? [['Transaction ID', order.payment_ref, true] as const] : []),
+            ['Booked on', formatTimestamp(order.created_at), false],
+          ] as const).map(([label, value, mono]) => (
+            <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16, padding: '12px 0', borderBottom: '1px solid var(--border-default)' }}>
+              <dt style={{ fontSize: 14, color: 'var(--text-muted)' }}>{label}</dt>
+              <dd style={{ margin: 0, fontSize: 15, fontWeight: 500, color: 'var(--text-heading)', textAlign: 'right', fontFamily: mono ? 'var(--font-mono)' : undefined }}>{value}</dd>
+            </div>
+          ))}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16, padding: '14px 0 10px' }}>
+            <dt style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-heading)' }}>Total paid</dt>
+            <dd style={{ margin: 0, fontSize: 20, fontWeight: 600, color: 'var(--color-accent)' }}>{formatINR(order.total_amount)}</dd>
+          </div>
+        </dl>
         {order.online_url && (
           <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <Icon name="monitor-play" size={18} color="var(--color-accent-secondary)" />
@@ -102,16 +258,10 @@ export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
                 <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-accent)' }}>{t.item.ticket_tier_name}</div>
                 <div style={{ fontFamily: 'var(--font-display)', fontSize: 19, fontWeight: 600, color: 'var(--text-heading)', margin: '4px 0 8px' }}>{t.attendee_name ?? order.buyer_name}</div>
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', fontFamily: 'ui-monospace, monospace' }}>Ticket ID: <strong style={{ color: 'var(--text-heading)' }}>{t.ticket_code}</strong></div>
-                {t.attendee_answers.length > 0 && (
-                  <div style={{ marginTop: 8, fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-                    {t.attendee_answers.map((a) => `${a.field_label}: ${Array.isArray(a.answer) ? a.answer.join(', ') : a.answer}`).join(' · ')}
-                  </div>
-                )}
                 <span style={{ display: 'inline-block', marginTop: 10, fontSize: 11.5, fontWeight: 600, padding: '3px 9px', borderRadius: 999, background: look.bg, color: look.fg }}>{look.label}</span>
               </div>
-              <div style={{ width: 96, flex: 'none', borderLeft: '2px dashed var(--border-default)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 10 }}>
-                <Icon name="qr-code" size={44} color={t.approval_status === 'approved' ? 'var(--text-heading)' : 'var(--text-subtle)'} />
-                <div style={{ fontSize: 9.5, color: 'var(--text-subtle)', fontFamily: 'ui-monospace, monospace', wordBreak: 'break-all', textAlign: 'center' }}>{t.qr_code_token.slice(0, 12)}…</div>
+              <div style={{ flex: 'none', borderLeft: '2px dashed var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px 14px' }}>
+                <Button size="sm" variant="secondary" onClick={() => setViewing(t)}>View ticket</Button>
               </div>
             </div>
           );
@@ -131,17 +281,39 @@ export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
           <span style={{ fontWeight: 600 }}>Total</span>
           <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 600, color: 'var(--color-accent)' }}>{formatINR(order.total_amount)}</span>
         </div>
-        {order.form_responses.length > 0 && (
-          <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border-default)' }}>
-            {order.form_responses.map((r, i) => (
-              <div key={r.field_label + i} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, fontSize: 13.5, marginBottom: 6 }}>
-                <span style={{ color: 'var(--text-muted)' }}>{r.field_label}</span>
-                <span style={{ fontWeight: 600, textAlign: 'right' }}>{Array.isArray(r.answer) ? r.answer.join(', ') : r.answer}</span>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
+
+      {viewing && (
+        <div role="dialog" aria-modal="true" aria-label="Ticket" onClick={() => setViewing(null)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(5,12,32,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(440px, 100%)', background: 'var(--surface-card)', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 1px rgba(0,0,0,0.02), 0 8px 16px -4px rgba(0,0,0,0.04), 0 24px 32px -8px rgba(0,0,0,0.06)' }}>
+            <div style={{ background: 'var(--gradient-brand)', color: '#fff', padding: '20px 22px' }}>
+              <div style={{ fontSize: 18, fontWeight: 600, lineHeight: 1.25 }}>{order.event_title}</div>
+              <div style={{ fontSize: 13.5, opacity: 0.9, marginTop: 6 }}>
+                {order.occurrence_date ? formatEventDate(order.occurrence_date) : order.event_date ? formatDateTime(order.event_date, order.event_time ?? undefined) : ''}
+                {order.venue_name ? ` · ${order.venue_name}${order.city ? `, ${order.city}` : ''}` : ''}
+              </div>
+            </div>
+            <div style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>Category</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-heading)' }}>{viewing.item.ticket_tier_name}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>Participant</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-heading)' }}>{viewing.attendee_name ?? order.buyer_name}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>Ticket ID</div>
+                <div style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-heading)', fontFamily: 'var(--font-mono)' }}>{viewing.ticket_code}</div>
+              </div>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
+                <Button variant="ghost" onClick={() => setViewing(null)}>Close</Button>
+                <Button variant="secondary" onClick={() => window.print()}><Icon name="printer" size={16} />Print ticket</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 24 }}>
         <Button variant="secondary" onClick={() => window.print()}><Icon name="printer" size={16} />Print tickets</Button>
@@ -183,15 +355,6 @@ export function OrderConfirmationView({ order }: OrderConfirmationViewProps) {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function Meta({ label, value, mono, accent }: { label: string; value: string; mono?: boolean; accent?: boolean }) {
-  return (
-    <div style={{ background: 'var(--surface-card)', padding: '14px 20px' }}>
-      <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>{label}</div>
-      <div style={{ marginTop: 3, fontWeight: 600, color: accent ? 'var(--color-accent)' : 'var(--text-heading)', fontFamily: mono ? 'ui-monospace, monospace' : 'var(--font-display)', fontSize: 16 }}>{value}</div>
     </div>
   );
 }

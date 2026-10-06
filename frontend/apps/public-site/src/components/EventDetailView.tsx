@@ -60,7 +60,10 @@ export function EventDetailView({ event, autoBook }: EventDetailViewProps) {
 
   React.useEffect(() => { if (autoBook) setBooking(true); }, [autoBook]);
 
-  const onSale = event.ticket_tiers.filter((t) => t.sale_status === 'on_sale' && t.quantity_sold < t.quantity_total);
+  // quantity_available, not total - sold: seats held by buyers mid-payment
+  // aren't on sale, so an event whose last tickets are all held reads as sold
+  // out rather than inviting a booking checkout would reject.
+  const onSale = event.ticket_tiers.filter((t) => t.sale_status === 'on_sale' && t.quantity_available > 0);
   const prices = onSale.map((t) => (t.ticket_type === 'free' ? 0 : Number(t.price)));
   const minPrice = prices.length ? Math.min(...prices) : null;
   const allFree = onSale.length > 0 && onSale.every((t) => t.ticket_type === 'free' || Number(t.price) === 0);
@@ -208,7 +211,7 @@ export function EventDetailView({ event, autoBook }: EventDetailViewProps) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
               {event.ticket_tiers.length === 0 && <div style={{ color: 'var(--text-muted)' }}>Tickets will be announced soon.</div>}
               {[...event.ticket_tiers].sort((a, b) => a.sort_order - b.sort_order).map((t) => {
-                const left = t.quantity_total - t.quantity_sold;
+                const left = t.quantity_available;
                 return (
                   <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14, border: '1px solid var(--border-default)', background: 'var(--surface-card)' }}>
                     <Icon name="ticket" size={18} color="var(--color-accent)" />

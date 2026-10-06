@@ -32,7 +32,7 @@ export function listEvents(params: ListEventsParams = {}): Promise<EventListResp
   });
 }
 
-/** Fills defaults for fields added in backend migration 0006, so the
+/** Fills defaults for fields added in backend migrations 0006 and 0011, so the
  *  frontend keeps working against an API that hasn't been upgraded yet. */
 function withEventDefaults(e: EventDetail): EventDetail {
   return {
@@ -50,6 +50,11 @@ function withEventDefaults(e: EventDetail): EventDetail {
     gallery_images: e.gallery_images ?? [],
     ticket_tiers: (e.ticket_tiers ?? []).map((t, i) => ({
       ...t,
+      // Pre-0011 APIs don't report holds, so fall back to the old arithmetic.
+      // Slightly optimistic against such an API, but checkout still rejects an
+      // over-booking with a 409, so it can't oversell -- only mislead briefly.
+      quantity_available: t.quantity_available ?? t.quantity_total - t.quantity_sold,
+      quantity_held: t.quantity_held ?? 0,
       ticket_type: t.ticket_type ?? (Number(t.price) === 0 ? 'free' : 'paid'),
       description: t.description ?? null,
       min_per_order: t.min_per_order ?? 1,
@@ -93,8 +98,18 @@ export function getSitePage(slug: string): Promise<SitePage> {
   return apiFetch<SitePage>(`/site-pages/${slug}`);
 }
 
+/** Reserves the tickets and returns the PayU handoff. Nothing is sold until the
+ *  payment confirms; a zero-total order comes back already settled with
+ *  payment_required false. */
 export function checkout(eventId: string, body: CheckoutRequest): Promise<CheckoutResponse> {
   return apiFetch<CheckoutResponse>(`/events/${eventId}/checkout`, { method: 'POST', body });
+}
+
+/** Starts a fresh PayU transaction for an order whose payment didn't land,
+ *  reusing the participant details already captured. Throws ApiError 409 if the
+ *  tickets have since gone, or if the order is already paid. */
+export function retryPayment(orderId: string): Promise<CheckoutResponse> {
+  return apiFetch<CheckoutResponse>(`/orders/${orderId}/payu/retry`, { method: 'POST' });
 }
 
 export function getOrder(orderId: string): Promise<OrderDetail> {

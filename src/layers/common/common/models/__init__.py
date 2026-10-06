@@ -5,7 +5,8 @@
   events.py    Category, Event, EventFormField, EventImage -- event authoring
   tickets.py   TicketTier, Ticket -- what's sold, what's issued
   orders.py    Order and everything checkout produces (items, form answers,
-               refund requests, buyer queries)
+               refund requests, buyer queries) plus the gateway's own record
+               of each payment and refund (PaymentAttempt, PaymentRefund)
   content.py   PlatformSettings, the homepage CMS, freeform site pages
   activity.py  ActivityLog -- the audit trail
 
@@ -46,11 +47,15 @@ from .events import (
     event_categories,
 )
 from .orders import (
+    AttemptStatus,
     Order,
     OrderFormResponse,
     OrderItem,
     OrderQuery,
+    PaymentAttempt,
+    PaymentRefund,
     PaymentStatus,
+    RefundProgress,
     RefundRequest,
     RefundStatus,
 )
@@ -58,6 +63,7 @@ from .tickets import Ticket, TicketTier
 
 __all__ = [
     "ActivityLog",
+    "AttemptStatus",
     "AdminUser",
     "Base",
     "Category",
@@ -77,8 +83,11 @@ __all__ = [
     "OrderQuery",
     "Organiser",
     "OrganiserStatus",
+    "PaymentAttempt",
+    "PaymentRefund",
     "PaymentStatus",
     "PlatformSettings",
+    "RefundProgress",
     "RefundRequest",
     "RefundStatus",
     "SitePage",

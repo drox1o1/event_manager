@@ -16,10 +16,13 @@ def _event(status=EventStatus.LIVE):
     return Event(id=uuid.uuid4(), organiser_id=uuid.uuid4(), title="Run", status=status)
 
 
-def _session(event, tier=None, fields=()):
+def _session(event, tier=None, fields=(), held=()):
     session = MagicMock()
     session.get.side_effect = lambda model, key, *a, **k: tier if model is TicketTier else event
     session.execute.return_value.scalars.return_value.all.return_value = list(fields)
+    # Seats held by in-flight payments, as [(tier_id, quantity)] -- read via
+    # .all() rather than .scalars().all(), so it stubs independently of fields.
+    session.execute.return_value.all.return_value = list(held)
     return session
 
 
@@ -61,6 +64,33 @@ def test_quantity_never_below_sold_even_for_admin():
     tier = _sold_tier(event)
     with pytest.raises(ConflictError):
         svc.update_tier_impl(str(event.id), str(tier.id), _update(price="600", quantity_total=3), None, _session(event, tier))
+
+
+def test_quantity_never_below_sold_plus_held():
+    """Shrinking capacity below what in-flight payments are holding would
+    guarantee an oversell when those payments confirm -- and the buyer would
+    then have to be refunded for a ticket they thought they'd bought."""
+    import events_service as svc
+
+    event = _event()
+    tier = _sold_tier(event)  # 5 sold
+    session = _session(event, tier, held=[(tier.id, 4)])  # + 4 being paid for
+
+    with pytest.raises(ConflictError, match="already sold or held"):
+        svc.update_tier_impl(str(event.id), str(tier.id), _update(price="600", quantity_total=7), None, session)
+
+
+def test_quantity_may_shrink_to_exactly_sold_plus_held():
+    import events_service as svc
+
+    event = _event()
+    tier = _sold_tier(event)
+    session = _session(event, tier, held=[(tier.id, 4)])
+
+    out = svc.update_tier_impl(
+        str(event.id), str(tier.id), _update(price="600", quantity_total=9), None, session
+    )
+    assert out["quantity_total"] == 9
 
 
 def test_organiser_locked_out_of_unpublished_event_form():

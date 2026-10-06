@@ -7,5 +7,5 @@
 {% call m.p() %}📅 {{ event_date|human_date }} {{ event_time }}<br>📍 {{ venue }}{% endcall %}
 {% if map_url %}{% call m.p() %}<a href="{{ map_url }}" style="color:#C4143F">Get directions</a>{% endcall %}{% endif %}
 {% call m.p() %}{{ m.button("Open my tickets", site() ~ "/order/" ~ order_id) }}{% endcall %}
-{% call m.muted() %}Keep your QR code ready at the gate, and arrive a little early to beat the queue.{% endcall %}
+{% call m.muted() %}Keep your ticket ID ready at the gate, and arrive a little early to beat the queue.{% endcall %}
 {% endblock %}

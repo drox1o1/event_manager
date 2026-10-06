@@ -15,6 +15,6 @@
 {% endfor %}
 </table>
 {% call m.p() %}Order / payment ID: <strong style="font-family:monospace">{{ order_code }}</strong> · Total: <strong style="font-family:{{ font_display }}">{{ total }}</strong>{% endcall %}
-{% call m.p() %}{{ m.button("View tickets & QR codes", site() ~ "/order/" ~ order_id) }}{% endcall %}
-{% call m.muted() %}Show the QR code on your phone at the entry gate. Each ticket can be scanned once.{% endcall %}
+{% call m.p() %}{{ m.button("View tickets", site() ~ "/order/" ~ order_id) }}{% endcall %}
+{% call m.muted() %}Show your ticket ID at the entry gate.{% endcall %}
 {% endblock %}

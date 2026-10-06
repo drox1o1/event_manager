@@ -38,7 +38,15 @@ export interface TicketTierSummary {
   name: string;
   price: string;
   quantity_total: number;
+  /** Confirmed sales only -- excludes seats held by in-flight payments. */
   quantity_sold: number;
+  /** What can actually be booked right now: total, minus confirmed sales,
+   *  minus seats held by other buyers mid-payment. Use this rather than
+   *  quantity_total - quantity_sold, which overstates availability and invites
+   *  a booking that checkout then rejects. */
+  quantity_available: number;
+  /** Seats held by buyers currently paying. Informational. */
+  quantity_held: number;
   ticket_type: TicketType;
   description: string | null;
   min_per_order: number;
@@ -341,9 +349,29 @@ export interface CheckoutRequest {
   occurrence_date?: string;
 }
 
+/** Where the browser must POST, and what it must send.
+ *
+ *  Treat as opaque: render `fields` as hidden inputs verbatim and submit.
+ *  Nothing here may be computed or edited client-side -- the hash covers the
+ *  amount, so one altered character is rejected by PayU. */
+export interface PayUFormPayload {
+  action: string;
+  fields: Record<string, string>;
+}
+
 export interface CheckoutResponse {
   order_id: string;
   payment_status: PaymentStatus;
+  /** Branch on this rather than inferring from the amount: a zero-total order
+   *  is already settled by the time this returns and should go straight to the
+   *  order page. */
+  payment_required: boolean;
+  subtotal: string;
+  booking_fee: string;
+  /** What the buyer actually pays. Server-computed -- the client must never
+   *  re-derive it, since this is the figure the PayU hash binds. */
+  amount: string;
+  payu: PayUFormPayload | null;
 }
 
 export interface TicketAnswer {

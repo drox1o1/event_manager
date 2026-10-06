@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  CyRokx app layer -- 7 Lambdas, API Gateway, SQS, the migration Step
+  CyRokx app layer -- 8 Lambdas, API Gateway, SQS, the migration Step
   Function, S3. Deployed by CI: as cyrokx-app-prod on merge to main, or as
   cyrokx-app-pr-<branch> on PR open/update. Never manages network-data
   (VPC/RDS) -- only imports its outputs.
@@ -51,10 +51,36 @@ Parameters:
       notices). Defaults to prod's domain -- non-prod deploys (dev, PR
       branches) should override this alongside PublicSiteUrl/
       OrganiserPortalUrl, or admin email links silently point at prod.
+  PayUEnvironment:
+    Type: String
+    Default: sandbox
+    AllowedValues: [sandbox, live]
+    Description: >
+      Only meaningful on prod (Stage=prod) -- every other stage always gets
+      sandbox credentials regardless of this value, so a dev or PR stack can
+      never read the live merchant key. Defaults to sandbox so a plain prod
+      deploy never silently goes live: switch this to "live" explicitly
+      (e.g. `make deploy-prod PAYU_ENVIRONMENT=live`) once real PayU merchant
+      credentials have been put in cyrokx/payu. Until then, prod paid
+      checkout hands buyers to PayU's sandbox -- real cards are declined
+      there, so no real payment succeeds either way; this only changes which
+      failure the buyer sees.
 
 Conditions:
   HasDbSchema: !Not [!Equals [!Ref DbSchema, ""]]
   HasBucketStage: !Not [!Equals [!Ref BucketStage, ""]]
+  # Gates whether the reconciler's schedule runs. Every open PR deploys a full
+  # stack, so an unconditional schedule would mean N reconcilers polling PayU
+  # and the shared RDS at once.
+  IsProd: !Equals [!Ref Stage, prod]
+  # Which PayU secret gets wired in. True only for prod with PayUEnvironment
+  # explicitly set to "live" -- every other combination (non-prod, or prod
+  # left on its sandbox default) resolves to the test secret, so there is
+  # exactly one way to put live credentials in front of real buyers: an
+  # explicit, visible parameter, not an implicit consequence of Stage=prod.
+  ProdWantsLivePayU: !And
+    - !Condition IsProd
+    - !Equals [!Ref PayUEnvironment, live]
 
 Globals:
   Function:
@@ -131,6 +157,13 @@ Resources:
       FunctionName: !Sub cyrokx-public-api-${Stage}
       CodeUri: ../../src/public_api/
       Handler: handler.handler
+      # Longer than the 15s default because of /payments/payu/return, which
+      # makes an outbound verify call to PayU (8s) and, when a paid order can no
+      # longer be fulfilled, a refund call too -- two sequential 8s budgets that
+      # would otherwise time the buyer's redirect out into a 502. A timeout is a
+      # ceiling, not a reservation, so the browse routes are unaffected.
+      # Effectively 29s: API Gateway caps integration time there regardless.
+      Timeout: 30
       Layers:
         - !Ref CommonLayer
       VpcConfig:
@@ -144,14 +177,47 @@ Resources:
           DB_NAME: !ImportValue cyrokx-network-data-DbName
           DB_SCHEMA: !If [HasDbSchema, !Ref DbSchema, !Ref AWS::NoValue]
           EMAIL_QUEUE_URL: !Ref EmailQueue
+          PAYU_SECRET_ARN: !If
+            - ProdWantsLivePayU
+            - !ImportValue cyrokx-network-data-PayUSecretArn
+            - !ImportValue cyrokx-network-data-PayUTestSecretArn
+          # Where the PayU return route sends the buyer afterwards. Built from
+          # this plus the order id only -- never from anything PayU posts, since
+          # that route is unauthenticated and would become an open redirect.
+          PUBLIC_SITE_URL: !Ref PublicSiteUrl
       Policies:
         - Statement:
             - Effect: Allow
               Action: secretsmanager:GetSecretValue
-              Resource: !ImportValue cyrokx-network-data-AppDbSecretArn
+              # The ProdWantsLivePayU branch is what makes a dev or PR stack --
+              # and prod left on its sandbox default -- physically unable to
+              # read the live merchant key, not merely configured not to.
+              Resource:
+                - !ImportValue cyrokx-network-data-AppDbSecretArn
+                - !If
+                  - ProdWantsLivePayU
+                  - !ImportValue cyrokx-network-data-PayUSecretArn
+                  - !ImportValue cyrokx-network-data-PayUTestSecretArn
         - SQSSendMessagePolicy:
             QueueName: !GetAtt EmailQueue.QueueName
       Events:
+        PayUReturn:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /payments/payu/return
+            Method: post
+            # PayU's browser redirect carries no Authorization header.
+            Auth:
+              Authorizer: NONE
+        RetryPayment:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /orders/{order_id}/payu/retry
+            Method: post
+            Auth:
+              Authorizer: NONE
         ListEvents:
           Type: Api
           Properties:
@@ -273,6 +339,11 @@ Resources:
           EMAIL_QUEUE_URL: !Ref EmailQueue
           BANNERS_BUCKET_NAME: !Ref BannersBucket
           BANNERS_CDN_DOMAIN: !GetAtt BannersDistribution.DomainName
+          # Admin refund approval calls PayU to actually return the money.
+          PAYU_SECRET_ARN: !If
+            - ProdWantsLivePayU
+            - !ImportValue cyrokx-network-data-PayUSecretArn
+            - !ImportValue cyrokx-network-data-PayUTestSecretArn
       Policies:
         - Statement:
             - Effect: Allow
@@ -280,6 +351,10 @@ Resources:
               Resource:
                 - !ImportValue cyrokx-network-data-AppDbSecretArn
                 - !ImportValue cyrokx-network-data-JwtSigningSecretArn
+                - !If
+                  - ProdWantsLivePayU
+                  - !ImportValue cyrokx-network-data-PayUSecretArn
+                  - !ImportValue cyrokx-network-data-PayUTestSecretArn
         - SQSSendMessagePolicy:
             QueueName: !GetAtt EmailQueue.QueueName
         - S3CrudPolicy:
@@ -564,6 +639,11 @@ Resources:
           EMAIL_QUEUE_URL: !Ref EmailQueue
           BANNERS_BUCKET_NAME: !Ref BannersBucket
           BANNERS_CDN_DOMAIN: !GetAtt BannersDistribution.DomainName
+          # Admin refund approval calls PayU to actually return the money.
+          PAYU_SECRET_ARN: !If
+            - ProdWantsLivePayU
+            - !ImportValue cyrokx-network-data-PayUSecretArn
+            - !ImportValue cyrokx-network-data-PayUTestSecretArn
       Policies:
         - Statement:
             - Effect: Allow
@@ -571,6 +651,10 @@ Resources:
               Resource:
                 - !ImportValue cyrokx-network-data-AppDbSecretArn
                 - !ImportValue cyrokx-network-data-JwtSigningSecretArn
+                - !If
+                  - ProdWantsLivePayU
+                  - !ImportValue cyrokx-network-data-PayUSecretArn
+                  - !ImportValue cyrokx-network-data-PayUTestSecretArn
         - SQSSendMessagePolicy:
             QueueName: !GetAtt EmailQueue.QueueName
         - S3CrudPolicy:
@@ -913,7 +997,11 @@ Resources:
             Auth:
               Authorizer: JwtAuthorizer
 
-  # --- payment_webhook (stub) ---
+  # --- payment_webhook ---
+  # PayU's server-to-server notification, and the only path that settles an
+  # order when the buyer closes the tab on their bank's 3DS page. Needs the VPC,
+  # DB and secret access it never had as a stub, plus a longer timeout than the
+  # 15s default because it makes an outbound verify call to PayU.
 
   PaymentWebhookFunction:
     Type: AWS::Serverless::Function
@@ -921,8 +1009,38 @@ Resources:
       FunctionName: !Sub cyrokx-payment-webhook-${Stage}
       CodeUri: ../../src/payment_webhook/
       Handler: handler.handler
+      Timeout: 30
       Layers:
         - !Ref CommonLayer
+      VpcConfig:
+        SubnetIds: !Split [',', !ImportValue cyrokx-network-data-PrivateSubnetIds]
+        SecurityGroupIds:
+          - !ImportValue cyrokx-network-data-LambdaSecurityGroupId
+      Environment:
+        Variables:
+          DB_SECRET_ARN: !ImportValue cyrokx-network-data-AppDbSecretArn
+          DB_PROXY_HOST: !ImportValue cyrokx-network-data-DbProxyEndpoint
+          DB_NAME: !ImportValue cyrokx-network-data-DbName
+          # Omitting DB_SCHEMA on a non-prod stack would settle its orders in
+          # prod's schema. It is the most dangerous line to leave out here.
+          DB_SCHEMA: !If [HasDbSchema, !Ref DbSchema, !Ref AWS::NoValue]
+          EMAIL_QUEUE_URL: !Ref EmailQueue
+          PAYU_SECRET_ARN: !If
+            - ProdWantsLivePayU
+            - !ImportValue cyrokx-network-data-PayUSecretArn
+            - !ImportValue cyrokx-network-data-PayUTestSecretArn
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource:
+                - !ImportValue cyrokx-network-data-AppDbSecretArn
+                - !If
+                  - ProdWantsLivePayU
+                  - !ImportValue cyrokx-network-data-PayUSecretArn
+                  - !ImportValue cyrokx-network-data-PayUTestSecretArn
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt EmailQueue.QueueName
       Events:
         Webhook:
           Type: Api
@@ -932,6 +1050,62 @@ Resources:
             Method: post
             Auth:
               Authorizer: NONE
+
+  # --- payment_reconciler ---
+  # The backstop. Both normal notifications can go missing -- the browser return
+  # when a buyer closes the tab, the webhook to a delivery failure -- and either
+  # leaves an order PENDING with money possibly taken and nothing left to ask.
+  # This asks, on a schedule, and settles through the same idempotent writer.
+
+  PaymentReconcilerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub cyrokx-payment-reconciler-${Stage}
+      CodeUri: ../../src/payment_reconciler/
+      Handler: handler.handler
+      Timeout: 300
+      # Never two at once against the same rows.
+      ReservedConcurrentExecutions: 1
+      Layers:
+        - !Ref CommonLayer
+      VpcConfig:
+        SubnetIds: !Split [',', !ImportValue cyrokx-network-data-PrivateSubnetIds]
+        SecurityGroupIds:
+          - !ImportValue cyrokx-network-data-LambdaSecurityGroupId
+      Environment:
+        Variables:
+          DB_SECRET_ARN: !ImportValue cyrokx-network-data-AppDbSecretArn
+          DB_PROXY_HOST: !ImportValue cyrokx-network-data-DbProxyEndpoint
+          DB_NAME: !ImportValue cyrokx-network-data-DbName
+          DB_SCHEMA: !If [HasDbSchema, !Ref DbSchema, !Ref AWS::NoValue]
+          EMAIL_QUEUE_URL: !Ref EmailQueue
+          PAYU_SECRET_ARN: !If
+            - ProdWantsLivePayU
+            - !ImportValue cyrokx-network-data-PayUSecretArn
+            - !ImportValue cyrokx-network-data-PayUTestSecretArn
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource:
+                - !ImportValue cyrokx-network-data-AppDbSecretArn
+                - !If
+                  - ProdWantsLivePayU
+                  - !ImportValue cyrokx-network-data-PayUSecretArn
+                  - !ImportValue cyrokx-network-data-PayUTestSecretArn
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt EmailQueue.QueueName
+      Events:
+        Reconcile:
+          Type: Schedule
+          Properties:
+            Schedule: rate(5 minutes)
+            # Off everywhere but prod: every open PR deploys a full stack, and N
+            # reconcilers polling the PayU sandbox and the shared RDS instance
+            # every five minutes is pure noise. Invoke it by hand to test.
+            # State, not Enabled -- the latter is a plain boolean and can't take
+            # an !If.
+            State: !If [IsProd, ENABLED, DISABLED]
 
   # --- ticket_generator (stub) ---
 

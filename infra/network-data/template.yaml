@@ -218,14 +218,31 @@ Resources:
         PasswordLength: 32
         ExcludePunctuation: true
 
-  RazorpaySecret:
+  # Two PayU secrets, not one, because this stack is shared: prod, dev and every
+  # PR-branch stack import from it, so a single secret could not hold different
+  # values for each. The app stack picks by Stage, which means a dev or PR stack
+  # is physically unable to read the live merchant key -- its IAM grant names
+  # only the test secret.
+  #
+  # base_url lives in the secret rather than being derived from the stage so
+  # that repointing an environment at a different PayU host is a data change,
+  # not a redeploy.
+  PayUTestSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Name: cyrokx/razorpay
+      Name: cyrokx/payu-test
+      Description: PayU sandbox credentials, used by every non-prod stage.
+      SecretString: '{"merchant_key": "weJ0ny", "salt": "tRRmnWx50J8v1BMjKwa9rLEYGohPpiqT", "base_url": "https://test.payu.in"}'
+
+  PayUSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: cyrokx/payu
       Description: >-
-        Placeholder -- fill in real key_id/key_secret/webhook_secret before
-        the payment follow-up pass. Not used by anything in this pass.
-      SecretString: '{"key_id": "REPLACE_ME", "key_secret": "REPLACE_ME", "webhook_secret": "REPLACE_ME"}'
+        Live PayU credentials. Created with placeholders deliberately: paid
+        checkout on prod fails loudly until a real merchant key and salt are
+        pasted in here by hand, which is preferable to it appearing to work.
+      SecretString: '{"merchant_key": "REPLACE_ME", "salt": "REPLACE_ME", "base_url": "https://secure.payu.in"}'
 
   # --- RDS ---
 
@@ -345,7 +362,11 @@ Outputs:
     Value: !Ref JwtSigningSecret
     Export:
       Name: cyrokx-network-data-JwtSigningSecretArn
-  RazorpaySecretArn:
-    Value: !Ref RazorpaySecret
+  PayUSecretArn:
+    Value: !Ref PayUSecret
     Export:
-      Name: cyrokx-network-data-RazorpaySecretArn
+      Name: cyrokx-network-data-PayUSecretArn
+  PayUTestSecretArn:
+    Value: !Ref PayUTestSecret
+    Export:
+      Name: cyrokx-network-data-PayUTestSecretArn
