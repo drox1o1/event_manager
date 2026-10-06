@@ -6,7 +6,6 @@ to end). `organiser_id=None` throughout this module means "acting as super
 admin".
 """
 
-import base64
 import csv
 import datetime as dt
 import io
@@ -54,6 +53,7 @@ from common.schemas import (
 from context import require_organiser_id
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+from uploads import export_download_url
 
 # Organisers keep editing their own events through every stage (draft, in
 # review, approved, live) so details can be corrected and tickets managed
@@ -561,9 +561,15 @@ def _answer_text(answer) -> str:
 
 def export_attendees_impl(event_id: str, organiser_id: uuid.UUID | None, fmt: str, status: str | None) -> dict:
     """Registration export: one row per participant with every registration
-    form field as its own column plus the transaction details. Returned as
-    base64 in JSON ({filename, content_type, data}) so it passes through API
-    Gateway without binary media-type setup; the browser turns it into a file.
+    form field as its own column plus the transaction details.
+
+    Built in memory here, then written to ExportsBucket and handed back as a
+    short-lived presigned download URL -- not inlined as base64 in the JSON
+    response. A popular event's export can run several MB (one real event
+    here has 3,280 registrations with a dozen-plus form-field columns each),
+    well past what a Lambda response can carry; returning it inline is
+    exactly what produced a 413 in prod. There is no equivalent of the
+    attendee list's pagination for this: a spreadsheet is one file, not pages.
 
     status: a payment status to keep (success/pending/failed/refunded), or
     None/"all" for every order."""
@@ -681,11 +687,12 @@ def export_attendees_impl(event_id: str, organiser_id: uuid.UUID | None, fmt: st
         data = out.getvalue()
         content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
+    key = f"{event_uuid}/{uuid.uuid4()}.{fmt}"
     return {
         "filename": filename,
         "content_type": content_type,
         "row_count": len(table) - 1,
-        "data": base64.b64encode(data).decode("ascii"),
+        "download_url": export_download_url(key, filename, content_type, data),
     }
 
 

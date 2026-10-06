@@ -55,13 +55,14 @@ function answerText(a: string | string[]): string {
   return Array.isArray(a) ? a.join(', ') : a;
 }
 
-/** Saves a server-built export (base64 in JSON) as a file. */
+/** Follows the presigned S3 URL the server built the export at. The filename
+ *  and content type are already forced by the URL's own response-header
+ *  overrides (see uploads.py's export_download_url), so this is just a plain
+ *  navigation -- no Blob, no base64, nothing to revoke afterwards. */
 function downloadExport(file: RegistrationExport) {
-  const bytes = Uint8Array.from(atob(file.data), (c) => c.charCodeAt(0));
-  const url = URL.createObjectURL(new Blob([bytes], { type: file.content_type }));
   const a = document.createElement('a');
-  a.href = url; a.download = file.filename; a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  a.href = file.download_url;
+  a.click();
 }
 
 const EXPORT_STATUSES = [

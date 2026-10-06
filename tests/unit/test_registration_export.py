@@ -1,8 +1,11 @@
 """Registration export (CSV / Excel): one row per participant, one column per
 registration-form field, plus transaction columns. The DB session is faked;
-these tests check the row/column building and the file encoding."""
+these tests check the row/column building and the file encoding.
 
-import base64
+The actual S3 write is mocked (export_download_url) rather than exercised --
+that's a thin, separately-reasoned-about presign call, not export-building
+logic, and a real S3 round trip has no place in a unit test."""
+
 import csv
 import datetime as dt
 import io
@@ -70,18 +73,31 @@ def _setup(monkeypatch):
         yield session
 
     monkeypatch.setattr("events_service.get_session", _get_session)
-    return event
+
+    # The real S3 write is out of scope here -- capture what would have been
+    # written and hand back a recognisable fake URL, so tests can still
+    # inspect the actual file bytes without a network call.
+    captured: dict = {}
+
+    def _fake_export_download_url(key, filename, content_type, data):
+        captured.update(key=key, filename=filename, content_type=content_type, data=data)
+        return f"https://exports.example/{key}"
+
+    monkeypatch.setattr("events_service.export_download_url", _fake_export_download_url)
+    return event, captured
 
 
 def test_csv_export_has_form_columns_and_transaction_details(monkeypatch):
     import events_service as svc
 
-    event = _setup(monkeypatch)
+    event, captured = _setup(monkeypatch)
     out = svc.export_attendees_impl(str(event.id), None, "csv", None)
 
     assert out["filename"] == "jammu-bsf-marathon-registrations.csv"
     assert out["row_count"] == 2
-    text = base64.b64decode(out["data"]).decode("utf-8-sig")
+    assert out["download_url"] == f"https://exports.example/{captured['key']}"
+    assert captured["content_type"] == "text/csv"
+    text = captured["data"].decode("utf-8-sig")
     rows = list(csv.DictReader(io.StringIO(text)))
 
     header = list(rows[0].keys())
@@ -108,19 +124,37 @@ def test_xlsx_export_opens_with_header_row(monkeypatch):
     import events_service as svc
     from openpyxl import load_workbook
 
-    event = _setup(monkeypatch)
+    event, captured = _setup(monkeypatch)
     out = svc.export_attendees_impl(str(event.id), None, "xlsx", "all")
-    wb = load_workbook(io.BytesIO(base64.b64decode(out["data"])))
+    assert out["download_url"] == f"https://exports.example/{captured['key']}"
+    assert captured["content_type"] == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    wb = load_workbook(io.BytesIO(captured["data"]))
     ws = wb.active
     assert ws["A1"].value == "Order ID"
     assert ws.max_row == 3
+
+
+def test_export_key_is_scoped_to_the_event_and_unique_per_call(monkeypatch):
+    """Two exports of the same event must not collide on the same S3 key --
+    each presigned download is its own one-off object."""
+    import events_service as svc
+
+    event, captured = _setup(monkeypatch)
+    svc.export_attendees_impl(str(event.id), None, "csv", None)
+    first_key = captured["key"]
+    svc.export_attendees_impl(str(event.id), None, "csv", None)
+    second_key = captured["key"]
+
+    assert first_key != second_key
+    assert first_key.startswith(f"{event.id}/")
+    assert second_key.startswith(f"{event.id}/")
 
 
 def test_export_rejects_unknown_format_and_status(monkeypatch):
     import events_service as svc
     from aws_lambda_powertools.event_handler.exceptions import BadRequestError
 
-    event = _setup(monkeypatch)
+    event, _captured = _setup(monkeypatch)
     with pytest.raises(BadRequestError):
         svc.export_attendees_impl(str(event.id), None, "pdf", None)
     with pytest.raises(BadRequestError):

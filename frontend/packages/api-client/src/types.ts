@@ -682,12 +682,15 @@ export interface AttendeeListResponse {
 
 export type RegistrationExportFormat = 'csv' | 'xlsx';
 
-/** Server-built registration export, base64-encoded (see downloadExport). */
+/** Server-built registration export. The file itself lives in S3 -- a
+ *  popular event's export can run several MB, past what an API response can
+ *  carry inline -- so this is a short-lived (5 min) presigned download link,
+ *  not the file bytes. See downloadExport. */
 export interface RegistrationExport {
   filename: string;
   content_type: string;
   row_count: number;
-  data: string;
+  download_url: string;
 }
 
 // --- Admin: moderation ---
