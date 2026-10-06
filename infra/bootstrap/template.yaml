@@ -174,6 +174,27 @@ Resources:
             - lambda:GetEventSourceMapping
           Resource:
             - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:event-source-mapping:*
+        # PaymentReconcilerFunction's Schedule event -- the first Lambda in
+        # this codebase to need an EventBridge rule, hence no prior grant for
+        # any events:* action at all. SAM auto-names the rule from the
+        # function's logical id plus a random suffix (cyrokx-app-<stage>-
+        # PaymentReconcilerFunctionReconcile-*), so this can't be scoped to a
+        # fixed rule name -- scoped to the stack's own rule-name prefix instead.
+        - Sid: EventBridgeScheduledRules
+          Effect: Allow
+          Action:
+            - events:PutRule
+            - events:DeleteRule
+            - events:DescribeRule
+            - events:EnableRule
+            - events:DisableRule
+            - events:PutTargets
+            - events:RemoveTargets
+            - events:ListTargetsByRule
+            - events:TagResource
+            - events:UntagResource
+          Resource:
+            - !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/cyrokx-*
         - Sid: ApiGateway
           Effect: Allow
           # API Gateway ARNs don't include the account ID, and a
