@@ -323,6 +323,14 @@ Resources:
       FunctionName: !Sub cyrokx-authenticated-api-${Stage}
       CodeUri: ../../src/authenticated_api/
       Handler: handler.handler
+      # Longer than the 15s/256MB defaults for export_attendees_impl: building
+      # an XLSX/CSV for a large event (one real event has 3,280 registrations
+      # with 15+ dynamic form-field columns) via openpyxl, then PUTting it to
+      # ExportsBucket and presigning the download, measured timing out at
+      # exactly 15000ms in prod. More memory also means more CPU under
+      # Lambda's allocation model, which openpyxl's row-building is bound by.
+      Timeout: 60
+      MemorySize: 512
       Layers:
         - !Ref CommonLayer
       VpcConfig:
@@ -629,6 +637,10 @@ Resources:
       FunctionName: !Sub cyrokx-admin-api-${Stage}
       CodeUri: ../../src/authenticated_api/
       Handler: handler.handler
+      # See AuthenticatedApiFunction's Timeout/MemorySize comment -- same code,
+      # same export_attendees_impl, same measured 15000ms timeout in prod.
+      Timeout: 60
+      MemorySize: 512
       Layers:
         - !Ref CommonLayer
       VpcConfig:
