@@ -23,7 +23,16 @@ _s3_client = None
 def _s3():
     global _s3_client
     if _s3_client is None:
-        _s3_client = boto3.client("s3")
+        # region_name explicitly, not left to default resolution: without it,
+        # boto3 signs presigned URLs against S3's legacy global endpoint
+        # (bucket.s3.amazonaws.com) regardless of where the bucket actually
+        # lives. For a bucket outside us-east-1, S3 answers a GET against that
+        # host with a 307 to the real regional endpoint -- but the presigned
+        # signature covers the *original* host, so following that redirect
+        # (which curl and most HTTP clients do automatically) gets a
+        # SignatureDoesNotMatch, confirmed live against ExportsBucket in
+        # ap-south-1. AWS_REGION is always set in the Lambda environment.
+        _s3_client = boto3.client("s3", region_name=os.environ.get("AWS_REGION", "ap-south-1"))
     return _s3_client
 
 

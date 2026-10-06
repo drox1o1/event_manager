@@ -53,3 +53,29 @@ def test_export_download_url_expires_quickly(monkeypatch, mock_s3):
 
     _, kwargs = mock_s3.generate_presigned_url.call_args
     assert kwargs["ExpiresIn"] <= 300
+
+
+def test_s3_client_is_built_with_an_explicit_region(monkeypatch):
+    """Confirmed live: without this, boto3 signs against S3's legacy global
+    endpoint regardless of where the bucket lives, which works until a GET
+    against a non-us-east-1 bucket gets redirected to the real regional
+    endpoint -- and the signature, computed for the original host, doesn't
+    cover the one the client actually ends up asking. SignatureDoesNotMatch,
+    reproduced against ExportsBucket in ap-south-1."""
+    import uploads
+
+    monkeypatch.setattr("uploads._s3_client", None)
+    captured = {}
+
+    def _fake_client(service, **kwargs):
+        captured["service"] = service
+        captured.update(kwargs)
+        return MagicMock()
+
+    monkeypatch.setattr("uploads.boto3.client", _fake_client)
+    monkeypatch.setenv("AWS_REGION", "ap-south-1")
+
+    uploads._s3()
+
+    assert captured["service"] == "s3"
+    assert captured["region_name"] == "ap-south-1"
