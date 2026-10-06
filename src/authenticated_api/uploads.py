@@ -3,6 +3,11 @@ via the CloudFront distribution in front of it (infra/app/template.yaml's
 BannersDistribution) rather than the bucket's own S3 URL -- the bucket has
 full PublicAccessBlockConfiguration and only grants read access to that
 distribution's Origin Access Control.
+
+Also a presigned-*download* helper for ExportsBucket (registration exports) --
+the opposite direction, but the same S3 client and the same reason to presign
+rather than hand back bytes: a large event's export can run several MB, well
+past what an API Gateway/Lambda response can carry inline.
 """
 
 import os
@@ -71,3 +76,33 @@ def upload_url(prefix: uuid.UUID, sub: str = "") -> tuple[str, str]:
         ExpiresIn=900,
     )
     return put_url, banners_cdn_url(key)
+
+
+def export_download_url(key: str, filename: str, content_type: str, data: bytes) -> str:
+    """Write `data` to ExportsBucket and return a short-lived presigned GET.
+
+    ExportsBucket is fully private (no CloudFront, no public access) since
+    these files carry buyer PII -- a presigned URL, scoped to this one object
+    and this one Lambda's role, is the only way in. A lifecycle rule on the
+    bucket deletes objects after a day regardless; each export is a one-off
+    download, not meant to be retained.
+
+    ResponseContentDisposition/-Type are presign-time response overrides, not
+    properties of the stored object -- they're what makes the browser save the
+    file under `filename` with the right type, since a bare presigned GET
+    otherwise serves whatever the object's own stored metadata says (or
+    nothing, forcing an inline, unnamed render attempt in the tab instead of a
+    download).
+    """
+    bucket = os.environ["EXPORTS_BUCKET_NAME"]
+    _s3().put_object(Bucket=bucket, Key=key, Body=data, ContentType=content_type)
+    return _s3().generate_presigned_url(
+        "get_object",
+        Params={
+            "Bucket": bucket,
+            "Key": key,
+            "ResponseContentDisposition": f'attachment; filename="{filename}"',
+            "ResponseContentType": content_type,
+        },
+        ExpiresIn=300,
+    )

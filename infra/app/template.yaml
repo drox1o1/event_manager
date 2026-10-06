@@ -339,6 +339,10 @@ Resources:
           EMAIL_QUEUE_URL: !Ref EmailQueue
           BANNERS_BUCKET_NAME: !Ref BannersBucket
           BANNERS_CDN_DOMAIN: !GetAtt BannersDistribution.DomainName
+          # Registration exports (CSV/XLSX) are written here and handed back
+          # as a presigned download, never inlined in the response -- see
+          # uploads.py's export_download_url and the 413 it replaces.
+          EXPORTS_BUCKET_NAME: !Ref ExportsBucket
           # Admin refund approval calls PayU to actually return the money.
           PAYU_SECRET_ARN: !If
             - ProdWantsLivePayU
@@ -359,6 +363,8 @@ Resources:
             QueueName: !GetAtt EmailQueue.QueueName
         - S3CrudPolicy:
             BucketName: !Ref BannersBucket
+        - S3CrudPolicy:
+            BucketName: !Ref ExportsBucket
       Events:
         OrganiserSignup:
           Type: Api
@@ -639,6 +645,10 @@ Resources:
           EMAIL_QUEUE_URL: !Ref EmailQueue
           BANNERS_BUCKET_NAME: !Ref BannersBucket
           BANNERS_CDN_DOMAIN: !GetAtt BannersDistribution.DomainName
+          # Registration exports (CSV/XLSX) are written here and handed back
+          # as a presigned download, never inlined in the response -- see
+          # uploads.py's export_download_url and the 413 it replaces.
+          EXPORTS_BUCKET_NAME: !Ref ExportsBucket
           # Admin refund approval calls PayU to actually return the money.
           PAYU_SECRET_ARN: !If
             - ProdWantsLivePayU
@@ -659,6 +669,8 @@ Resources:
             QueueName: !GetAtt EmailQueue.QueueName
         - S3CrudPolicy:
             BucketName: !Ref BannersBucket
+        - S3CrudPolicy:
+            BucketName: !Ref ExportsBucket
       Events:
         AdminLogin:
           Type: Api
@@ -1284,6 +1296,39 @@ Resources:
           - AllowedMethods: [GET, PUT]
             AllowedOrigins: ["*"]
             AllowedHeaders: ["*"]
+
+  # Registration exports (CSV/XLSX), served back as a presigned GET rather
+  # than inlined in an API response -- a popular event's export can run
+  # several MB, past what a Lambda response can carry at all (one real event
+  # here has 3,280 registrations with a dozen-plus form-field columns each;
+  # returning that inline is exactly what produced a 413 in prod). Private,
+  # unlike BannersBucket: these files carry buyer PII, so there is no
+  # CloudFront distribution and no public access of any kind -- only a
+  # presigned URL scoped to one object, signed by the Lambda's own role,
+  # gets in. The lifecycle rule reflects that each export is a one-off
+  # download, not meant to be retained: a day is long enough for the browser
+  # to act on the presigned URL (which itself expires in 5 minutes, see
+  # uploads.py's export_download_url) with margin for a slow download.
+  ExportsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub
+        - cyrokx-exports-${ResolvedStage}-${AWS::AccountId}
+        - ResolvedStage: !If [HasBucketStage, !Ref BucketStage, !Ref Stage]
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireExportsAfterOneDay
+            Status: Enabled
+            ExpirationInDays: 1
 
   # Bucket itself stays fully private (PublicAccessBlockConfiguration above)
   # -- uploaded images are served to browsers through this distribution
