@@ -322,6 +322,13 @@ class AttendeeInput(BaseModel):
         return normalized
 
 
+class AttendeeUpdateRequest(AttendeeInput):
+    """Organiser/admin edit of one already-issued ticket's participant
+    details -- same shape as AttendeeInput (checkout's per-participant input),
+    since it's the same data, just corrected after the fact rather than
+    collected at purchase time."""
+
+
 class CheckoutItem(BaseModel):
     ticket_tier_id: uuid.UUID
     quantity: int = Field(gt=0, le=20)

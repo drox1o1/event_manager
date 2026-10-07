@@ -5,6 +5,8 @@
 import { apiFetch } from './http';
 import type {
   AttendeeListResponse,
+  AttendeeUpdateRequest,
+  Attendee,
   RegistrationExport,
   RegistrationExportFormat,
   BannerUploadUrlResponse,
@@ -117,6 +119,11 @@ export function listAttendees(token: string, eventId: string, cursor?: string, l
 /** Registration export (every form field + transaction columns) as CSV or Excel. */
 export function exportAttendees(token: string, eventId: string, format: RegistrationExportFormat, status: string = 'all'): Promise<RegistrationExport> {
   return apiFetch<RegistrationExport>(`/organiser/events/${eventId}/attendees`, { token, query: { format, status } });
+}
+
+/** Corrects one already-issued ticket's own participant details. */
+export function updateAttendee(token: string, eventId: string, ticketId: string, body: AttendeeUpdateRequest): Promise<Attendee> {
+  return apiFetch<Attendee>(`/organiser/events/${eventId}/attendees/${ticketId}`, { method: 'PATCH', body, token });
 }
 
 // --- Registration form builder ---

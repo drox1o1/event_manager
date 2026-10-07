@@ -673,6 +673,15 @@ export interface OrganiserProfile {
 export type OrganiserProfileUpdate = Partial<Pick<OrganiserProfile,
   'org_name' | 'contact_name' | 'bio' | 'logo_url' | 'cover_url' | 'website_url' | 'instagram_url' | 'phone' | 'city'>>;
 
+/** Corrects one ticket's own participant details -- doesn't touch payment,
+ *  tier or order. Same shape as checkout's per-participant input. */
+export interface AttendeeUpdateRequest {
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  form_responses?: FormResponseInput[];
+}
+
 export interface AttendeeListResponse {
   attendees: Attendee[];
   /** Opaque -- pass back verbatim as the `cursor` query param for the next

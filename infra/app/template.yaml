@@ -518,6 +518,14 @@ Resources:
             Method: get
             Auth:
               Authorizer: JwtAuthorizer
+        UpdateAttendee:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /organiser/events/{event_id}/attendees/{ticket_id}
+            Method: patch
+            Auth:
+              Authorizer: JwtAuthorizer
         AdminListOrderQueries:
           Type: Api
           Properties:
@@ -970,6 +978,14 @@ Resources:
             RestApiId: !Ref CyrokxApi
             Path: /admin/events/{event_id}/attendees
             Method: get
+            Auth:
+              Authorizer: JwtAuthorizer
+        AdminUpdateAttendee:
+          Type: Api
+          Properties:
+            RestApiId: !Ref CyrokxApi
+            Path: /admin/events/{event_id}/attendees/{ticket_id}
+            Method: patch
             Auth:
               Authorizer: JwtAuthorizer
         AdminApproveTicket:

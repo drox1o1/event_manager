@@ -40,6 +40,7 @@ from common.models import (
 )
 from common.pagination import DEFAULT_PAGE_SIZE, CursorField, InvalidCursorError, paginate
 from common.schemas import (
+    AttendeeUpdateRequest,
     EventCreateRequest,
     EventImagesReplaceRequest,
     EventUpdateRequest,
@@ -49,6 +50,7 @@ from common.schemas import (
     TicketTiersCreateRequest,
     TicketTierUpdate,
     check_event_shape,
+    normalize_indian_mobile,
 )
 from context import require_organiser_id
 from sqlalchemy import select
@@ -511,32 +513,113 @@ def attendees_impl(
         except InvalidCursorError as exc:
             raise BadRequestError(str(exc)) from exc
 
-        attendees = [
-            {
-                "ticket_id": str(ticket.id),
-                "ticket_code": short_code(ticket.id),
-                "order_id": str(ticket.order_item.order.id),
-                "order_code": short_code(ticket.order_item.order.id),
-                "buyer_name": ticket.order_item.order.buyer_name,
-                "buyer_email": ticket.order_item.order.buyer_email,
-                "buyer_phone": ticket.order_item.order.buyer_phone,
-                "attendee_name": ticket.attendee_name or ticket.order_item.order.buyer_name,
-                "attendee_email": ticket.attendee_email,
-                "attendee_phone": ticket.attendee_phone,
-                "attendee_answers": ticket.attendee_answers or [],
-                "ticket_tier": ticket.order_item.ticket_tier.name if ticket.order_item.ticket_tier else None,
-                "ticket_tier_id": str(ticket.order_item.ticket_tier_id),
-                "unit_price": str(ticket.order_item.unit_price),
-                "checked_in": ticket.checked_in,
-                "approval_status": ticket.approval_status,
-                "occurrence_date": ticket.order_item.order.occurrence_date.isoformat()
-                if ticket.order_item.order.occurrence_date
-                else None,
-                "purchased_at": ticket.order_item.order.created_at.isoformat(),
-            }
-            for ticket in page.items
-        ]
+        attendees = [_attendee_dict(ticket) for ticket in page.items]
     return {"attendees": attendees, "next_cursor": page.next_cursor}
+
+
+def _attendee_dict(ticket: Ticket) -> dict:
+    order = ticket.order_item.order
+    return {
+        "ticket_id": str(ticket.id),
+        "ticket_code": short_code(ticket.id),
+        "order_id": str(order.id),
+        "order_code": short_code(order.id),
+        "buyer_name": order.buyer_name,
+        "buyer_email": order.buyer_email,
+        "buyer_phone": order.buyer_phone,
+        "attendee_name": ticket.attendee_name or order.buyer_name,
+        "attendee_email": ticket.attendee_email,
+        "attendee_phone": ticket.attendee_phone,
+        "attendee_answers": ticket.attendee_answers or [],
+        "ticket_tier": ticket.order_item.ticket_tier.name if ticket.order_item.ticket_tier else None,
+        "ticket_tier_id": str(ticket.order_item.ticket_tier_id),
+        "unit_price": str(ticket.order_item.unit_price),
+        "checked_in": ticket.checked_in,
+        "approval_status": ticket.approval_status,
+        "occurrence_date": order.occurrence_date.isoformat() if order.occurrence_date else None,
+        "purchased_at": order.created_at.isoformat(),
+    }
+
+
+def _answer_is_empty(answer) -> bool:
+    if isinstance(answer, list):
+        return len([a for a in answer if str(a).strip()]) == 0
+    return not str(answer).strip()
+
+
+def _parse_form_date(value) -> dt.date | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        return dt.date.fromisoformat(value.strip()[:10])
+    except ValueError:
+        return None
+
+
+def _validated_attendee_answers(fields, responses, who: str) -> list[dict]:
+    """Same validation checkout applies per participant
+    (public_api.handler._validated_answers), minus the tier age-limit check --
+    the tier is already fixed for an issued ticket, so there's nothing to
+    re-derive it against here."""
+    fields_by_id = {f.id: f for f in fields}
+    answers_by_id = {r.field_id: r.answer for r in responses}
+    for field in fields:
+        answer = answers_by_id.get(field.id)
+        if field.required and (answer is None or _answer_is_empty(answer)):
+            raise BadRequestError(f"'{field.label}' is required for {who}")
+    out = []
+    for field_id, answer in answers_by_id.items():
+        field = fields_by_id.get(field_id)
+        if field is None:
+            raise BadRequestError(f"Unknown form field {field_id}")
+        if _answer_is_empty(answer):
+            continue
+        kind = field.field_type.value
+        if field.options and kind in ("single_choice", "multi_choice"):
+            chosen = answer if isinstance(answer, list) else [answer]
+            if any(c not in field.options for c in chosen):
+                raise BadRequestError(f"Invalid choice for '{field.label}'")
+        elif kind == "phone":
+            normalized = normalize_indian_mobile(answer) if isinstance(answer, str) else None
+            if normalized is None:
+                raise BadRequestError(f"'{field.label}' must be a 10-digit mobile number for {who}")
+            answer = normalized
+        elif kind in ("date", "dob"):
+            parsed = _parse_form_date(answer)
+            if parsed is None:
+                raise BadRequestError(f"'{field.label}' must be a valid date for {who}")
+            answer = parsed.isoformat()
+        out.append({"field_id": str(field.id), "field_label": field.label, "answer": answer})
+    return out
+
+
+def update_attendee_impl(event_id: str, ticket_id: str, body: AttendeeUpdateRequest, organiser_id: uuid.UUID | None) -> dict:
+    """Corrects one issued ticket's participant details -- name, email,
+    phone, and registration-form answers. Doesn't touch payment, tier or
+    order; those aren't editable here."""
+    event_uuid = parse_uuid(event_id)
+    with get_session() as session:
+        load_event_for(session, event_uuid, organiser_id)
+        ticket = session.get(
+            Ticket,
+            parse_uuid(ticket_id),
+            options=[
+                selectinload(Ticket.order_item).selectinload(OrderItem.order),
+                selectinload(Ticket.order_item).selectinload(OrderItem.ticket_tier),
+            ],
+        )
+        if ticket is None or ticket.order_item.order.event_id != event_uuid:
+            raise NotFoundError("Ticket not found")
+
+        fields = (
+            session.execute(select(EventFormField).where(EventFormField.event_id == event_uuid)).scalars().all()
+        )
+        ticket.attendee_answers = _validated_attendee_answers(fields, body.form_responses, body.name)
+        ticket.attendee_name = body.name
+        ticket.attendee_email = body.email
+        ticket.attendee_phone = body.phone
+        session.flush()
+        return _attendee_dict(ticket)
 
 
 EXPORT_FORMATS = ("csv", "xlsx")

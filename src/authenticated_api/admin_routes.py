@@ -31,6 +31,7 @@ from common.models import (
     RefundStatus,
 )
 from common.schemas import (
+    AttendeeUpdateRequest,
     EventCreateRequest,
     EventImagesReplaceRequest,
     EventUpdateRequest,
@@ -292,6 +293,13 @@ def admin_list_attendees(event_id: str):
         return svc.export_attendees_impl(event_id, None, params["format"], params.get("status"))
     limit = svc.parse_limit(params.get("limit"))
     return svc.attendees_impl(event_id, None, cursor=params.get("cursor"), limit=limit)
+
+
+@app.patch("/admin/events/<event_id>/attendees/<ticket_id>")
+def admin_update_attendee(event_id: str, ticket_id: str):
+    require_admin_id()
+    body = _parse_body(AttendeeUpdateRequest)
+    return svc.update_attendee_impl(event_id, ticket_id, body, None)
 
 
 @app.post("/admin/events/<event_id>/tickets/<ticket_id>/approve")

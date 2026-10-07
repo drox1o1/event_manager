@@ -4,6 +4,8 @@ import { apiFetch } from './http';
 import type {
   AdminEventListResponse,
   AttendeeListResponse,
+  AttendeeUpdateRequest,
+  Attendee,
   RegistrationExport,
   RegistrationExportFormat,
   BannerUploadUrlResponse,
@@ -248,6 +250,11 @@ export function listAttendees(token: string, eventId: string, cursor?: string, l
 /** Registration export (every form field + transaction columns) as CSV or Excel. */
 export function exportAttendees(token: string, eventId: string, format: RegistrationExportFormat, status: string = 'all'): Promise<RegistrationExport> {
   return apiFetch<RegistrationExport>(`/admin/events/${eventId}/attendees`, { token, query: { format, status } });
+}
+
+/** Corrects one already-issued ticket's own participant details. */
+export function updateAttendee(token: string, eventId: string, ticketId: string, body: AttendeeUpdateRequest): Promise<Attendee> {
+  return apiFetch<Attendee>(`/admin/events/${eventId}/attendees/${ticketId}`, { method: 'PATCH', body, token });
 }
 
 export function approveTicket(token: string, eventId: string, ticketId: string): Promise<{ approval_status: string }> {

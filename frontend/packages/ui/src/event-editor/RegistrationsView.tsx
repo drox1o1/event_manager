@@ -1,10 +1,20 @@
 'use client';
 
 import * as React from 'react';
-import type { Attendee, AttendeeListResponse, RegistrationExport, RegistrationExportFormat } from '@showtik/api-client';
+import type {
+  Attendee,
+  AttendeeListResponse,
+  AttendeeUpdateRequest,
+  FormField,
+  FormFieldsResponse,
+  RegistrationExport,
+  RegistrationExportFormat,
+} from '@showtik/api-client';
 import { formatINR, formatTimestamp } from '@showtik/api-client';
 import { Icon } from '../components/icons/Icon';
 import { Input } from '../components/forms/Input';
+import { PhoneInput, toMobileDigits } from '../components/forms/PhoneInput';
+import { DateInput } from '../components/forms/DateInput';
 import { Button } from '../components/forms/Button';
 import { EmptyState } from '../components/feedback/EmptyState';
 import { Notice, errMessage } from './ui';
@@ -14,6 +24,8 @@ export interface RegistrationsApi {
   exportAttendees(token: string, eventId: string, format: RegistrationExportFormat, status?: string): Promise<RegistrationExport>;
   approveTicket(token: string, eventId: string, ticketId: string): Promise<unknown>;
   rejectTicket(token: string, eventId: string, ticketId: string): Promise<unknown>;
+  getFormFields(token: string, eventId: string): Promise<FormFieldsResponse>;
+  updateAttendee(token: string, eventId: string, ticketId: string, body: AttendeeUpdateRequest): Promise<Attendee>;
 }
 
 // The server's own cap (common.pagination.MAX_PAGE_SIZE) -- asked for
@@ -95,6 +107,10 @@ export function RegistrationsView({ api, token, eventId }: { api: RegistrationsA
   const [exportStatus, setExportStatus] = React.useState('all');
   const [exporting, setExporting] = React.useState<RegistrationExportFormat | null>(null);
   const exportRef = React.useRef<HTMLDivElement>(null);
+  const [formFields, setFormFields] = React.useState<FormField[] | null>(null);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [savingEdit, setSavingEdit] = React.useState(false);
+  const [editError, setEditError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!exportOpen) return;
@@ -130,6 +146,26 @@ export function RegistrationsView({ api, token, eventId }: { api: RegistrationsA
       else await api.rejectTicket(token, eventId, a.ticket_id);
       load();
     } catch (err) { setError(errMessage(err, 'Could not update the ticket.')); } finally { setBusy(null); }
+  };
+
+  const startEdit = (ticketId: string) => {
+    setEditError(null);
+    setEditingId(ticketId);
+    // Fetched once and cached -- the registration form is the same for
+    // every attendee of this event, so there's no reason to re-fetch it
+    // each time a different row is edited.
+    if (formFields === null) {
+      api.getFormFields(token, eventId).then((r) => setFormFields(r.fields)).catch(() => setFormFields([]));
+    }
+  };
+
+  const saveEdit = async (ticketId: string, body: AttendeeUpdateRequest) => {
+    setSavingEdit(true); setEditError(null);
+    try {
+      const updated = await api.updateAttendee(token, eventId, ticketId, body);
+      setRows((prev) => (prev ?? []).map((x) => (x.ticket_id === ticketId ? updated : x)));
+      setEditingId(null);
+    } catch (err) { setEditError(errMessage(err, 'Could not save these details.')); } finally { setSavingEdit(false); }
   };
 
   if (rows === null && !error) return <div style={{ padding: 40, color: 'var(--text-muted)' }}>Loading…</div>;
@@ -226,13 +262,30 @@ export function RegistrationsView({ api, token, eventId }: { api: RegistrationsA
                 )}
                 <Icon name={expanded ? 'chevron-up' : 'chevron-down'} size={16} color="var(--text-subtle)" />
               </div>
-              {expanded && (
-                <div style={{ padding: '4px 18px 18px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px 24px', fontSize: 13.5 }}>
-                  <Detail label="Bought by" value={`${r.buyer_name} · ${r.buyer_email} · ${r.buyer_phone}`} />
-                  <Detail label="Booked at" value={formatTimestamp(r.purchased_at)} />
-                  {r.occurrence_date && <Detail label="Session" value={r.occurrence_date} />}
-                  {r.attendee_phone && <Detail label="Participant phone" value={r.attendee_phone} />}
-                  {r.attendee_answers.map((a) => <Detail key={a.field_label} label={a.field_label} value={answerText(a.answer)} />)}
+              {expanded && editingId === r.ticket_id && (
+                <div style={{ padding: '4px 18px 18px' }}>
+                  <AttendeeEditForm
+                    attendee={r}
+                    fields={formFields}
+                    saving={savingEdit}
+                    error={editError}
+                    onSave={(body) => saveEdit(r.ticket_id, body)}
+                    onCancel={() => { setEditingId(null); setEditError(null); }}
+                  />
+                </div>
+              )}
+              {expanded && editingId !== r.ticket_id && (
+                <div style={{ padding: '4px 18px 18px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }} onClick={(e) => e.stopPropagation()}>
+                    <Button size="sm" variant="secondary" onClick={() => startEdit(r.ticket_id)}><Icon name="pencil" size={13} />Edit</Button>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px 24px', fontSize: 13.5 }}>
+                    <Detail label="Bought by" value={`${r.buyer_name} · ${r.buyer_email} · ${r.buyer_phone}`} />
+                    <Detail label="Booked at" value={formatTimestamp(r.purchased_at)} />
+                    {r.occurrence_date && <Detail label="Session" value={r.occurrence_date} />}
+                    {r.attendee_phone && <Detail label="Participant phone" value={r.attendee_phone} />}
+                    {r.attendee_answers.map((a) => <Detail key={a.field_label} label={a.field_label} value={answerText(a.answer)} />)}
+                  </div>
                 </div>
               )}
             </div>
@@ -248,6 +301,126 @@ function Detail({ label, value }: { label: string; value: string }) {
     <div>
       <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>{label}</div>
       <div style={{ color: 'var(--text-heading)', marginTop: 2, wordBreak: 'break-word' }}>{value}</div>
+    </div>
+  );
+}
+
+/** Edits one issued ticket's own participant details -- name, email, phone,
+ *  and whatever registration-form answers the event asks for. `fields` is
+ *  null while the event's form is still being fetched (lazily, on first
+ *  edit); the name/email/phone inputs don't need it so they render
+ *  immediately, with the form-field section filling in once it arrives. */
+function AttendeeEditForm({
+  attendee,
+  fields,
+  saving,
+  error,
+  onSave,
+  onCancel,
+}: {
+  attendee: Attendee;
+  fields: FormField[] | null;
+  saving: boolean;
+  error: string | null;
+  onSave: (body: AttendeeUpdateRequest) => void;
+  onCancel: () => void;
+}) {
+  const answerFor = React.useCallback(
+    (fieldId: string): string | string[] => attendee.attendee_answers.find((a) => a.field_id === fieldId)?.answer ?? '',
+    [attendee]
+  );
+
+  const [name, setName] = React.useState(attendee.attendee_name);
+  const [email, setEmail] = React.useState(attendee.attendee_email ?? '');
+  const [phone, setPhone] = React.useState(toMobileDigits(attendee.attendee_phone));
+  const [answers, setAnswers] = React.useState<Record<string, string | string[]>>({});
+
+  // Fields load asynchronously (and are cached across rows), so seed the
+  // answer map once they're available rather than blocking the form on them.
+  React.useEffect(() => {
+    if (fields) setAnswers(Object.fromEntries(fields.map((f) => [f.id, answerFor(f.id)])));
+  }, [fields, answerFor]);
+
+  const setAnswer = (fieldId: string, value: string | string[]) => setAnswers((a) => ({ ...a, [fieldId]: value }));
+
+  const toggleChoice = (fieldId: string, option: string, multi: boolean) => {
+    setAnswers((a) => {
+      if (!multi) return { ...a, [fieldId]: option };
+      const list = Array.isArray(a[fieldId]) ? (a[fieldId] as string[]) : [];
+      return { ...a, [fieldId]: list.includes(option) ? list.filter((o) => o !== option) : [...list, option] };
+    });
+  };
+
+  const save = () => {
+    onSave({
+      name: name.trim(),
+      email: email.trim() || null,
+      phone: phone || null,
+      form_responses: (fields ?? [])
+        .map((f) => ({ field_id: f.id, answer: answers[f.id] ?? '' }))
+        .filter((r) => (Array.isArray(r.answer) ? r.answer.length > 0 : r.answer !== '')),
+    });
+  };
+
+  return (
+    <div style={{ display: 'grid', gap: 14, background: 'var(--color-off-white)', borderRadius: 'var(--radius-card)', padding: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
+        <Input label="Participant name" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input label="Participant email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <PhoneInput label="Participant phone" value={phone} onChange={setPhone} />
+      </div>
+
+      {fields === null ? (
+        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading registration form…</div>
+      ) : fields.length > 0 ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
+          {fields.map((f) => {
+            const value = answers[f.id] ?? (f.field_type === 'multi_choice' ? [] : '');
+            if (f.field_type === 'phone') {
+              return <PhoneInput key={f.id} label={f.label} value={toMobileDigits(value as string)} onChange={(v) => setAnswer(f.id, v)} />;
+            }
+            if (f.field_type === 'date' || f.field_type === 'dob') {
+              return <DateInput key={f.id} label={f.label} value={value as string} onChange={(v) => setAnswer(f.id, v)} />;
+            }
+            if (f.field_type === 'single_choice' || f.field_type === 'multi_choice') {
+              const chosen = Array.isArray(value) ? value : value ? [value] : [];
+              return (
+                <div key={f.id}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-heading)', marginBottom: 6 }}>{f.label}</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {(f.options ?? []).map((opt) => {
+                      const active = chosen.includes(opt);
+                      return (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() => toggleChoice(f.id, opt, f.field_type === 'multi_choice')}
+                          style={{
+                            padding: '6px 12px', borderRadius: 'var(--radius-pill)', cursor: 'pointer', fontSize: 13,
+                            border: `1px solid ${active ? 'transparent' : 'var(--border-default)'}`,
+                            background: active ? 'var(--action-primary-bg)' : 'var(--surface-card)',
+                            color: active ? 'var(--action-primary-text)' : 'var(--text-body)',
+                          }}
+                        >
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            }
+            return <Input key={f.id} label={f.label} value={value as string} onChange={(e) => setAnswer(f.id, e.target.value)} />;
+          })}
+        </div>
+      ) : null}
+
+      {error && <Notice tone="error">{error}</Notice>}
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        <Button size="sm" loading={saving} onClick={save}>Save</Button>
+        <Button size="sm" variant="secondary" disabled={saving} onClick={onCancel}>Cancel</Button>
+      </div>
     </div>
   );
 }

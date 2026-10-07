@@ -12,6 +12,7 @@ from common.db import get_session
 from common.helpers import ConflictError, parse_pagination, parse_uuid, utcnow
 from common.models import Event, EventStatus, Order, Organiser
 from common.schemas import (
+    AttendeeUpdateRequest,
     EventCreateRequest,
     EventImagesReplaceRequest,
     EventUpdateRequest,
@@ -215,6 +216,12 @@ def list_attendees(event_id: str):
         return svc.export_attendees_impl(event_id, require_organiser_id(), params["format"], params.get("status"))
     limit = svc.parse_limit(params.get("limit"))
     return svc.attendees_impl(event_id, require_organiser_id(), cursor=params.get("cursor"), limit=limit)
+
+
+@app.patch("/organiser/events/<event_id>/attendees/<ticket_id>")
+def update_attendee(event_id: str, ticket_id: str):
+    body = _parse_body(AttendeeUpdateRequest)
+    return svc.update_attendee_impl(event_id, ticket_id, body, require_organiser_id())
 
 
 @app.post("/organiser/events/<event_id>/tickets/<ticket_id>/approve")
